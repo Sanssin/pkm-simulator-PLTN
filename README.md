@@ -278,12 +278,7 @@ python3 raspi_main.py
 | Document | Description |
 |----------|-------------|
 | `PROJECT_COMPLETE.md` | Complete project summary |
-| `MIGRATION_PLAN.md` | Architecture & I2C protocol |
-| `I2C_MIGRATION_QUICKGUIDE.md` | Quick implementation guide |
-| `FOLDER_STRUCTURE.md` | Project organization |
 | `RASPI_PACKAGE_SUMMARY.md` | Raspberry Pi details |
-| `ESP_MODULES_SUMMARY.md` | ESP modules details |
-| `CLEANUP_GUIDE.md` | How to clean old files |
 | `raspi_central_control/README.md` | RasPi installation |
 | `ESP_*/README.md` | Individual ESP guides |
 
