@@ -766,8 +766,8 @@ class VideoDisplayApp:
         step_num_rect = step_num_text.get_rect(center=(badge_x + badge_size//2, badge_y + badge_size//2))
         self.screen.blit(step_num_text, step_num_rect)
         
-        # "STEP" label above badge
-        step_label = self.font_medium.render("STEP", True, self.COLOR_TEXT_TERTIARY)
+        # "LANGKAH" label above badge
+        step_label = self.font_medium.render("LANGKAH", True, self.COLOR_TEXT_TERTIARY)
         step_label_rect = step_label.get_rect(center=(self.width//2, badge_y - int(30 * self.scale)))
         self.screen.blit(step_label, step_label_rect)
         
@@ -805,39 +805,39 @@ class VideoDisplayApp:
         """Get instruction text for current step"""
         steps = [
             {
-                "text": ["Raise Pressure to 45 bar", "Press PRESSURE UP button"],
+                "text": ["Naikkan Tekanan ke 45 bar", "Tekan tombol TEKANAN NAIK"],
                 "check": lambda s: s.get("pressure", 0) >= 45
             },
             {
-                "text": ["Start Tertiary Pump", "Press PUMP TERTIARY ON"],
+                "text": ["Hidupkan Pompa Tersier", "Tekan tombol POMPA TERSIER ON"],
                 "check": lambda s: s.get("pump_tertiary", 0) >= 1
             },
             {
-                "text": ["Start Secondary Pump", "Press PUMP SECONDARY ON"],
+                "text": ["Hidupkan Pompa Sekunder", "Tekan tombol POMPA SEKUNDER ON"],
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
             },
             {
-                "text": ["Start Primary Pump", "Press PUMP PRIMARY ON"],
+                "text": ["Hidupkan Pompa Primer", "Tekan tombol POMPA PRIMER ON"],
                 "check": lambda s: s.get("pump_primary", 0) >= 1
             },
             {
-                "text": ["Raise Pressure to 140 bar", "Continue pressing PRESSURE UP"],
+                "text": ["Naikkan Tekanan ke 140 bar", "Terus tekan tombol TEKANAN NAIK"],
                 "check": lambda s: s.get("pressure", 0) >= 140
             },
             {
-                "text": ["Withdraw Safety Rod to 100%", "Press SAFETY ROD UP"],
+                "text": ["Naikkan Safety Rod ke 100%", "Tekan tombol SAFETY ROD UP"],
                 "check": lambda s: s.get("safety_rod", 0) >= 100
             },
             {
-                "text": ["Withdraw Shim Rod to 50%", "Press SHIM ROD UP"],
+                "text": ["Naikkan Shim Rod ke 50%", "Tekan tombol SHIM ROD UP"],
                 "check": lambda s: s.get("shim_rod", 0) >= 50
             },
             {
-                "text": ["Withdraw Regulating Rod to 50%", "Press REGULATING ROD UP"],
+                "text": ["Naikkan Regulating Rod ke 50%", "Tekan tombol REGULATING ROD UP"],
                 "check": lambda s: s.get("regulating_rod", 0) >= 50
             },
             {
-                "text": ["Normal Operation Achieved!", "System is generating power"],
+                "text": ["Operasi Normal Tercapai!", "Sistem sedang menghasilkan daya"],
                 "check": lambda s: True
             }
         ]
@@ -853,7 +853,7 @@ class VideoDisplayApp:
         if self.current_step < len(steps):
             return steps[self.current_step]["text"]
         else:
-            return ["Simulation Complete!", "Press RESET to restart"]
+            return ["Simulasi Selesai!", "Tekan tombol RESET untuk mengulang"]
     
     def draw_progress_bar_enhanced(self, state: Dict, y_start: int):
         """Draw enhanced parameter progress bars for 4K display"""
@@ -876,7 +876,7 @@ class VideoDisplayApp:
             ("Pressure", current_pressure, 200, "bar", pressure_color),  # Max 200, not 155
             ("Safety Rod", state.get("safety_rod", 0), 100, "%", self.COLOR_SUCCESS),
             ("Shim Rod", state.get("shim_rod", 0), 100, "%", self.COLOR_PRIMARY),
-            ("Reg Rod", state.get("regulating_rod", 0), 100, "%", self.COLOR_INFO)
+            ("Regulating Rod", state.get("regulating_rod", 0), 100, "%", self.COLOR_INFO)
         ]
         
         # Calculate centered layout with more width
