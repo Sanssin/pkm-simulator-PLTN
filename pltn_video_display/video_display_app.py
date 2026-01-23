@@ -685,30 +685,7 @@ class VideoDisplayApp:
         """Display interactive step-by-step guide - Optimized for 4K"""
         self.screen.fill(self.COLOR_BG)
         
-        # === PRESSURE WARNING NOTIFICATION (TOP) ===
-        current_pressure = state.get("pressure", 0)
-        if current_pressure > 160:
-            # Show warning banner at top
-            banner_height = int(100 * self.scale)
-            if current_pressure > 180:
-                banner_color = self.COLOR_ERROR
-                warning_text = "!!! BAHAYA: TEKANAN TERLALU TINGGI !!!"
-            else:
-                banner_color = self.COLOR_WARNING
-                warning_text = "!!! PERINGATAN: TEKANAN TINGGI !!!"
-            
-            # Draw warning banner
-            pygame.draw.rect(self.screen, banner_color, (0, 0, self.width, banner_height))
-            
-            # Warning text (white, bold)
-            warning_surface = self.font_title.render(warning_text, True, self.COLOR_TEXT)
-            warning_rect = warning_surface.get_rect(center=(self.width//2, banner_height//2))
-            self.screen.blit(warning_surface, warning_rect)
-            
-            # Adjust header position to avoid overlap
-            header_y_offset = banner_height
-        else:
-            header_y_offset = 0
+        # Pressure warning will be drawn as floating overlay at the end (no layout shift)
         
         # === HEADER BAR === (larger and more prominent)
         header_height = int(120 * self.scale)  # Increased from 80
@@ -717,67 +694,49 @@ class VideoDisplayApp:
         
         # Draw header background (Medium Navy)
         pygame.draw.rect(self.screen, self.COLOR_BG_SECONDARY, 
-                        (0, header_y_offset, self.width, header_height))
+                        (0, 0, self.width, header_height))
         line_thickness = max(int(4 * self.scale), 3)
         pygame.draw.line(self.screen, self.COLOR_BORDER, 
-                        (0, header_y_offset + header_height), 
-                        (self.width, header_y_offset + header_height), 
+                        (0, header_height), 
+                        (self.width, header_height), 
                         line_thickness)
         
         # Logo BRIN (left)
         if self.logo_brin:
             logo_small_brin = pygame.transform.smoothscale(self.logo_brin, self.logo_size_small)
-            logo_y = header_y_offset + (header_height - self.logo_size_small[1]) // 2
+            logo_y = (header_height - self.logo_size_small[1]) // 2
             self.screen.blit(logo_small_brin, (left_margin, logo_y))
         
         # Title text (center) - Larger font
         header_title = self.font_title.render("SIMULATOR PLTN TIPE PWR BERBASIS MIKROKONTROLER", 
                                                  True, self.COLOR_TEXT)
-        header_title_rect = header_title.get_rect(center=(self.width//2, header_y_offset + header_height//2))
+        header_title_rect = header_title.get_rect(center=(self.width//2, header_height//2))
         self.screen.blit(header_title, header_title_rect)
         
         # Logo Poltek (right)
         if self.logo_poltek:
             logo_small_poltek = pygame.transform.smoothscale(self.logo_poltek, self.logo_size_small)
-            logo_y = header_y_offset + (header_height - self.logo_size_small[1]) // 2
+            logo_y = (header_height - self.logo_size_small[1]) // 2
             logo_x = self.width - self.logo_size_small[0] - right_margin
             self.screen.blit(logo_small_poltek, (logo_x, logo_y))
         
-        # === MAIN CONTENT AREA === (more spacious layout)
-        content_y_start = header_y_offset + header_height + int(80 * self.scale)  # More space from header
+        
+        # === MAIN CONTENT AREA === (clean layout without step badge)
+        content_y_start = header_height + int(80 * self.scale)  # Space from header
         
         # Current step instruction
         step_text = self.get_current_step_instruction(state)
         
-        # Draw step number badge (larger and more prominent)
-        badge_size = int(120 * self.scale)  # Increased
-        badge_x = self.width // 2 - badge_size // 2
-        badge_y = content_y_start - int(20 * self.scale)
-        badge_rect = pygame.Rect(badge_x, badge_y, badge_size, badge_size)
-        pygame.draw.circle(self.screen, self.COLOR_PRIMARY, 
-                         (badge_x + badge_size//2, badge_y + badge_size//2), 
-                         badge_size//2)
-        pygame.draw.circle(self.screen, self.COLOR_PRIMARY_BRIGHT, 
-                         (badge_x + badge_size//2, badge_y + badge_size//2), 
-                         badge_size//2, max(int(4 * self.scale), 3))
+        # Draw instruction directly (no badge, more space for text)
+        # Start instructions higher up for better balance
+        y_offset = content_y_start + int(40 * self.scale)  # Start closer to header
+        line_spacing = int(80 * self.scale)  # More spacing between lines
         
-        # Step number text
-        step_num_text = self.font_display.render(str(self.current_step + 1), True, self.COLOR_TEXT)
-        step_num_rect = step_num_text.get_rect(center=(badge_x + badge_size//2, badge_y + badge_size//2))
-        self.screen.blit(step_num_text, step_num_rect)
-        
-        # "LANGKAH" label above badge
-        step_label = self.font_medium.render("LANGKAH", True, self.COLOR_TEXT_TERTIARY)
-        step_label_rect = step_label.get_rect(center=(self.width//2, badge_y - int(30 * self.scale)))
-        self.screen.blit(step_label, step_label_rect)
-        
-        # Draw instruction (Larger font, more spacing)
-        y_offset = content_y_start + badge_size + int(60 * self.scale)
-        line_spacing = int(70 * self.scale)  # Increased spacing
         for line in step_text:
-            text = self.font_large.render(line, True, self.COLOR_TEXT)  # Changed from font_body to font_large
-            text_rect = text.get_rect(center=(self.width//2, y_offset))
-            self.screen.blit(text, text_rect)
+            if line:  # Skip empty lines for spacing
+                text = self.font_large.render(line, True, self.COLOR_TEXT)
+                text_rect = text.get_rect(center=(self.width//2, y_offset))
+                self.screen.blit(text, text_rect)
             y_offset += line_spacing
         
         # === PARAMETERS SECTION === (larger, more visible)
@@ -798,6 +757,79 @@ class VideoDisplayApp:
         
         # Draw progress bars (larger)
         self.draw_progress_bar_enhanced(state, params_y_start)
+        
+        # === FLOATING PRESSURE WARNING OVERLAY === (drawn last, on top of everything)
+        # This appears as a pop-up without shifting the layout
+        current_pressure = state.get("pressure", 0)
+        if current_pressure > 160:
+            # 1. Semi-transparent dark overlay (full screen)
+            overlay = pygame.Surface((self.width, self.height))
+            overlay.set_alpha(180)  # 70% opacity
+            overlay.fill((0, 0, 0))  # Black
+            self.screen.blit(overlay, (0, 0))
+            
+            # 2. Warning box in center
+            box_width = int(1200 * self.scale)
+            box_height = int(400 * self.scale)
+            box_x = (self.width - box_width) // 2
+            box_y = (self.height - box_height) // 2
+            
+            # Determine color and text based on pressure level
+            if current_pressure > 180:
+                box_color = self.COLOR_ERROR  # Red - Danger!
+                warning_title = "!!! BAHAYA !!!"
+                warning_main = "TEKANAN PRESSURIZER TERLALU TINGGI"
+            else:
+                box_color = self.COLOR_WARNING  # Orange - Warning
+                warning_title = "!!! PERINGATAN !!!"
+                warning_main = "TEKANAN PRESSURIZER TINGGI"
+            
+            # Draw warning box with border
+            box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
+            border_radius = int(20 * self.scale)
+            pygame.draw.rect(self.screen, box_color, box_rect, border_radius=border_radius)
+            pygame.draw.rect(self.screen, self.COLOR_TEXT, box_rect, 
+                           max(int(5 * self.scale), 3), border_radius=border_radius)
+            
+            # 3. Warning icon (circle with "!")
+            icon_radius = int(80 * self.scale)
+            icon_center_x = self.width // 2
+            icon_center_y = box_y + int(100 * self.scale)
+            pygame.draw.circle(self.screen, self.COLOR_TEXT, 
+                             (icon_center_x, icon_center_y), icon_radius)
+            pygame.draw.circle(self.screen, box_color, 
+                             (icon_center_x, icon_center_y), icon_radius - int(8 * self.scale))
+            
+            # Warning icon text "!"
+            icon_text = self.font_display.render("!", True, self.COLOR_TEXT)
+            icon_text_rect = icon_text.get_rect(center=(icon_center_x, icon_center_y))
+            self.screen.blit(icon_text, icon_text_rect)
+            
+            # 4. Warning title
+            title_y = box_y + int(200 * self.scale)
+            title_surface = self.font_title.render(warning_title, True, self.COLOR_TEXT)
+            title_rect = title_surface.get_rect(center=(self.width // 2, title_y))
+            self.screen.blit(title_surface, title_rect)
+            
+            # 5. Warning main text
+            main_y = box_y + int(260 * self.scale)
+            main_surface = self.font_large.render(warning_main, True, self.COLOR_TEXT)
+            main_rect = main_surface.get_rect(center=(self.width // 2, main_y))
+            self.screen.blit(main_surface, main_rect)
+            
+            # 6. Instruction text
+            instruction_y = box_y + int(320 * self.scale)
+            instruction_text = "Turunkan tekanan segera! (Tekan tombol TEKANAN TURUN)"
+            instruction_surface = self.font_medium.render(instruction_text, True, self.COLOR_TEXT_SECONDARY)
+            instruction_rect = instruction_surface.get_rect(center=(self.width // 2, instruction_y))
+            self.screen.blit(instruction_surface, instruction_rect)
+            
+            # 7. Current pressure value
+            value_y = box_y + int(370 * self.scale)
+            value_text = f"Tekanan saat ini: {current_pressure:.1f} bar"
+            value_surface = self.font_body.render(value_text, True, self.COLOR_TEXT_TERTIARY)
+            value_rect = value_surface.get_rect(center=(self.width // 2, value_y))
+            self.screen.blit(value_surface, value_rect)
         
         pygame.display.flip()
     
@@ -853,7 +885,13 @@ class VideoDisplayApp:
         if self.current_step < len(steps):
             return steps[self.current_step]["text"]
         else:
-            return ["Simulasi Selesai!", "Tekan tombol RESET untuk mengulang"]
+            # Final step: Manual control instructions
+            return [
+                "Gunakan kontrol batang kendali untuk mengatur daya PLTN",
+                "Shim Rod & Regulating Rod untuk fine-tuning power output",
+                "",
+                "(Tekan tombol RESET untuk mengulang simulasi)"
+            ]
     
     def draw_progress_bar_enhanced(self, state: Dict, y_start: int):
         """Draw enhanced parameter progress bars for 4K display"""
