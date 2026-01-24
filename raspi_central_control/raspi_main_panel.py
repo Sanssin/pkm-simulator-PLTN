@@ -169,6 +169,12 @@ class PLTNPanelController:
         self.uart_lock = threading.Lock()  # Changed from i2c_lock
         self.state_lock = threading.Lock()
         
+        # Inactivity timer for auto-reset
+        self.last_button_time = time.time()  # Track last button press
+        self.inactivity_timeout = 180  # 3 minutes (180 seconds)
+        self.last_inactivity_check = time.time()
+        logger.info(f"Auto-reset enabled: {self.inactivity_timeout}s inactivity timeout")
+        
         # State export for video display integration
         self.state_export_file = Path("/tmp/pltn_state.json")
         logger.info(f"State export file: {self.state_export_file}")
@@ -431,19 +437,23 @@ class PLTNPanelController:
     
     def _execute_scram_sequence(self):
         """
-        Execute SCRAM sequence: drop rods sequentially with smooth animation
-        Order: Regulating → Shim → Safety
-        Duration: 2 seconds per rod (smooth descent)
+        Execute SCRAM sequence: drop ALL rods simultaneously with smooth animation
+        All three rods (Safety, Shim, Regulating) drop together
+        Duration: 3 seconds (smooth descent)
         Runs in separate thread (non-blocking)
         """
         def scram_thread():
             try:
                 logger.critical("🔴 SCRAM SEQUENCE INITIATED")
-                logger.critical("   Sequential rod insertion: Regulating → Shim → Safety")
+                logger.critical("   Emergency rod insertion: ALL RODS DROPPING SIMULTANEOUSLY")
                 
                 # Capture initial turbine speed for spin-down
                 with self.state_lock:
                     initial_turbine_speed = self.state.turbine_speed
+                    # Capture initial rod positions
+                    start_safety = self.state.safety_rod
+                    start_shim = self.state.shim_rod
+                    start_regulating = self.state.regulating_rod
                 
                 # Start turbine spin-down immediately (runs in parallel)
                 if initial_turbine_speed > 0:
@@ -454,74 +464,41 @@ class PLTNPanelController:
                     )
                     turbine_thread.start()
                 
-                # Step 1: Drop regulating rod (2 seconds, smooth)
-                logger.critical("   ⬇️  Lowering regulating rod...")
+                # Drop ALL rods simultaneously (3 seconds, smooth)
+                logger.critical("   ⬇️  Lowering all control rods...")
                 start_time = time.time()
-                duration = 2.0
-                with self.state_lock:
-                    start_pos = self.state.regulating_rod
+                duration = 3.0  # 3 seconds total
                 
                 while time.time() - start_time < duration:
                     elapsed = time.time() - start_time
-                    progress = elapsed / duration
-                    current_pos = int(start_pos * (1 - progress))
+                    progress = elapsed / duration  # 0.0 to 1.0
                     
+                    # Calculate current positions for all rods (dropping together)
+                    current_safety = int(start_safety * (1 - progress))
+                    current_shim = int(start_shim * (1 - progress))
+                    current_regulating = int(start_regulating * (1 - progress))
+                    
+                    # Update all rods in single lock
                     with self.state_lock:
-                        self.state.regulating_rod = max(0, current_pos)
+                        self.state.safety_rod = max(0, current_safety)
+                        self.state.shim_rod = max(0, current_shim)
+                        self.state.regulating_rod = max(0, current_regulating)
                     
                     self.esp_send_immediate.set()
-                    time.sleep(0.05)  # 50ms update rate
+                    time.sleep(0.05)  # 50ms update rate = smooth animation
                 
-                with self.state_lock:
-                    self.state.regulating_rod = 0
-                logger.critical("   ✅ Regulating rod inserted (0%)")
-                self.esp_send_immediate.set()
-                
-                # Step 2: Drop shim rod (2 seconds, smooth)
-                logger.critical("   ⬇️  Lowering shim rod...")
-                start_time = time.time()
-                with self.state_lock:
-                    start_pos = self.state.shim_rod
-                
-                while time.time() - start_time < duration:
-                    elapsed = time.time() - start_time
-                    progress = elapsed / duration
-                    current_pos = int(start_pos * (1 - progress))
-                    
-                    with self.state_lock:
-                        self.state.shim_rod = max(0, current_pos)
-                    
-                    self.esp_send_immediate.set()
-                    time.sleep(0.05)
-                
-                with self.state_lock:
-                    self.state.shim_rod = 0
-                logger.critical("   ✅ Shim rod inserted (0%)")
-                self.esp_send_immediate.set()
-                
-                # Step 3: Drop safety rod (2 seconds, smooth)
-                logger.critical("   ⬇️  Lowering safety rod...")
-                start_time = time.time()
-                with self.state_lock:
-                    start_pos = self.state.safety_rod
-                
-                while time.time() - start_time < duration:
-                    elapsed = time.time() - start_time
-                    progress = elapsed / duration
-                    current_pos = int(start_pos * (1 - progress))
-                    
-                    with self.state_lock:
-                        self.state.safety_rod = max(0, current_pos)
-                    
-                    self.esp_send_immediate.set()
-                    time.sleep(0.05)
-                
+                # Ensure all rods are at 0%
                 with self.state_lock:
                     self.state.safety_rod = 0
-                logger.critical("   ✅ Safety rod inserted (0%)")
+                    self.state.shim_rod = 0
+                    self.state.regulating_rod = 0
+                
                 self.esp_send_immediate.set()
                 
-                logger.critical("✅ SCRAM SEQUENCE COMPLETE - All rods inserted (6 seconds total)")
+                logger.critical("   ✅ Safety rod inserted (0%)")
+                logger.critical("   ✅ Shim rod inserted (0%)")
+                logger.critical("   ✅ Regulating rod inserted (0%)")
+                logger.critical("✅ SCRAM SEQUENCE COMPLETE - All rods inserted (3 seconds total)")
                 logger.critical("   Turbine spin-down continues (~12 seconds total)")
                 
             except Exception as e:
@@ -585,6 +562,9 @@ class PLTNPanelController:
         Process button event with proper locking and state update
         This runs in dedicated thread, NOT in interrupt context
         """
+        # Update last button time for inactivity tracking
+        self.last_button_time = time.time()
+        
         with self.state_lock:
             
             if event == ButtonEvent.PRESSURE_UP:
@@ -1090,6 +1070,40 @@ class PLTNPanelController:
                     logger.debug("Control: All updates done, releasing lock...")
                 
                 logger.debug("Control: Lock released")
+                
+                # 5. Check for inactivity and auto-reset (outside lock, every 10 seconds)
+                current_time = time.time()
+                if current_time - self.last_inactivity_check >= 10.0:  # Check every 10 seconds
+                    self.last_inactivity_check = current_time
+                    
+                    # Calculate inactivity duration
+                    inactivity_duration = current_time - self.last_button_time
+                    
+                    # Auto-reset if exceeded timeout and not in idle state
+                    if inactivity_duration >= self.inactivity_timeout:
+                        # Check if system is not already idle (anything non-zero)
+                        with self.state_lock:
+                            is_active = (self.state.pressure > 0 or 
+                                       self.state.safety_rod > 0 or 
+                                       self.state.shim_rod > 0 or 
+                                       self.state.regulating_rod > 0 or 
+                                       self.state.pump_primary_status != 0 or 
+                                       self.state.pump_secondary_status != 0 or 
+                                       self.state.pump_tertiary_status != 0 or
+                                       self.state.auto_sim_running)
+                        
+                        if is_active:
+                            logger.info("="*60)
+                            logger.info("⏰ AUTO-RESET: 3 minutes inactivity detected")
+                            logger.info("   Resetting simulator to idle state...")
+                            logger.info("="*60)
+                            
+                            # Trigger reset event
+                            self.button_event_queue.put(ButtonEvent.REACTOR_RESET)
+                            self.esp_send_immediate.set()
+                            
+                            # Reset inactivity timer
+                            self.last_button_time = current_time
                 time.sleep(0.05)  # 50ms
                 
                 # Log heartbeat every 10 seconds (200 loops x 50ms)
