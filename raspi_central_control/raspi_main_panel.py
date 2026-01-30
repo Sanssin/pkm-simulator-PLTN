@@ -186,7 +186,7 @@ class PLTNPanelController:
         
         if not system_ready:
             logger.error("="*60)
-            logger.error("⚠️  SYSTEM NOT READY - Critical issues detected!")
+            logger.error("SYSTEM NOT READY - Critical issues detected!")
             logger.error("   Review health check above and fix critical issues")
             logger.error("   System will continue in degraded mode")
             logger.error("="*60)
@@ -194,9 +194,9 @@ class PLTNPanelController:
         logger.info("="*60)
         logger.info("✓ PLTN Panel Controller initialized")
         if system_ready:
-            logger.info("✅ SYSTEM READY - All critical components operational")
+            logger.info("SYSTEM READY - All critical components operational")
         else:
-            logger.warning("⚠️  SYSTEM DEGRADED - Some components unavailable")
+            logger.warning("SYSTEM DEGRADED - Some components unavailable")
         logger.info("="*60)
     
     def init_multiplexers(self):
@@ -210,7 +210,7 @@ class PLTNPanelController:
             )
             logger.info("✓ Multiplexers initialized (OLEDs only)")
         except Exception as e:
-            logger.warning(f"⚠️  Multiplexers unavailable: {e}")
+            logger.warning(f"Multiplexers unavailable: {e}")
             logger.warning("   OLED displays will not work")
             self.mux_manager = None
             # Don't raise - OLEDs are optional
@@ -225,7 +225,7 @@ class PLTNPanelController:
             )
             logger.info("✓ UART Master initialized (2 ESP via Serial)")
         except Exception as e:
-            logger.error(f"❌ UART Master unavailable: {e}")
+            logger.error(f"UART Master unavailable: {e}")
             logger.error("   ESPs will not work!")
             self.uart_master = None
             raise
@@ -268,9 +268,9 @@ class PLTNPanelController:
             callback_count = len(self.button_manager.callbacks)
             logger.info(f"✓ Button manager initialized: {callback_count} callbacks registered")
             if callback_count != 17:
-                logger.warning(f"⚠️  Expected 17 callbacks, but {callback_count} registered!")
+                logger.warning(f"Expected 17 callbacks, but {callback_count} registered!")
         except Exception as e:
-            logger.warning(f"⚠️  Failed to initialize buttons: {e}")
+            logger.warning(f"Failed to initialize buttons: {e}")
             logger.warning("   Button input will not be available")
             self.button_manager = None
             raise
@@ -281,7 +281,7 @@ class PLTNPanelController:
             self.humidifier = HumidifierController()
             logger.info("✓ Humidifier controller initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize humidifier: {e}")
+            logger.error(f"Failed to initialize humidifier: {e}")
             import traceback
             logger.error(traceback.format_exc())
             logger.warning("   Humidifier control will not be available")
@@ -294,7 +294,7 @@ class PLTNPanelController:
             self.buzzer = BuzzerAlarm()
             logger.info("✓ Buzzer alarm initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize buzzer: {e}")
+            logger.error(f"Failed to initialize buzzer: {e}")
             import traceback
             logger.error(traceback.format_exc())
             logger.warning("   Alarm buzzer will not be available")
@@ -327,17 +327,17 @@ class PLTNPanelController:
             init_thread.join(timeout=5.0)  # Max 5 seconds total
             
             if init_thread.is_alive():
-                logger.warning("⚠️  OLED initialization timeout - continuing without displays")
+                logger.warning("OLED initialization timeout - continuing without displays")
                 self.oled_manager = None
             else:
-                logger.info("✓ OLED displays initialization complete")
+                logger.info("OLED displays initialization complete")
                 logger.info("   Startup screen will be cleared by OLED update thread")
                 
                 # NOTE: sync_interpolators_to_state() moved to oled_update_thread()
                 # This fixes race condition where sync was called before thread started
             
         except Exception as e:
-            logger.warning(f"⚠️  Failed to initialize OLED displays: {e}")
+            logger.warning(f"Failed to initialize OLED displays: {e}")
             logger.warning("Continuing without OLED displays...")
             self.oled_manager = None
     
@@ -348,87 +348,87 @@ class PLTNPanelController:
     def on_pressure_up(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PRESSURE_UP)
-        logger.info("⚡ Button event queued: PRESSURE_UP")
+        logger.info("Button event queued: PRESSURE_UP")
     
     def on_pressure_down(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PRESSURE_DOWN)
-        logger.info("⚡ Button event queued: PRESSURE_DOWN")
+        logger.info("Button event queued: PRESSURE_DOWN")
     
     def on_pump_primary_on(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_PRIMARY_ON)
-        logger.info("⚡ Button event queued: PUMP_PRIMARY_ON")
+        logger.info("Button event queued: PUMP_PRIMARY_ON")
     
     def on_pump_primary_off(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_PRIMARY_OFF)
-        logger.info("⚡ Button event queued: PUMP_PRIMARY_OFF")
+        logger.info("Button event queued: PUMP_PRIMARY_OFF")
     
     def on_pump_secondary_on(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_SECONDARY_ON)
-        logger.info("⚡ Button event queued: PUMP_SECONDARY_ON")
+        logger.info("Button event queued: PUMP_SECONDARY_ON")
     
     def on_pump_secondary_off(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_SECONDARY_OFF)
-        logger.info("⚡ Button event queued: PUMP_SECONDARY_OFF")
+        logger.info("Button event queued: PUMP_SECONDARY_OFF")
     
     def on_pump_tertiary_on(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_TERTIARY_ON)
-        logger.info("⚡ Button event queued: PUMP_TERTIARY_ON")
+        logger.info("Button event queued: PUMP_TERTIARY_ON")
     
     def on_pump_tertiary_off(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.PUMP_TERTIARY_OFF)
-        logger.info("⚡ Button event queued: PUMP_TERTIARY_OFF")
+        logger.info("Button event queued: PUMP_TERTIARY_OFF")
     
     def on_safety_rod_up(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.SAFETY_ROD_UP)
-        logger.info("⚡ Button event queued: SAFETY_ROD_UP")
+        logger.info("Button event queued: SAFETY_ROD_UP")
     
     def on_safety_rod_down(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.SAFETY_ROD_DOWN)
-        logger.info("⚡ Button event queued: SAFETY_ROD_DOWN")
+        logger.info("Button event queued: SAFETY_ROD_DOWN")
     
     def on_shim_rod_up(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.SHIM_ROD_UP)
-        logger.info("⚡ Event queued: SHIM_ROD_UP")
+        logger.info("Event queued: SHIM_ROD_UP")
     
     def on_shim_rod_down(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.SHIM_ROD_DOWN)
-        logger.info("⚡ Button event queued: SHIM_ROD_DOWN")
+        logger.info("Button event queued: SHIM_ROD_DOWN")
     
     def on_regulating_rod_up(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.REGULATING_ROD_UP)
-        logger.info("⚡ Button event queued: REGULATING_ROD_UP")
+        logger.info("Button event queued: REGULATING_ROD_UP")
     
     def on_regulating_rod_down(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.REGULATING_ROD_DOWN)
-        logger.info("⚡ Button event queued: REGULATING_ROD_DOWN")
+        logger.info("Button event queued: REGULATING_ROD_DOWN")
     
     def on_emergency(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.EMERGENCY)
-        logger.critical("⚡ Button event queued: EMERGENCY")
+        logger.critical("Button event queued: EMERGENCY")
     
     def on_reactor_reset(self):
         """Lightweight callback - just enqueue event"""
         self.button_event_queue.put(ButtonEvent.REACTOR_RESET)
-        logger.info("⚡ Button event queued: REACTOR_RESET")
+        logger.info("Button event queued: REACTOR_RESET")
     
     def on_start_auto_simulation(self):
         """Lightweight callback - start auto simulation"""
         self.button_event_queue.put(ButtonEvent.START_AUTO_SIMULATION)
-        logger.info("⚡ Event queued: START_AUTO_SIMULATION")
+        logger.info("Event queued: START_AUTO_SIMULATION")
     
     
     # ============================================
@@ -444,8 +444,8 @@ class PLTNPanelController:
         """
         def scram_thread():
             try:
-                logger.critical("🔴 SCRAM SEQUENCE INITIATED")
-                logger.critical("   Emergency rod insertion: ALL RODS DROPPING SIMULTANEOUSLY")
+                logger.critical("SCRAM SEQUENCE INITIATED")
+                logger.critical("Emergency rod insertion: ALL RODS DROPPING SIMULTANEOUSLY")
                 
                 # Capture initial turbine speed for spin-down
                 with self.state_lock:
@@ -465,7 +465,7 @@ class PLTNPanelController:
                     turbine_thread.start()
                 
                 # Drop ALL rods simultaneously (3 seconds, smooth)
-                logger.critical("   ⬇️  Lowering all control rods...")
+                logger.critical("Lowering all control rods...")
                 start_time = time.time()
                 duration = 3.0  # 3 seconds total
                 
@@ -495,14 +495,14 @@ class PLTNPanelController:
                 
                 self.esp_send_immediate.set()
                 
-                logger.critical("   ✅ Safety rod inserted (0%)")
-                logger.critical("   ✅ Shim rod inserted (0%)")
-                logger.critical("   ✅ Regulating rod inserted (0%)")
-                logger.critical("✅ SCRAM SEQUENCE COMPLETE - All rods inserted (3 seconds total)")
-                logger.critical("   Turbine spin-down continues (~12 seconds total)")
+                logger.critical("Safety rod inserted (0%)")
+                logger.critical("Shim rod inserted (0%)")
+                logger.critical("Regulating rod inserted (0%)")
+                logger.critical("SCRAM SEQUENCE COMPLETE - All rods inserted (3 seconds total)")
+                logger.critical("Turbine spin-down continues (~12 seconds total)")
                 
             except Exception as e:
-                logger.error(f"❌ SCRAM sequence error: {e}")
+                logger.error(f"SCRAM sequence error: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
         
@@ -520,7 +520,7 @@ class PLTNPanelController:
             initial_speed: Starting turbine speed (%)
         """
         try:
-            logger.info(f"🌀 Turbine spin-down started (initial: {initial_speed:.1f}%)")
+            logger.info(f"Turbine spin-down started (initial: {initial_speed:.1f}%)")
             
             duration = 12.0  # 12 seconds total spin-down
             start_time = time.time()
@@ -545,10 +545,10 @@ class PLTNPanelController:
                 self.state.turbine_speed = 0
             self.esp_send_immediate.set()
             
-            logger.info("✅ Turbine spin-down complete (0%)")
+            logger.info("Turbine spin-down complete (0%)")
             
         except Exception as e:
-            logger.error(f"❌ Turbine spin-down error: {e}")
+            logger.error(f"Turbine spin-down error: {e}")
             import traceback
             logger.error(traceback.format_exc())
     
@@ -580,43 +580,40 @@ class PLTNPanelController:
                     # Check safety conditions before starting
                     if self._check_pump_start_safe("Primary"):
                         self.state.pump_primary_status = 1
-                        logger.info("✓ Primary pump starting (safety checks passed)")
+                        logger.info("Primary pump starting (safety checks passed)")
                     # else: already logged and buzzed by _check_pump_start_safe()
             
             elif event == ButtonEvent.PUMP_PRIMARY_OFF:
                 if self.state.pump_primary_status == 2:
                     self.state.pump_primary_status = 3
-                    # Removed logging for performance
             
             elif event == ButtonEvent.PUMP_SECONDARY_ON:
                 if self.state.pump_secondary_status == 0:
                     # Check safety conditions before starting
                     if self._check_pump_start_safe("Secondary"):
                         self.state.pump_secondary_status = 1
-                        logger.info("✓ Secondary pump starting (safety checks passed)")
+                        logger.info("Secondary pump starting (safety checks passed)")
                     # else: already logged and buzzed by _check_pump_start_safe()
             
             elif event == ButtonEvent.PUMP_SECONDARY_OFF:
                 if self.state.pump_secondary_status == 2:
                     self.state.pump_secondary_status = 3
-                    # Removed logging for performance
             
             elif event == ButtonEvent.PUMP_TERTIARY_ON:
                 if self.state.pump_tertiary_status == 0:
                     # Check safety conditions before starting
                     if self._check_pump_start_safe("Tertiary"):
                         self.state.pump_tertiary_status = 1
-                        logger.info("✓ Tertiary pump starting (safety checks passed)")
+                        logger.info("Tertiary pump starting (safety checks passed)")
                     # else: already logged and buzzed by _check_pump_start_safe()
             
             elif event == ButtonEvent.PUMP_TERTIARY_OFF:
                 if self.state.pump_tertiary_status == 2:
                     self.state.pump_tertiary_status = 3
-                    # Removed logging for performance
             
             elif event == ButtonEvent.SAFETY_ROD_UP:
                 if not self._check_interlock_internal():
-                    logger.warning("⚠️  INTERLOCK VIOLATION: Cannot raise safety rod!")
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise safety rod!")
                     logger.warning(f"   Pressure: {self.state.pressure:.1f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
                                  f"Secondary={self.state.pump_secondary_status}, "
@@ -651,7 +648,7 @@ class PLTNPanelController:
             elif event == ButtonEvent.SHIM_ROD_UP:
                 # Check safety rod priority: safety rod must be 100% before raising shim
                 if self.state.safety_rod < 100:
-                    logger.warning("⚠️  SAFETY ROD PRIORITY: Cannot raise shim rod!")
+                    logger.warning("SAFETY ROD PRIORITY: Cannot raise shim rod!")
                     logger.warning(f"   Safety rod must be at 100% first (currently: {self.state.safety_rod}%)")
                     logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
                     
@@ -666,7 +663,7 @@ class PLTNPanelController:
                 
                 # Check interlock conditions
                 if not self._check_interlock_internal():
-                    logger.warning("⚠️  INTERLOCK VIOLATION: Cannot raise shim rod!")
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise shim rod!")
                     logger.warning(f"   Pressure: {self.state.pressure:.1f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
                                  f"Secondary={self.state.pump_secondary_status}, "
@@ -690,7 +687,7 @@ class PLTNPanelController:
             elif event == ButtonEvent.REGULATING_ROD_UP:
                 # Check safety rod priority: safety rod must be 100% before raising regulating
                 if self.state.safety_rod < 100:
-                    logger.warning("⚠️  SAFETY ROD PRIORITY: Cannot raise regulating rod!")
+                    logger.warning("SAFETY ROD PRIORITY: Cannot raise regulating rod!")
                     logger.warning(f"   Safety rod must be at 100% first (currently: {self.state.safety_rod}%)")
                     logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
                     
@@ -705,7 +702,7 @@ class PLTNPanelController:
                 
                 # Check interlock conditions
                 if not self._check_interlock_internal():
-                    logger.warning("⚠️  INTERLOCK VIOLATION: Cannot raise regulating rod!")
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise regulating rod!")
                     logger.warning(f"   Pressure: {self.state.pressure:.1f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
                                  f"Secondary={self.state.pump_secondary_status}, "
@@ -730,7 +727,7 @@ class PLTNPanelController:
                 self.state.emergency_active = True
                 
                 # Execute sequential SCRAM (non-blocking, smooth animation)
-                logger.critical("✓ EMERGENCY SCRAM ACTIVATED!")
+                logger.critical("EMERGENCY SCRAM ACTIVATED!")
                 logger.critical("   Pumps remain ON for decay heat removal")
                 self._execute_scram_sequence()
                 
@@ -739,13 +736,13 @@ class PLTNPanelController:
                     logger.critical("   Triggering emergency buzzer...")
                     try:
                         self.buzzer.trigger_emergency_beep()
-                        logger.critical("   ✓ Emergency buzzer triggered")
+                        logger.critical("Emergency buzzer triggered")
                     except Exception as e:
-                        logger.error(f"   ❌ Buzzer trigger failed: {e}")
+                        logger.error(f"Buzzer trigger failed: {e}")
                         import traceback
                         logger.error(traceback.format_exc())
                 else:
-                    logger.warning("   ⚠️  Buzzer not available")
+                    logger.warning("Buzzer not available")
                     
             elif event == ButtonEvent.REACTOR_RESET:
                 # Stop auto simulation if running
@@ -774,27 +771,27 @@ class PLTNPanelController:
                     self.oled_manager.reset_all_interpolators()
                 
                 logger.info("=" * 60)
-                logger.info("🔄 SIMULATION RESET")
+                logger.info("SIMULATION RESET")
                 logger.info("All parameters reset. Press START to begin.")
                 logger.info("=" * 60)
             
             elif event == ButtonEvent.START_AUTO_SIMULATION:
                 if self.state.auto_sim_running:
-                    logger.warning("⚠️  Auto simulation already running!")
+                    logger.warning("Auto simulation already running!")
                     return
                 
                 # Start auto simulation
                 self.state.simulation_mode = 'auto'
                 self.state.auto_sim_running = True
                 logger.info("=" * 60)
-                logger.info("🤖 AUTO SIMULATION MODE ACTIVATED")
+                logger.info("AUTO SIMULATION MODE ACTIVATED")
                 logger.info("Simulasi akan berjalan otomatis dengan kecepatan lambat")
                 logger.info("untuk memudahkan pemahaman cara kerja PLTN")
                 logger.info("=" * 60)
             
             # Log if event not recognized
             else:
-                logger.warning(f"⚠️  Unknown event: {event}")
+                logger.warning(f"Unknown event: {event}")
     
     def button_event_processor_thread(self):
         """
@@ -802,15 +799,15 @@ class PLTNPanelController:
         This thread can safely use locks and do heavy work
         """
         try:
-            logger.info("🚀 Button event processor thread STARTING...")
+            logger.info("Button event processor thread STARTING...")
             
             # Verify queue exists
             if not hasattr(self, 'button_event_queue'):
-                logger.error("❌ button_event_queue not initialized!")
+                logger.error("button_event_queue not initialized!")
                 return
             
-            logger.info(f"✓ Event queue initialized (max size: 100)")
-            logger.info("✓ Button event processor thread started - waiting for events...")
+            logger.info(f"Event queue initialized (max size: 100)")
+            logger.info("Button event processor thread started - waiting for events...")
             
             loop_count = 0
             while self.state.running:
@@ -818,7 +815,7 @@ class PLTNPanelController:
                     # Heartbeat every 60 seconds (reduced logging)
                     loop_count += 1
                     if loop_count >= 6000:  # 6000 * 0.01s = 60s
-                        logger.info(f"💓 Event processor alive - Queue size: {self.button_event_queue.qsize()}")
+                        logger.info(f"Event processor alive - Queue size: {self.button_event_queue.qsize()}")
                         loop_count = 0
                     
                     # Wait for event (blocking, with timeout) - optimized to 10ms for fast response
@@ -846,7 +843,7 @@ class PLTNPanelController:
             logger.info("Button event processor thread stopped")
             
         except Exception as e:
-            logger.critical(f"❌ FATAL: Event processor thread crashed on startup: {e}")
+            logger.critical(f"FATAL: Event processor thread crashed on startup: {e}")
             import traceback
             logger.critical(traceback.format_exc())
     
@@ -932,7 +929,7 @@ class PLTNPanelController:
         # CHECK 1: Pressure must be >= 40 bar
         # ============================================
         if self.state.pressure < 40.0:
-            logger.warning(f"❌ PUMP START BLOCKED: {pump_name} pump")
+            logger.warning(f"PUMP START BLOCKED: {pump_name} pump")
             logger.warning(f"   Reason: Pressure too low!")
             logger.warning(f"   Current: {self.state.pressure:.1f} bar, Required: >= 40 bar")
             logger.warning(f"   Action: Raise pressure to 40 bar before starting pumps")
@@ -953,7 +950,7 @@ class PLTNPanelController:
         if pump_name == "Secondary":
             # Secondary can only start if Tertiary is already ON
             if self.state.pump_tertiary_status != 2:
-                logger.warning(f"❌ PUMP SEQUENCE VIOLATION: Cannot start Secondary pump")
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Secondary pump")
                 logger.warning(f"   Reason: Tertiary pump must be ON first!")
                 logger.warning(f"   Tertiary status: {self.state.pump_tertiary_status} (2=ON)")
                 logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
@@ -970,7 +967,7 @@ class PLTNPanelController:
         elif pump_name == "Primary":
             # Primary can only start if BOTH Tertiary AND Secondary are ON
             if self.state.pump_tertiary_status != 2:
-                logger.warning(f"❌ PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
                 logger.warning(f"   Reason: Tertiary pump must be ON first!")
                 logger.warning(f"   Tertiary status: {self.state.pump_tertiary_status} (2=ON)")
                 logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
@@ -985,7 +982,7 @@ class PLTNPanelController:
                 return False
             
             if self.state.pump_secondary_status != 2:
-                logger.warning(f"❌ PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
                 logger.warning(f"   Reason: Secondary pump must be ON first!")
                 logger.warning(f"   Secondary status: {self.state.pump_secondary_status} (2=ON)")
                 logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
@@ -1001,7 +998,7 @@ class PLTNPanelController:
         
         # Tertiary pump has no prerequisites (can start anytime if P >= 40)
         # All checks passed
-        logger.info(f"✓ Pump start authorized: {pump_name}")
+        logger.info(f"Pump start authorized: {pump_name}")
         return True
     
     # ============================================
@@ -1094,7 +1091,7 @@ class PLTNPanelController:
                         
                         if is_active:
                             logger.info("="*60)
-                            logger.info("⏰ AUTO-RESET: 3 minutes inactivity detected")
+                            logger.info("AUTO-RESET: 3 minutes inactivity detected")
                             logger.info("   Resetting simulator to idle state...")
                             logger.info("="*60)
                             
@@ -1195,10 +1192,10 @@ class PLTNPanelController:
         
         # Verify uart_master exists
         if not self.uart_master:
-            logger.error("❌ uart_master not initialized! ESP communication disabled.")
+            logger.error("uart_master not initialized! ESP communication disabled.")
             return
         
-        logger.info("✓ UART master verified, starting communication loop...")
+        logger.info("UART master verified, starting communication loop...")
         
         # Throttle ESP-E updates to prevent buffer overflow
         last_esp_e_update = 0
@@ -1210,7 +1207,7 @@ class PLTNPanelController:
                 triggered = self.esp_send_immediate.wait(timeout=0.05)  # 50ms optimized cycle
                 
                 if triggered:
-                    logger.debug("⚡ Immediate ESP send triggered by button event")
+                    logger.debug("Immediate ESP send triggered by button event")
                     self.esp_send_immediate.clear()  # Reset flag
                 
                 with self.uart_lock:
@@ -1219,7 +1216,7 @@ class PLTNPanelController:
                         logger.info(f"TX /dev/ttyAMA0: { {'cmd':'update', 'rods':[self.state.safety_rod,self.state.shim_rod,self.state.regulating_rod], 'pumps':[self.state.pump_primary_status,self.state.pump_secondary_status,self.state.pump_tertiary_status], 'humid_ct':[self.state.humid_ct1_cmd,self.state.humid_ct2_cmd,self.state.humid_ct3_cmd,self.state.humid_ct4_cmd]} }")
                         
                         if not self.uart_master.esp_bc_connected:
-                            logger.warning("⚠️  ESP-BC not connected, skipping UART send")
+                            logger.warning("ESP-BC not connected, skipping UART send")
                             success = False
                         else:
                             success = self.uart_master.update_esp_bc(
@@ -1244,7 +1241,7 @@ class PLTNPanelController:
                             # Gap before sending to ESP-E (reduced for faster response)
                             time.sleep(0.005)  # 5ms (reduced from 30ms)
                         else:
-                            logger.warning("⚠️  ESP-BC update failed")
+                            logger.warning("ESP-BC update failed")
                 
                 # Send to ESP-E outside of state_lock (non-critical, can be slower)
                 # THROTTLED: Only send every 200ms to prevent buffer overflow
@@ -1264,7 +1261,7 @@ class PLTNPanelController:
                                 pump_secondary_status=self.state.pump_secondary_status,
                                 pump_tertiary_status=self.state.pump_tertiary_status
                             )
-                            logger.debug("✓ ESP-E update success")
+                            logger.debug("ESP-E update success")
                             last_esp_e_update = current_time
                         except Exception as e:
                             logger.debug(f"ESP-E communication error (non-critical): {e}")
@@ -1357,14 +1354,6 @@ class PLTNPanelController:
         logger.info("Button hold detection thread stopped")
     
     def oled_update_thread(self):
-        """
-        Thread for updating 9 OLED displays (100ms cycle - optimized for faster visual feedback)
-        
-        This thread handles:
-        - Initial sync of interpolators to clear startup screen
-        - Continuous OLED updates at 10Hz (100ms cycle)
-        - Smooth value interpolation for better UX
-        """
         logger.info("OLED update thread started")
         
         if self.oled_manager is None:
@@ -1408,7 +1397,7 @@ class PLTNPanelController:
         
         v4.0: Manual mode always active - Auto simulation tidak mengunci kontrol manual
         """
-        logger.info("🤖 Auto simulation thread started (waiting for trigger)")
+        logger.info("Auto simulation thread started (waiting for trigger)")
         
         while self.state.running:
             # Wait for auto simulation to be triggered
@@ -1418,17 +1407,17 @@ class PLTNPanelController:
             
             try:
                 logger.info("="*70)
-                logger.info("🤖 AUTO SIMULATION MODE - Full PWR Startup Sequence")
+                logger.info("AUTO SIMULATION MODE - Full PWR Startup Sequence")
                 logger.info("   Simulasi berjalan otomatis dengan kecepatan lambat")
                 logger.info("   untuk memudahkan pemahaman cara kerja PLTN")
                 logger.info("")
-                logger.info("   ℹ️  Manual control tetap aktif - Anda bisa interrupt kapan saja")
+                logger.info("Manual control tetap aktif - Anda bisa interrupt kapan saja")
                 logger.info("="*70)
                 
                 # Phase 1: System Initialization
                 with self.state_lock:
                     self.state.auto_sim_phase = "Init"
-                logger.info("\n📍 Phase 1: System Initialization")
+                logger.info("\n Phase 1: System Initialization")
                 logger.info("   ✓ Reactor system active (manual mode always on)")
                 logger.info("   ✓ All controls ready")
                 time.sleep(3)
@@ -1436,7 +1425,7 @@ class PLTNPanelController:
                 # Phase 2: Raise Pressure to minimum required (45 bar)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Pressure 45"
-                logger.info("\n📍 Phase 2: Pressurizer Activation")
+                logger.info("\n Phase 2: Pressurizer Activation")
                 logger.info("   Raising pressure to 45 bar (3 seconds)...")
                 
                 start_time = time.time()
@@ -1446,7 +1435,7 @@ class PLTNPanelController:
                 while time.time() - start_time < duration:
                     # Check if cancelled
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     # Calculate current pressure (smooth interpolation)
@@ -1472,14 +1461,14 @@ class PLTNPanelController:
                     self.state.pressure = 45.0
                     final_pressure = self.state.pressure
                 
-                logger.info(f"   ✅ Pressure reached: {final_pressure:.1f} bar")
-                logger.info("   ✅ Interlock condition 1 satisfied (P ≥ 40 bar)")
+                logger.info(f"Pressure reached: {final_pressure:.1f} bar")
+                logger.info("Interlock condition 1 satisfied (P ≥ 40 bar)")
                 time.sleep(2)
                 
                 # Phase 3: Start Pumps (Tertiary → Secondary → Primary)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Pumps"
-                logger.info("\n📍 Phase 3: Coolant Pumps Startup Sequence")
+                logger.info("\n Phase 3: Coolant Pumps Startup Sequence")
                 logger.info("   Following correct startup procedure...")
                 
                 # Tertiary pump first
@@ -1488,11 +1477,11 @@ class PLTNPanelController:
                     self.state.pump_tertiary_status = 1  # STARTING
                 self.esp_send_immediate.set()  # Trigger immediate ESP send
                 time.sleep(3)  # Wait for pump to reach ON state
-                logger.info("   ✅ Tertiary Pump: ON")
+                logger.info("Tertiary Pump: ON")
                 
                 # Check if cancelled
                 if not self.state.auto_sim_running:
-                    logger.warning("   ⚠️ Auto simulation cancelled")
+                    logger.warning("Auto simulation cancelled")
                     return
                 
                 # Secondary pump
@@ -1501,11 +1490,11 @@ class PLTNPanelController:
                     self.state.pump_secondary_status = 1  # STARTING
                 self.esp_send_immediate.set()  # Trigger immediate ESP send
                 time.sleep(3)
-                logger.info("   ✅ Secondary Pump: ON")
+                logger.info("Secondary Pump: ON")
                 
                 # Check if cancelled
                 if not self.state.auto_sim_running:
-                    logger.warning("   ⚠️ Auto simulation cancelled")
+                    logger.warning("Auto simulation cancelled")
                     return
                     with self.state_lock:
                         self.state.auto_sim_phase = ""
@@ -1517,14 +1506,14 @@ class PLTNPanelController:
                     self.state.pump_primary_status = 1  # STARTING
                 self.esp_send_immediate.set()
                 time.sleep(3)
-                logger.info("   ✅ Primary Pump: ON")
-                logger.info("   ✅ All pumps operational")
-                logger.info("   ✅ Interlock condition 2 satisfied (All pumps ON)")
+                logger.info("Primary Pump: ON")
+                logger.info("All pumps operational")
+                logger.info("Interlock condition 2 satisfied (All pumps ON)")
                 time.sleep(2)
                 
                 # Check if cancelled
                 if not self.state.auto_sim_running:
-                    logger.warning("   ⚠️ Auto simulation cancelled by user")
+                    logger.warning("Auto simulation cancelled by user")
                     with self.state_lock:
                         self.state.auto_sim_phase = ""
                     continue
@@ -1532,7 +1521,7 @@ class PLTNPanelController:
                 # Phase 4A: Raise Pressure to 140 bar (MOVED FIRST for interlock)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Pressure 140"
-                logger.info("\n📍 Phase 4A: Pressurizer to Operating Pressure")
+                logger.info("\n Phase 4A: Pressurizer to Operating Pressure")
                 logger.info("   Raising pressure to 140 bar (7 seconds)...")
                 logger.info("   (Operating pressure required before rod withdrawal)")
                 
@@ -1544,7 +1533,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1564,13 +1553,13 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.pressure = 140.0
                 
-                logger.info("   ✅ Pressure at 140 bar (operating pressure)")
+                logger.info("Pressure at 140 bar (operating pressure)")
                 time.sleep(2)
                 
                 # Phase 4B: Safety Rod Withdrawal (100%) - MOVED AFTER pressure
                 with self.state_lock:
                     self.state.auto_sim_phase = "Safety Rod"
-                logger.info("\n📍 Phase 4B: Safety Rod Withdrawal")
+                logger.info("\n Phase 4B: Safety Rod Withdrawal")
                 logger.info("   Raising safety rod to 100% (3 seconds)...")
                 logger.info("   (Safety rod must be fully withdrawn before power rods)")
                 
@@ -1581,7 +1570,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1597,16 +1586,16 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.safety_rod = 100
                 
-                logger.info("   ✅ Safety rod at 100%")
+                logger.info("Safety rod at 100%")
                 time.sleep(2)
                 
-                logger.info("   ✅ Ready for power rod withdrawal")
+                logger.info("Ready for power rod withdrawal")
                 time.sleep(2)
                 
                 # Phase 4C: Shim Rod to 50% (Coarse Power Control)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Shim Rod 50%"
-                logger.info("\n📍 Phase 4C: Shim Rod Withdrawal (Coarse Control)")
+                logger.info("\n Phase 4C: Shim Rod Withdrawal (Coarse Control)")
                 logger.info("   Raising shim rod to 50% (3 seconds)...")
                 
                 start_time = time.time()
@@ -1616,7 +1605,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1632,13 +1621,13 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.shim_rod = 50
                 
-                logger.info("   ✅ Shim rod at 50% (initial power level)")
+                logger.info("Shim rod at 50% (initial power level)")
                 time.sleep(2)
                 
                 # Phase 4D: Regulating Rod to 50% (Fine Power Control)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Reg Rod 50%"
-                logger.info("\n📍 Phase 4D: Regulating Rod Withdrawal (Fine Control)")
+                logger.info("\n Phase 4D: Regulating Rod Withdrawal (Fine Control)")
                 logger.info("   Raising regulating rod to 50% (3 seconds)...")
                 
                 start_time = time.time()
@@ -1648,7 +1637,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1664,13 +1653,13 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.regulating_rod = 50
                 
-                logger.info("   ✅ Regulating rod at 50% (medium power)")
+                logger.info("Regulating rod at 50% (medium power)")
                 time.sleep(2)
                 
                 # Phase 4E: Ramp to Maximum Power (100%)
                 with self.state_lock:
                     self.state.auto_sim_phase = "Max Power"
-                logger.info("\n📍 Phase 4E: Power Ramp-up to Maximum")
+                logger.info("\n Phase 4E: Power Ramp-up to Maximum")
                 logger.info("   Raising shim rod to 100% (4 seconds)...")
                 
                 start_time = time.time()
@@ -1680,7 +1669,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1696,7 +1685,7 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.shim_rod = 100
                 
-                logger.info("   ✅ Shim rod at 100% (coarse max)")
+                logger.info("Shim rod at 100% (coarse max)")
                 time.sleep(2)
                 
                 logger.info("   Raising regulating rod to 100% (4 seconds)...")
@@ -1708,7 +1697,7 @@ class PLTNPanelController:
                 
                 while time.time() - start_time < duration:
                     if not self.state.auto_sim_running:
-                        logger.warning("   ⚠️ Auto simulation cancelled by user")
+                        logger.warning("Auto simulation cancelled by user")
                         return
                     
                     elapsed = time.time() - start_time
@@ -1724,29 +1713,29 @@ class PLTNPanelController:
                 with self.state_lock:
                     self.state.regulating_rod = 100
                 
-                logger.info("   ✅ Regulating rod at 100% (fine max)")
-                logger.info("   ✅ Reactor at MAXIMUM POWER!")
-                logger.info("   ✅ Reactor criticality achieved")
-                logger.info("   ✅ Thermal power at maximum")
+                logger.info("Regulating rod at 100% (fine max)")
+                logger.info("Reactor at MAXIMUM POWER!")
+                logger.info("Reactor criticality achieved")
+                logger.info("Thermal power at maximum")
                 time.sleep(3)
                 
                 # Phase 5: Steam Generator Activation
-                logger.info("\n📍 Phase 5: Steam Generator Operation")
+                logger.info("\n Phase 5: Steam Generator Operation")
                 logger.info("   Steam generators automatically activate (Rods ≥ 40%)")
                 logger.info("   Visual: Humidifiers SG1 & SG2 creating steam 💨")
                 time.sleep(5)
                 
                 # Phase 6: Turbine Starting
-                logger.info("\n📍 Phase 6: Turbine-Generator Startup")
+                logger.info("\n Phase 6: Turbine-Generator Startup")
                 logger.info("   Turbine starting automatically...")
                 logger.info("   Speed ramping up: 0% → 100%")
                 time.sleep(8)
-                logger.info("   ✅ Turbine at full speed (100%)")
-                logger.info("   ✅ Generator synchronized to grid")
+                logger.info("Turbine at full speed (100%)")
+                logger.info("Generator synchronized to grid")
                 time.sleep(3)
                 
                 # Phase 7: Power Generation
-                logger.info("\n📍 Phase 7: Electrical Power Generation")
+                logger.info("\n Phase 7: Electrical Power Generation")
                 logger.info("   Reactor thermal: ~900 MWth")
                 logger.info("   Turbine efficiency: ~33%")
                 logger.info("   Electrical output: ~200-250 MWe")
@@ -1754,17 +1743,17 @@ class PLTNPanelController:
                 time.sleep(5)
                 
                 # Phase 8: Cooling Tower
-                logger.info("\n📍 Phase 8: Cooling Tower Humidifiers")
+                logger.info("\n Phase 8: Cooling Tower Humidifiers")
                 logger.info("   Cooling towers activate automatically")
                 logger.info("   CT1, CT2, CT3, CT4: Creating steam effect 💨")
                 time.sleep(5)
                 
                 # Phase 9: Stable Operation
-                logger.info("\n📍 Phase 9: Normal Operation Achieved")
+                logger.info("\n Phase 9: Normal Operation Achieved")
                 logger.info("="*70)
-                logger.info("✅ REACTOR AT STABLE OPERATION")
+                logger.info("REACTOR AT STABLE OPERATION")
                 logger.info("")
-                logger.info(f"   📊 Current Status:")
+                logger.info(f"Current Status:")
                 with self.state_lock:
                     logger.info(f"   • Pressure: {self.state.pressure:.1f} bar")
                     logger.info(f"   • Control Rods: Shim={self.state.shim_rod}%, Reg={self.state.regulating_rod}%")
@@ -1782,7 +1771,7 @@ class PLTNPanelController:
                 logger.info("   ✓ Pressure dapat disesuaikan (UP/DOWN buttons)")
                 logger.info("   ✓ Emergency button siap untuk SCRAM kapan saja")
                 logger.info("")
-                logger.info("➡️  Silakan lanjutkan dengan kontrol manual")
+                logger.info("Silakan lanjutkan dengan kontrol manual")
                 logger.info("="*70)
                 
                 # Auto simulation complete - back to manual
@@ -1790,11 +1779,11 @@ class PLTNPanelController:
                     self.state.auto_sim_running = False
                     self.state.simulation_mode = 'manual'
                 
-                logger.info("\n✅ Auto simulation complete")
+                logger.info("\n Auto simulation complete")
                 logger.info("   Mode: MANUAL (operator control active)")
                 
             except Exception as e:
-                logger.error(f"❌ Error in auto simulation: {e}")
+                logger.error(f"Error in auto simulation: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
                 with self.state_lock:
@@ -1991,7 +1980,7 @@ class PLTNPanelController:
             logger.error(f"Error closing multiplexers: {e}")
         
         logger.info("="*60)
-        logger.info("✅ PLTN Panel Controller shutdown complete")
+        logger.info("PLTN Panel Controller shutdown complete")
         logger.info("="*60)
 
 
