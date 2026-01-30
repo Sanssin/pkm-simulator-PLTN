@@ -285,28 +285,75 @@ class VideoDisplayApp:
             self.logo_poltek = None
     
     def create_mock_state(self) -> Dict:
-        """Create mock state for testing"""
+        """Create mock state for testing - recalculates thermal_kw from current rod positions
+        
+        Uses ESP-BC formula (esp_utama_uart.ino lines 575-596):
+        - ONLY shim_rod and regulating_rod contribute to power (NOT safety_rod!)
+        - Complex quadratic formula with turbine efficiency
+        """
+        # Get current rod positions from existing mock_state (updated by keyboard input)
+        current_safety = self.mock_state.get("safety_rod", 0) if hasattr(self, 'mock_state') else 0
+        current_shim = self.mock_state.get("shim_rod", 0) if hasattr(self, 'mock_state') else 0
+        current_reg = self.mock_state.get("regulating_rod", 0) if hasattr(self, 'mock_state') else 0
+        
+        # === ESP-BC THERMAL POWER CALCULATION ===
+        # ONLY shim_rod and regulating_rod contribute to power!
+        avg_rod_position = (current_shim + current_reg) / 2.0
+        reactor_thermal_kw = 0.0
+        
+        if avg_rod_position > 10.0:
+            # Quadratic formula for reactor thermal capacity
+            reactor_thermal_kw = avg_rod_position * avg_rod_position * 90.0
+            reactor_thermal_kw += current_shim * 150.0
+            reactor_thermal_kw += current_reg * 200.0
+        
+        # Cap at 900 MW thermal
+        if reactor_thermal_kw > 900000.0:
+            reactor_thermal_kw = 900000.0
+        
+        # For test mode, assume turbine is running at 100% load
+        # In production, this comes from ESP-BC turbine state
+        turbine_load = 1.0  # 100% load for test mode
+        TURBINE_EFFICIENCY = 0.34  # 34% efficiency
+        
+        thermal_kw = reactor_thermal_kw * TURBINE_EFFICIENCY * turbine_load
+        
+        # Cap at 300 MW electrical
+        if thermal_kw < 0.0:
+            thermal_kw = 0.0
+        if thermal_kw > 300000.0:
+            thermal_kw = 300000.0
+        
+        # DEBUG: Print thermal power calculation
+        if hasattr(self, 'mock_state') and (current_shim > 0 or current_reg > 0):
+            print(f"\n=== THERMAL POWER DEBUG ===")
+            print(f"Shim Rod: {current_shim}%, Regulating Rod: {current_reg}%")
+            print(f"Avg Rod Position: {avg_rod_position:.1f}%")
+            print(f"Reactor Thermal: {reactor_thermal_kw:.1f} kW = {reactor_thermal_kw/1000:.1f} MW")
+            print(f"Electrical Output: {thermal_kw:.1f} kW = {thermal_kw/1000:.1f} MW")
+            print(f"==========================\n")
+        
         return {
             "timestamp": time.time(),
             "mode": "manual",
             "auto_running": False,
             "auto_phase": "",
-            "pressure": 0.0,
-            "safety_rod": 0,
-            "shim_rod": 0,
-            "regulating_rod": 0,
-            "pump_primary": 0,
-            "pump_secondary": 0,
-            "pump_tertiary": 0,
-            "thermal_kw": 0.0,
-            "turbine_speed": 0.0,
-            "emergency": False
+            "pressure": self.mock_state.get("pressure", 0.0) if hasattr(self, 'mock_state') else 0.0,
+            "safety_rod": current_safety,
+            "shim_rod": current_shim,
+            "regulating_rod": current_reg,
+            "pump_primary": self.mock_state.get("pump_primary", 0) if hasattr(self, 'mock_state') else 0,
+            "pump_secondary": self.mock_state.get("pump_secondary", 0) if hasattr(self, 'mock_state') else 0,
+            "pump_tertiary": self.mock_state.get("pump_tertiary", 0) if hasattr(self, 'mock_state') else 0,
+            "thermal_kw": thermal_kw,  # ESP-BC formula: only shim + regulating contribute
+            "turbine_speed": self.mock_state.get("turbine_speed", 0.0) if hasattr(self, 'mock_state') else 0.0,
+            "emergency": self.mock_state.get("emergency", False) if hasattr(self, 'mock_state') else False
         }
     
     def read_simulation_state(self) -> Dict:
         """
         Read state from backend simulation
-        In test mode: return mock state
+        In test mode: return mock state (recalculated)
         In production: read from JSON file
         """
         if self.test_mode:
@@ -322,7 +369,10 @@ class VideoDisplayApp:
                 self.mock_state["mode"] = "manual"
                 self.mock_state["auto_running"] = False
             
-            return self.mock_state
+            # CRITICAL FIX: Recalculate thermal_kw from current rod positions!
+            # This ensures speedometer shows updated power values
+            recalculated_state = self.create_mock_state()
+            return recalculated_state
         
         # Production mode: read from file
         try:
@@ -727,36 +777,74 @@ class VideoDisplayApp:
         # Current step instruction
         step_text = self.get_current_step_instruction(state)
         
-        # Draw instruction directly (no badge, more space for text)
-        # Start instructions higher up for better balance
-        y_offset = content_y_start + int(40 * self.scale)  # Start closer to header
-        line_spacing = int(80 * self.scale)  # More spacing between lines
+        # === 2-COLUMN LAYOUT: LEFT (Instructions + Parameters) | RIGHT (Speedometer) ===
+        # Column split: 60% left | 40% right
+        # Left column contains instructions (top) and parameter bars (bottom)
+        # Right column contains speedometer gauge (centered)
+        
+        COLUMN_SPLIT = 0.60  # 60% for left, 40% for right
+        LEFT_MARGIN = int(60 * self.scale)
+        RIGHT_MARGIN = int(60 * self.scale)
+        COLUMN_GAP = int(40 * self.scale)
+        
+        # === LEFT COLUMN (0% to 60%) ===
+        left_col_start = LEFT_MARGIN
+        left_col_end = int(self.width * COLUMN_SPLIT) - COLUMN_GAP // 2
+        left_col_width = left_col_end - left_col_start
+        
+        # === INSTRUCTION SECTION HEADER ===
+        instruction_title = self.font_display.render("INSTRUKSI", True, self.COLOR_PRIMARY_BRIGHT)
+        instruction_title_x = left_col_start + left_col_width // 2
+        instruction_title_y = content_y_start - int(20 * self.scale)
+        instruction_title_rect = instruction_title.get_rect(center=(instruction_title_x, instruction_title_y))
+        self.screen.blit(instruction_title, instruction_title_rect)
+        
+        # Decorative line under instruction title
+        line_width = int(left_col_width * 0.8)
+        line_x = left_col_start + (left_col_width - line_width) // 2
+        line_y = content_y_start + int(5 * self.scale)
+        pygame.draw.line(self.screen, self.COLOR_BORDER,
+                        (line_x, line_y),
+                        (line_x + line_width, line_y),
+                        max(int(3 * self.scale), 2))
+        
+        # Instructions (top of left column)
+        y_offset = content_y_start + int(40 * self.scale)
+        line_spacing = int(70 * self.scale)
         
         for line in step_text:
             if line:  # Skip empty lines for spacing
                 text = self.font_large.render(line, True, self.COLOR_TEXT)
-                text_rect = text.get_rect(center=(self.width//2, y_offset))
-                self.screen.blit(text, text_rect)
+                self.screen.blit(text, (left_col_start, y_offset))
             y_offset += line_spacing
         
-        # === PARAMETERS SECTION === (larger, more visible)
-        params_y_start = self.height - int(450 * self.scale)  # More space for parameters
+        # Parameter bars (bottom of left column)
+        params_y_start = self.height - int(420 * self.scale)
         
         # Section title
-        params_title = self.font_display.render("PARAMETER SISTEM", True, self.COLOR_PRIMARY_BRIGHT)  # Larger font
-        params_title_rect = params_title.get_rect(center=(self.width//2, params_y_start - int(50 * self.scale)))
+        params_title = self.font_display.render("PARAMETER SISTEM", True, self.COLOR_PRIMARY_BRIGHT)
+        params_title_x = left_col_start + left_col_width // 2
+        params_title_rect = params_title.get_rect(center=(params_title_x, params_y_start - int(50 * self.scale)))
         self.screen.blit(params_title, params_title_rect)
         
-        # Decorative line under title - wider
-        line_width = int(1000 * self.scale)  # Increased from 400
-        line_x = (self.width - line_width) // 2
+        # Decorative line under title (within left column)
+        line_width = int(left_col_width * 0.8)
+        line_x = left_col_start + (left_col_width - line_width) // 2
         pygame.draw.line(self.screen, self.COLOR_BORDER,
                         (line_x, params_y_start - int(25 * self.scale)),
                         (line_x + line_width, params_y_start - int(25 * self.scale)),
                         max(int(3 * self.scale), 2))
         
-        # Draw progress bars (larger)
-        self.draw_progress_bar_enhanced(state, params_y_start)
+        # Draw parameter bars (within left column)
+        self.draw_progress_bar_enhanced(state, params_y_start, left_col_start, left_col_width)
+        
+        # === RIGHT COLUMN (60% to 100%) ===
+        right_col_start = int(self.width * COLUMN_SPLIT) + COLUMN_GAP // 2
+        right_col_end = self.width - RIGHT_MARGIN
+        right_col_width = right_col_end - right_col_start
+        
+        # Speedometer gauge (centered in right column)
+        self.draw_speedometer_gauge(state, content_y_start, right_col_start, right_col_width)
         
         # === FLOATING PRESSURE WARNING OVERLAY === (drawn last, on top of everything)
         # This appears as a pop-up without shifting the layout
@@ -893,11 +981,180 @@ class VideoDisplayApp:
                 "(Tekan tombol RESET untuk mengulang simulasi)"
             ]
     
-    def draw_progress_bar_enhanced(self, state: Dict, y_start: int):
-        """Draw enhanced parameter progress bars for 4K display"""
-        bar_width = int(900 * self.scale)  # Much wider bars (from 500)
-        bar_height = int(60 * self.scale)  # Taller bars (from 50)
-        bar_spacing = int(85 * self.scale)  # More spacing
+    def draw_speedometer_gauge(self, state: Dict, content_y_start: int, col_start: int, col_width: int):
+        """Draw speedometer-style power gauge in right column"""
+        import math
+        
+        # Get thermal power from state (in kW)
+        thermal_kw = state.get("thermal_kw", 0.0)
+        thermal_mw = thermal_kw / 1000.0  # Convert kW to MW
+        
+        # Speedometer dimensions (scaled for 1366px and 4K)
+        diameter = int(320 * self.scale)  # 320px for 1366px, ~600px for 4K
+        radius = diameter // 2
+        arc_thickness = int(40 * self.scale)
+        
+        # Center position in right column
+        center_x = col_start + col_width // 2
+        center_y = content_y_start + int(self.height * 0.35)  # Vertically centered
+        
+        # Title: "DAYA OUTPUT"
+        title_text = self.font_display.render("DAYA OUTPUT", True, self.COLOR_TEXT)
+        title_rect = title_text.get_rect(center=(center_x, center_y - radius - int(60 * self.scale)))
+        self.screen.blit(title_text, title_rect)
+        
+        # === DRAW ARC BACKGROUND (180° semicircle) ===
+        # Upper semicircle: 0° (right) to 180° (left)
+        arc_rect = pygame.Rect(center_x - radius, center_y - radius, diameter, diameter)
+        
+        # Background arc (gray) - UPPER semicircle
+        pygame.draw.arc(self.screen, self.COLOR_TEXT_SECONDARY, arc_rect,
+                       0, math.pi, arc_thickness)
+        
+        # === DRAW COLORED ARC FILL ===
+        MAX_THERMAL_MW = 300.0  # Changed from 30 to 300 MW
+        power_percentage = min((thermal_mw / MAX_THERMAL_MW) * 100.0, 100.0)
+        
+        # Determine arc color
+        if power_percentage < 30:
+            arc_color = self.COLOR_TEXT_SECONDARY  # Gray
+        elif power_percentage < 70:
+            arc_color = self.COLOR_WARNING  # Yellow
+        else:
+            arc_color = self.COLOR_SUCCESS  # Green
+        
+        # Draw filled arc (UPPER semicircle, left to right)
+        if power_percentage > 0:
+            # Start from 180° (left), fill to right based on percentage
+            start_angle = math.pi
+            end_angle = math.pi - (power_percentage / 100.0) * math.pi
+            pygame.draw.arc(self.screen, arc_color, arc_rect,
+                           end_angle, start_angle, arc_thickness)
+        
+        # === DRAW SCALE MARKERS ===
+        marker_length = int(15 * self.scale)
+        marker_thickness = max(int(3 * self.scale), 2)
+        
+        for mw_value in [0, 100, 200, 300]:  # Changed from [0, 10, 20, 30]
+            # Angle for upper semicircle: 180° (left/0MW) to 0° (right/300MW)
+            # 0 MW at left (180° = π), 300 MW at right (0° = 0)
+            angle = math.pi * (1.0 - mw_value / MAX_THERMAL_MW)
+            
+            outer_x = center_x + int((radius - arc_thickness // 2) * math.cos(angle))
+            outer_y = center_y - int((radius - arc_thickness // 2) * math.sin(angle))  # Negative for upper
+            inner_x = center_x + int((radius - arc_thickness // 2 - marker_length) * math.cos(angle))
+            inner_y = center_y - int((radius - arc_thickness // 2 - marker_length) * math.sin(angle))  # Negative for upper
+            
+            pygame.draw.line(self.screen, self.COLOR_TEXT, 
+                           (outer_x, outer_y), (inner_x, inner_y), marker_thickness)
+            
+            # Label positioned ABOVE the arc (upper semicircle)
+            label_text = self.font_body.render(f"{mw_value}", True, self.COLOR_TEXT_SECONDARY)
+            label_distance = radius + int(30 * self.scale)
+            label_x = center_x + int(label_distance * math.cos(angle))
+            # Negative for upper semicircle positioning
+            label_y = center_y - int(label_distance * math.sin(angle)) - int(10 * self.scale)
+            label_rect = label_text.get_rect(center=(label_x, label_y))
+            self.screen.blit(label_text, label_rect)
+        
+        # === DRAW NEEDLE POINTER ===
+        # Needle angle for UPPER semicircle: 180° (left/0%) to 0° (right/100%)
+        # 0% at left (180° = π), 100% at right (0° = 0)
+        needle_angle = math.pi * (1.0 - power_percentage / 100.0)
+        needle_length = radius - arc_thickness // 2 - int(10 * self.scale)
+        needle_thickness = max(int(4 * self.scale), 3)
+        
+        needle_x = center_x + int(needle_length * math.cos(needle_angle))
+        needle_y = center_y - int(needle_length * math.sin(needle_angle))  # Negative for upper semicircle
+        
+        pygame.draw.line(self.screen, self.COLOR_TEXT, 
+                        (center_x, center_y), (needle_x, needle_y), needle_thickness)
+        
+        # Center circle (needle pivot)
+        center_circle_radius = int(8 * self.scale)
+        pygame.draw.circle(self.screen, self.COLOR_TEXT, (center_x, center_y), center_circle_radius)
+        
+        # === MW VALUE (center display) ===
+        mw_text = f"{thermal_mw:.1f} MW"
+        mw_surface = self.font_display.render(mw_text, True, self.COLOR_PRIMARY_BRIGHT)
+        mw_rect = mw_surface.get_rect(center=(center_x, center_y + int(60 * self.scale)))
+        self.screen.blit(mw_surface, mw_rect)
+        
+        # === LABEL ===
+        label_text = "Daya Listrik yang Dihasilkan"
+        label_surface = self.font_medium.render(label_text, True, self.COLOR_TEXT_SECONDARY)
+        label_rect = label_surface.get_rect(center=(center_x, center_y + int(100 * self.scale)))
+        self.screen.blit(label_surface, label_rect)
+    
+    def draw_power_gauge(self, state: Dict, content_y_start: int, panel_x: int, panel_width: int):
+        """Draw power output gauge on right panel
+        
+        Args:
+            state: Current simulation state
+            content_y_start: Y position to start content
+            panel_x: X position of right panel start
+            panel_width: Width of right panel
+        """
+        
+        # Gauge dimensions - adjusted to fit within panel with padding
+        gauge_width = int(120 * self.scale)
+        gauge_height = int(400 * self.scale)  # Reduced from 500 to prevent overlap
+        gauge_x = panel_x + (panel_width - gauge_width) // 2  # Center in right panel
+        gauge_y = content_y_start + int(60 * self.scale)  # Slightly higher to create more space
+        
+        # Get thermal power from state (in kW)
+        thermal_kw = state.get("thermal_kw", 0.0)
+        thermal_mw = thermal_kw / 1000.0  # Convert kW to MW
+        
+        # Calculate power percentage for gauge visualization (0-100%)
+        # Assume max thermal power is 30 MW (30000 kW)
+        MAX_THERMAL_MW = 30.0
+        power_percentage = min((thermal_mw / MAX_THERMAL_MW) * 100.0, 100.0)
+        
+        # Title: "DAYA OUTPUT"
+        title_text = self.font_medium.render("DAYA OUTPUT", True, self.COLOR_TEXT)
+        title_rect = title_text.get_rect(center=(gauge_x + gauge_width // 2, gauge_y - int(40 * self.scale)))
+        self.screen.blit(title_text, title_rect)
+        
+        # Draw gauge background (border)
+        border_thickness = int(4 * self.scale)
+        pygame.draw.rect(self.screen, self.COLOR_TEXT_SECONDARY, 
+                        (gauge_x, gauge_y, gauge_width, gauge_height), border_thickness)
+        
+        # Draw filled portion (bottom-up)
+        fill_height = int((power_percentage / 100.0) * gauge_height)
+        fill_y = gauge_y + gauge_height - fill_height
+        
+        # Color based on power level
+        if power_percentage < 30:
+            fill_color = self.COLOR_TEXT_SECONDARY  # Gray - Low power
+        elif power_percentage < 70:
+            fill_color = self.COLOR_WARNING  # Yellow - Medium power
+        else:
+            fill_color = self.COLOR_SUCCESS  # Green - High power
+        
+        pygame.draw.rect(self.screen, fill_color, 
+                        (gauge_x + border_thickness, fill_y, 
+                         gauge_width - 2 * border_thickness, fill_height))
+        
+        # Draw thermal power value in MW (large text)
+        power_text = f"{thermal_mw:.1f} MW"
+        power_surface = self.font_display.render(power_text, True, self.COLOR_TEXT)
+        power_rect = power_surface.get_rect(center=(gauge_x + gauge_width // 2, 
+                                                      gauge_y + gauge_height + int(50 * self.scale)))
+        self.screen.blit(power_surface, power_rect)
+        
+        # Draw "Daya Termal" label (small text below)
+        label_text = "Daya Termal"
+        label_surface = self.font_body.render(label_text, True, self.COLOR_TEXT_SECONDARY)
+        label_rect = label_surface.get_rect(center=(gauge_x + gauge_width // 2, 
+                                                     gauge_y + gauge_height + int(90 * self.scale)))
+        self.screen.blit(label_surface, label_rect)
+    
+    def draw_progress_bar_enhanced(self, state: Dict, y_start: int, col_start: int, col_width: int):
+        """Draw enhanced parameter progress bars within left column"""
+        bar_height = int(50 * self.scale)
+        bar_spacing = int(75 * self.scale)
         
         # Get current pressure for color coding
         current_pressure = state.get("pressure", 0)
@@ -911,20 +1168,20 @@ class VideoDisplayApp:
             pressure_color = self.COLOR_PRIMARY  # Cyan - Normal
         
         params = [
-            ("Pressure", current_pressure, 200, "bar", pressure_color),  # Max 200, not 155
+            ("Pressure", current_pressure, 200, "bar", pressure_color),
             ("Safety Rod", state.get("safety_rod", 0), 100, "%", self.COLOR_SUCCESS),
             ("Shim Rod", state.get("shim_rod", 0), 100, "%", self.COLOR_PRIMARY),
             ("Regulating Rod", state.get("regulating_rod", 0), 100, "%", self.COLOR_INFO)
         ]
         
-        # Calculate centered layout with more width
-        total_width = int(1400 * self.scale)  # Increased from 800 - use more screen
-        left_margin = (self.width - total_width) // 2
+        # Calculate bar layout within column
+        label_width = int(200 * self.scale)
+        bar_width = int(col_width * 0.60)  # 60% of column width (reduced from 75%)
+        x_label = col_start + int(20 * self.scale)
+        x_bar = x_label + label_width + int(80 * self.scale)  # Shifted 80px to the right
         
         for i, (label, value, max_val, unit, color) in enumerate(params):
             y = y_start + i * bar_spacing
-            x_label = left_margin
-            x_bar = left_margin + int(280 * self.scale)  # More space for label
             
             # Label (Larger font) - NO warning text on label, just normal label
             label_text = f"{label}:"
