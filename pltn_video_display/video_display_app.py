@@ -563,8 +563,8 @@ class VideoDisplayApp:
             '--gpu-context=wayland',    # Use Wayland context
             
             # === AUDIO OUTPUT (HDMI) ===
-            '--ao=alsa',                # Use ALSA audio output
-            '--audio-device=alsa/plughw:1,0',  # HDMI audio device (tested: aplay -D plughw:1,0)
+            '--ao=pipewire',            # Use PipeWire audio server (modern)
+            '--audio-device=pipewire/alsa_output.platform-fef00700.hdmi.hdmi-stereo',  # HDMI audio
             '--audio-channels=stereo',  # Stereo output
             '--volume=100',             # Maximum volume
             
@@ -592,7 +592,7 @@ class VideoDisplayApp:
             self.current_video = video_path
             print(f"▶️  Playing: {Path(video_path).name}")
             print(f"   Using Wayland GPU context with hardware decode")
-            print(f"   Audio output: ALSA → HDMI (plughw:1,0)")
+            print(f"   Audio output: PipeWire → HDMI (Built-in Audio Digital Stereo)")
         except FileNotFoundError:
             print("❌ mpv not installed!")
             print("   Install: sudo apt install mpv")
