@@ -549,16 +549,25 @@ class VideoDisplayApp:
                 print("   💡 Create video file or use placeholder")
             return
         
-        # Build mpv command for Wayland
+        # Build mpv command for Wayland with HDMI audio output
         cmd = [
             'mpv',
             '--fs',                      # Fullscreen
             '--no-osd-bar',             # No on-screen display
             '--no-input-default-bindings',  # Disable keyboard
             '--really-quiet',           # Minimal output
+            
+            # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
             '--gpu-context=wayland',    # Use Wayland context
+            
+            # === AUDIO OUTPUT (HDMI) ===
+            '--ao=alsa',                # Use ALSA audio output
+            '--audio-device=alsa/plughw:1,0',  # HDMI audio device (tested: aplay -D plughw:1,0)
+            '--audio-channels=stereo',  # Stereo output
+            '--volume=100',             # Maximum volume
+            
             video_path
         ]
         
@@ -566,11 +575,12 @@ class VideoDisplayApp:
             cmd.insert(1, '--loop=inf')
         
         try:
-            # Set Wayland environment for mpv
+            # Set Wayland environment for mpv with audio routing
             env = {
                 'DISPLAY': ':0',
                 'WAYLAND_DISPLAY': 'wayland-0',
-                'XDG_RUNTIME_DIR': '/run/user/1000'
+                'XDG_RUNTIME_DIR': '/run/user/1000',
+                'AUDIODEV': 'hw:1,0'    # Force HDMI audio device
             }
             
             self.video_process = subprocess.Popen(
@@ -582,6 +592,7 @@ class VideoDisplayApp:
             self.current_video = video_path
             print(f"▶️  Playing: {Path(video_path).name}")
             print(f"   Using Wayland GPU context with hardware decode")
+            print(f"   Audio output: ALSA → HDMI (plughw:1,0)")
         except FileNotFoundError:
             print("❌ mpv not installed!")
             print("   Install: sudo apt install mpv")
