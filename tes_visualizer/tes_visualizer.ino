@@ -175,6 +175,7 @@ float dev_cycle_duration = 43.0;  // Total cycle duration in seconds (40s + 3s s
 #define PWM_THRESHOLD_HIGH 250
 #define PWM_THRESHOLD_LOW 240
 bool led_mode_high = false;
+int last_written_pwm = -1;  // Track last written value to avoid redundant ledcWrite
 
 // ============================================
 // SHIFT REGISTER FUNCTIONS (SPI HARDWARE)
@@ -219,6 +220,9 @@ void updateSRBuffer() {
  * Write data to shift registers via SPI hardware
  */
 void shiftRegisterWrite() {
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  
+  noInterrupts();
   digitalWrite(LATCH_PIN_GLOBAL, LOW);
   
   // Send data from last IC to first IC
@@ -227,6 +231,9 @@ void shiftRegisterWrite() {
   }
   
   digitalWrite(LATCH_PIN_GLOBAL, HIGH);
+  interrupts();
+  
+  SPI.endTransaction();
   
   #if DEBUG_SHIFT_REGISTER
     Serial.printf("[SR] IC1=0x%02X IC2=0x%02X IC3=0x%02X\n", 
@@ -251,7 +258,6 @@ void sendNACK() {
   response[4] = ETX;
   
   UartComm.write(response, 5);
-  UartComm.flush();  // CRITICAL: Ensure data is sent before continuing
   
   #if DEBUG_UART
     Serial.println("TX: NACK");
@@ -269,7 +275,6 @@ void sendPongResponse() {
   response[4] = ETX;
   
   UartComm.write(response, 5);
-  UartComm.flush();  // CRITICAL: Ensure data is sent before continuing
   
   #if DEBUG_UART
     Serial.println("TX: Pong ACK");
@@ -293,7 +298,6 @@ void sendUpdateResponse() {
   response[12] = ETX;
   
   UartComm.write(response, 13);
-  UartComm.flush();  // CRITICAL: Ensure data is sent before continuing
   
   #if DEBUG_UART
     Serial.println("TX: Update ACK with data");
@@ -569,6 +573,11 @@ void updatePowerLED() {
     current_pwm -= min(5, current_pwm - target_pwm);
   }
   
+  // Skip jika nilai PWM tidak berubah (eliminasi redundant register writes)
+  if (current_pwm == last_written_pwm) {
+    return;
+  }
+  
   // Mode switching dengan hysteresis
   if (!led_mode_high && current_pwm >= PWM_THRESHOLD_HIGH) {
     // Switch ke HIGH mode
@@ -595,13 +604,13 @@ void updatePowerLED() {
       Serial.println("LED Mode: PWM");
     #endif
   }
-  // Update PWM jika dalam mode PWM
   else if (!led_mode_high) {
     for (int i = 0; i < NUM_LEDS; i++) {
       ledcWrite(POWER_LEDS[i], current_pwm);
     }
   }
-  // HIGH mode: LEDs tetap HIGH, tidak perlu update
+  
+  last_written_pwm = current_pwm;
   
   // Debug output
   static unsigned long last_debug = 0;
@@ -644,7 +653,6 @@ void setup() {
   
   // Initialize SPI Hardware
   SPI.begin(SPI_CLOCK_PIN, -1, SPI_MOSI_PIN, -1);
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   Serial.println("✓ SPI Hardware initialized (1MHz, MSBFIRST, MODE0)");
   
   delay(10);

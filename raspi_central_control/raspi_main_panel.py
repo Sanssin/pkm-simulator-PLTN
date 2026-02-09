@@ -171,7 +171,7 @@ class PLTNPanelController:
         
         # Inactivity timer for auto-reset
         self.last_button_time = time.time()  # Track last button press
-        self.inactivity_timeout = 180  # 3 minutes (180 seconds)
+        self.inactivity_timeout = 900  # 15 minutes (900 seconds)
         self.last_inactivity_check = time.time()
         logger.info(f"Auto-reset enabled: {self.inactivity_timeout}s inactivity timeout")
         
@@ -1091,7 +1091,7 @@ class PLTNPanelController:
                         
                         if is_active:
                             logger.info("="*60)
-                            logger.info("AUTO-RESET: 3 minutes inactivity detected")
+                            logger.info("AUTO-RESET: 15 minutes inactivity detected")
                             logger.info("   Resetting simulator to idle state...")
                             logger.info("="*60)
                             
