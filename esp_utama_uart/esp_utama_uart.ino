@@ -153,6 +153,17 @@ uint8_t humid_ct3_status = 0;
 uint8_t humid_ct4_status = 0;
 
 // ============================================
+// Cherenkov Radiation LED Visualization
+// ============================================
+const int LED_CHERENKOV = 33;  // Blue LED for Cherenkov radiation visualization
+
+// PWM Configuration for Cherenkov LED
+#define PWM_CHERENKOV_FREQ 5000  // 5 kHz (same as motors)
+#define PWM_CHERENKOV_RES 8      // 8-bit resolution (0-255)
+
+float cherenkov_brightness = 0.0;  // Current brightness (0-100%)
+
+// ============================================
 // Turbine & Generator Simulation
 // ============================================
 enum TurbineState {
@@ -443,6 +454,13 @@ void setup() {
   Serial.println("   Direction Pins: GPIO 23, 15");
   Serial.println("   Pumps: Hard-wired FORWARD (no GPIO needed)");
   
+  // Initialize Cherenkov LED PWM
+  ledcAttach(LED_CHERENKOV, PWM_CHERENKOV_FREQ, PWM_CHERENKOV_RES);
+  ledcWrite(LED_CHERENKOV, 0);  // Start with LED off
+  Serial.println("✅ Cherenkov LED initialized (GPIO 33)");
+  Serial.println("   PWM Freq: 5kHz, Resolution: 8-bit");
+  Serial.println("   Brightness: Proportional to (Shim + Regulating) / 2");
+  
   Serial.println("===========================================");
   Serial.println("✅ System Ready - Waiting for binary commands...");
   Serial.println("===========================================\n");
@@ -521,6 +539,7 @@ void loop() {
   updateHumidifiers();
   updatePumpSpeeds();
   updateTurbineSpeed();
+  updateCherenkovLED();
   
   yield();
   delay(10);
@@ -777,4 +796,27 @@ void updateTurbineSpeed() {
   
   int pwm_turbine = map((int)turbine_speed, 0, 100, 0, 255);
   ledcWrite(MOTOR_TURBINE, pwm_turbine);
+}
+
+// ============================================
+// Update Cherenkov LED Brightness
+// ============================================
+void updateCherenkovLED() {
+  // Calculate brightness based on average of shim and regulating rods
+  // Safety rod tidak digunakan karena harus 100% sebelum shim/regulating diangkat
+  float avg_control_rods = (shim_actual + regulating_actual) / 2.0;
+  
+  // Brightness proportional to rod position (0-100%)
+  cherenkov_brightness = avg_control_rods;
+  
+  // Apply threshold: LED only lights up when rods > 0%
+  if (cherenkov_brightness < 0.5) {
+    cherenkov_brightness = 0.0;
+  }
+  
+  // Map to PWM value (0-255)
+  int pwm_value = map((int)cherenkov_brightness, 0, 100, 0, 255);
+  
+  // Apply PWM to LED
+  ledcWrite(LED_CHERENKOV, pwm_value);
 }
