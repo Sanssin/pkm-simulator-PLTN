@@ -65,7 +65,7 @@ Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 se
 - ✅ **Button remapped** - GPIO 11 for PUMP_PRIMARY_ON (was GPIO 5)
 - ✅ **No conflicts** - All pins properly allocated
 
-**See [BUTTON_EVENT_QUEUE_PATTERN.md](BUTTON_EVENT_QUEUE_PATTERN.md) and [GPIO_PIN_MAPPING.md](GPIO_PIN_MAPPING.md) for complete guides!**
+**See [GPIO_PIN_MAPPING.md](GPIO_PIN_MAPPING.md) for complete pin mapping guide!**
 
 ### Komponen Utama
 
@@ -77,8 +77,8 @@ Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 se
 | Push Button | **17** | **Operator input (manual control + auto simulation + emergency)** | ✅ |
 | OLED Display | 9 | Real-time monitoring (128x64 I2C) | ✅ |
 | Servo Motor | 3 | Control rod simulation (safety, shim, regulating) | ✅ |
-| LED Flow | 48 | Flow visualization (16 LEDs × 3 flows) | ✅ |
-| **LED Power** | **10** | **Power output visualization (0-300 MWe)** | ✅ |
+| LED Flow | 24 | Flow visualization (8 LEDs × 3 flows via 74HC595) | ✅ |
+| **LED Power** | **4** | **Power output visualization (0-300 MWe)** | ✅ |
 | Relay | 4 | **Cooling Tower humidifiers (CT1-4)** | ✅ |
 | Motor Driver (L298N) | 4 | **3 pumps + 1 turbine (PWM + direction control)** | ✅ |
 | Humidifier | 4 | Cooling tower visual effect | ✅ |
@@ -171,6 +171,9 @@ pkm-simulator-PLTN/
 ├── esp_visualizer_uart/
 │   └── esp_visualizer_uart.ino         # ✅ ESP-E UART firmware
 │
+├── tes_visualizer/
+│   └── tes_visualizer.ino              # ✅ Testing/development visualizer
+│
 ├── raspi_central_control/
 │   ├── raspi_main_panel.py             # ✅ Main control program
 │   ├── raspi_uart_master.py            # ✅ UART communication
@@ -178,15 +181,22 @@ pkm-simulator-PLTN/
 │   ├── raspi_humidifier_control.py     # ✅ Humidifier logic
 │   ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
 │   ├── raspi_oled_manager.py           # ✅ OLED display manager
+│   ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
 │   ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs only)
 │   ├── raspi_system_health.py          # ✅ Health monitoring
 │   ├── raspi_config.py                 # ✅ Configuration
-│   └── test_komunikasi_lengkap.py      # ✅ Full system test
+│   ├── raspi_README.md                 # ✅ Installation guide
+│   └── raspi_requirements.txt          # ✅ Python dependencies
 │
 └── pltn_video_display/
     ├── video_display_app.py            # ✅ Video display application
+    ├── speedometer_temp.py             # ✅ Speedometer visualization
     ├── README.md                       # ✅ Video display guide
-    └── assets/                         # ✅ Video files
+    ├── PYGAME_ANIMATION_GUIDE.md       # ✅ Animation guide
+    ├── AUDIO_HDMI_SETUP.md             # ✅ Audio HDMI setup guide
+    ├── requirements.txt                # ✅ Python dependencies
+    ├── test.bat                        # ✅ Windows test script
+    └── assets/                         # ✅ Video files & logos
 ```
 
 ### Quick Start with v4.0
@@ -258,12 +268,12 @@ python3 video_display_app.py --test --windowed
          │  (RasPi) → (ESP)    │  (RasPi) → (ESP)    │
          │   16=RX, 17=TX      │   16=RX, 17=TX      │
          │                     │                     │
-         │ • 3 Servo motors   │ • 48 LEDs (3x16)    │
-         │ • 4 CT Relays      │   via multiplexer   │
+         │ • 3 Servo motors   │ • 24 LEDs (3x8)     │
+         │ • 4 CT Relays      │   via 74HC595 SPI   │
          │ • 4 PWM motors     │ • Primary flow      │
          │   (L298N drivers)  │ • Secondary flow    │
          │ • Thermal calc     │ • Tertiary flow     │
-         │ • State machine    │ • 10 Power LEDs     │
+         │ • State machine    │ • 4 Power LEDs      │
          │ • Binary protocol  │ • Animation control │
          │                     │                     │
          │ File:              │ File:               │
@@ -392,9 +402,9 @@ Common GND
 
 **Hardware:**
 - ESP32 Dev Board (38-pin)
-- 3x CD74HC4067 (16-channel multiplexer)
-- 48x LED (16 per flow) - Water flow visualization
-- 10x LED - Power indicator (0-300 MWe)
+- 3x 74HC595 (8-bit shift register via SPI)
+- 24x LED (8 per shift register) - Water flow visualization
+- 4x LED - Power indicator (0-300 MWe)
 - Current limiting resistors (220Ω per LED)
 - UART connection to Raspberry Pi
 
@@ -408,53 +418,36 @@ Common GND
 **GPIO Pins:**
 ```cpp
 // UART Communication
-#define UART_RX 16  // From Raspberry Pi
-#define UART_TX 17  // To Raspberry Pi
+HardwareSerial UartComm(2); // RX=16 TX=17
 
-// Multiplexer Control (Shared)
-#define MUX_S0 14
-#define MUX_S1 27
-#define MUX_S2 26
-#define MUX_S3 25
+// LED Power Indicator (4 LEDs, PWM brightness)
+const int POWER_LEDS[4] = {25, 26, 27, 32};
 
-// Flow LED Control (3 flows)
-#define FLOW_EN_PRIMARY 33     // Enable pin
-#define FLOW_SIG_PRIMARY 32    // Signal pin (PWM)
+// SPI Hardware (74HC595 Shift Registers)
+#define SPI_CLOCK_PIN 18       // SCK
+#define SPI_MOSI_PIN 23        // MOSI
+#define LATCH_PIN_GLOBAL 5     // RCLK - Shared for all 74HC595 ICs
 
-#define FLOW_EN_SECONDARY 15
-#define FLOW_SIG_SECONDARY 4
-
-#define FLOW_EN_TERTIARY 2
-#define FLOW_SIG_TERTIARY 16
-
-// Power Indicator LEDs (10 LEDs, 0-300 MWe)
-#define LED_POWER_1  23
-#define LED_POWER_2  22
-#define LED_POWER_3  21
-#define LED_POWER_4  19
-#define LED_POWER_5  18
-#define LED_POWER_6  5
-#define LED_POWER_7  17  // Note: Conflicts with TX, use different pin
-#define LED_POWER_8  13
-#define LED_POWER_9  12
-#define LED_POWER_10 14
+// 3x 74HC595 ICs:
+// IC #1 → Primary pump flow LEDs (8 LEDs)
+// IC #2 → Secondary pump flow LEDs (8 LEDs)
+// IC #3 → Tertiary pump flow LEDs (8 LEDs)
 ```
 
 **Fungsi:**
-- Terima status via UART (binary protocol, 17 bytes)
-- Animate 48 LEDs (3 flows × 16 LEDs) dengan kecepatan berbeda
-- Kontrol 10 power LEDs (simultaneous brightness control)
-- Multi-wave flowing effect untuk realistis
-- PWM brightness control (0-255)
+- Terima status via UART (binary protocol)
+- Animate 24 LEDs (3 flows × 8 LEDs) via 74HC595 shift registers
+- Kontrol 4 power LEDs (PWM brightness control)
+- Auto-switching PWM → HIGH mode untuk kecerahan maksimal (≥250 PWM)
+- Ring pattern animation (2 LEDs aktif, circular rotation)
 
 **UART Binary Protocol:**
 ```cpp
-// Receive Command (17 bytes):
-// [STX][CMD=0x55][LEN=12][thermal_kw (float)][pump1_status]
-// [pump2_status][pump3_status][reserved...][CRC8][ETX]
+// Receive Command (12 bytes):
+// [STX][CMD=0x55][LEN=7][thermal_kw (4 bytes float)][pump_prim][pump_sec][pump_ter][CRC8][ETX]
 
-// Send Response (10 bytes):
-// [STX][ACK=0x06][LEN=5][power_mwe (float)][pwm][CRC8][ETX]
+// Send Response (13 bytes):
+// [STX][ACK=0x06][LEN=8][power_mwe (4 bytes float)][pwm][pump_prim][pump_sec][pump_ter][CRC8][ETX]
 ```
 
 ---
@@ -525,7 +518,7 @@ Sistem visualisasi video **terpisah** yang menampilkan educational content dan i
 
 **2. AUTO Mode - Video**
 - Shown when: `mode='auto'` and `auto_running=True`
-- Content: Fullscreen educational video (`videos/full_process.mp4`)
+- Content: Fullscreen educational video (`assets/penjelasan.mp4`)
 - Duration: ~60-90 seconds loop
 
 **3. MANUAL Mode - Interactive Guide**
@@ -626,27 +619,32 @@ pkm-simulator-PLTN/
 ├── esp_visualizer_uart/
 │   └── esp_visualizer_uart.ino         # ✅ ESP-E UART firmware
 │
+├── tes_visualizer/
+│   └── tes_visualizer.ino              # ✅ Testing/development visualizer
+│
 ├── pltn_video_display/
 │   ├── video_display_app.py            # ✅ Video display application
+│   ├── speedometer_temp.py             # ✅ Speedometer visualization
 │   ├── README.md                       # ✅ Video display guide
-│   ├── 3_MODE_DESIGN_SPEC.md          # ✅ Design specification
-│   ├── PYGAME_ANIMATION_GUIDE.md      # ✅ Animation guide
-│   ├── requirements.txt               # ✅ Python dependencies
-│   └── assets/                        # ✅ Video files
+│   ├── PYGAME_ANIMATION_GUIDE.md       # ✅ Animation guide
+│   ├── AUDIO_HDMI_SETUP.md             # ✅ Audio HDMI setup guide
+│   ├── requirements.txt                # ✅ Python dependencies
+│   ├── test.bat                        # ✅ Windows test script
+│   └── assets/                         # ✅ Video files & logos
 │
 └── raspi_central_control/
-    ├── raspi_main_panel.py            # ✅ Main program (v4.0)
-    ├── raspi_uart_master.py           # ✅ UART communication
-    ├── raspi_gpio_buttons.py          # ✅ Button handler (event queue)
-    ├── raspi_humidifier_control.py    # ✅ Humidifier logic
-    ├── raspi_buzzer_alarm.py          # ✅ Buzzer alarm
-    ├── raspi_oled_manager.py          # ✅ OLED display manager
-    ├── raspi_tca9548a.py              # ✅ I2C multiplexer (OLEDs)
-    ├── raspi_system_health.py         # ✅ System health monitor
-    ├── raspi_config.py                # ✅ Configuration
-    ├── raspi_README.md                # ✅ Installation guide
-    ├── raspi_requirements.txt         # ✅ Python dependencies
-    └── test_komunikasi_lengkap.py     # ✅ Full system test
+    ├── raspi_main_panel.py             # ✅ Main program (v4.0)
+    ├── raspi_uart_master.py            # ✅ UART communication
+    ├── raspi_gpio_buttons.py           # ✅ Button handler (event queue)
+    ├── raspi_humidifier_control.py     # ✅ Humidifier logic
+    ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
+    ├── raspi_oled_manager.py           # ✅ OLED display manager
+    ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
+    ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs)
+    ├── raspi_system_health.py          # ✅ System health monitor
+    ├── raspi_config.py                 # ✅ Configuration
+    ├── raspi_README.md                 # ✅ Installation guide
+    └── raspi_requirements.txt          # ✅ Python dependencies
 ```
 
 ### Multi-threaded Architecture (v4.0)
@@ -756,8 +754,6 @@ while running:
 
 ### Event Queue Pattern (No Deadlocks!)
 
-**See [BUTTON_EVENT_QUEUE_PATTERN.md](BUTTON_EVENT_QUEUE_PATTERN.md) for complete implementation guide.**
-
 **Key Points:**
 - Button callbacks only enqueue events (< 1μs)
 - Dedicated thread processes events with locks
@@ -775,52 +771,6 @@ def process_button_event(self, event):
     with self.state_lock:  # Safe to use lock here!
         if event == ButtonEvent.PRESSURE_UP:
             self.state.pressure = min(self.state.pressure + 5.0, 200.0)
-```
-while running:
-    button_handler.check_all_buttons()  # Non-blocking
-    time.sleep(0.01)
-
-# Thread 2: Control Logic & Safety (50ms cycle)
-while running:
-    # Check interlock
-    rod_movement_allowed = check_interlock()
-    
-    # Update rod positions
-    if rod_movement_allowed:
-        update_rod_positions()
-    
-    # Calculate humidifier commands
-    sg_cmd, ct_cmd = humidifier.update_all(
-        safety_rod, shim_rod, regulating_rod, thermal_kw
-    )
-    
-    time.sleep(0.05)
-
-# Thread 3: OLED Update (200ms cycle)
-while running:
-    for i in range(9):
-        select_oled_channel(i)
-        update_oled_display(i, data)
-    time.sleep(0.2)
-
-# Thread 4: ESP Communication (100ms cycle)
-while running:
-    # ESP-B
-    send_rod_targets()
-    rod_data = receive_from_esp_b()
-    
-    # ESP-C  
-    send_to_esp_c(rod_data, thermal_kw, sg_cmd, ct_cmd)
-    
-    # ESP-E
-    send_to_esp_e(flow_data)
-    
-    time.sleep(0.1)
-
-# Thread 5: Data Logging (1s cycle)
-while running:
-    log_data_to_csv(timestamp, all_data)
-    time.sleep(1.0)
 ```
 
 ---
@@ -863,11 +813,11 @@ Jika urutan salah:
 
 ---
 
-### 2. ⚡ Power Indicator System ⭐ NEW v3.1!
+### 2. ⚡ Power Indicator System
 
-**10 LED Power Visualization (0-300 MWe)**
+**4 LED Power Visualization (0-300 MWe)**
 
-Menampilkan output daya listrik reaktor secara real-time dengan 10 LED yang menyala bersamaan.
+Menampilkan output daya listrik reaktor secara real-time dengan 4 LED yang menyala bersamaan.
 
 **Spesifikasi Reaktor:**
 ```
@@ -879,7 +829,7 @@ Turbine Efficiency: 33% (typical PWR)
 
 **LED Behavior:**
 ```
-✅ Semua 10 LED menyala BERSAMAAN
+✅ Semua 4 LED menyala BERSAMAAN
 ✅ Brightness SAMA untuk semua LED
 ✅ Brightness proporsional dengan daya output
 
@@ -906,8 +856,8 @@ Power ONLY generated when:
 
 **Hardware:**
 - Location: ESP-E (Visualizer)
-- LEDs: 10x standard 5mm LEDs
-- GPIO: 23, 22, 21, 19, 18, 5, 17, 13, 12, 14
+- LEDs: 4x standard 5mm LEDs
+- GPIO: 25, 26, 27, 32
 - Control: PWM (0-255 brightness)
 - Resistor: 220Ω per LED
 
@@ -931,9 +881,9 @@ if currently_on:
     turn_off_when: shim < 35% OR reg < 35%  # 5% hysteresis
 ```
 
-**Hardware:**
-- Relay 1: ESP-BC GPIO 13 (SG Humidifier #1)
-- Relay 2: ESP-BC GPIO 15 (SG Humidifier #2)
+**Hardware (SG):**
+- Dikontrol via software di Raspberry Pi (`raspi_humidifier_control.py`)
+- Status dikirim ke ESP-BC sebagai bagian dari UART command
 - Visual: Uap keluar dari steam generator mockup
 
 **4x Cooling Tower Humidifiers**
@@ -953,7 +903,7 @@ if currently_on:
 ```
 
 **Hardware:**
-- Relay: ESP-C GPIO 33
+- Relay: ESP-BC GPIO 27, 26, 25, 32 (CT1-CT4)
 - Humidifier: 220V AC (via relay)
 - Visual: Uap keluar dari cooling tower mockup
 
@@ -982,15 +932,15 @@ HUMIDIFIER_CONFIG_CONSERVATIVE = {
 
 ---
 
-### 3. 💡 48-LED Flow Visualization
+### 3. 💡 24-LED Flow Visualization
 
-**ESP-E** mengontrol 3 aliran dengan **multiplexer** (efisien!):
+**ESP-E** mengontrol 3 aliran dengan **74HC595 shift register** (SPI, efisien!):
 
 | Flow | LEDs | Animation | Condition |
 |------|------|-----------|-----------|
-| Primary | 16 | Fast (40ms) | Pump Primary ON |
-| Secondary | 16 | Fast (40ms) | Pump Secondary ON |
-| Tertiary | 16 | Fast (40ms) | Pump Tertiary ON |
+| Primary | 8 | Ring pattern | Pump Primary ON |
+| Secondary | 8 | Ring pattern | Pump Secondary ON |
+| Tertiary | 8 | Ring pattern | Pump Tertiary ON |
 
 **Animation Speeds:**
 - **OFF:** No animation (all dark)
@@ -998,10 +948,10 @@ HUMIDIFIER_CONFIG_CONSERVATIVE = {
 - **ON:** Fast (40ms interval)
 - **SHUTTING_DOWN:** Very slow (120ms interval)
 
-**Multi-wave Effect:**
-- 4 gelombang per aliran
-- 3 LED per gelombang (bright → medium → dim → off)
-- Continuous flowing effect (looks like real water!)
+**Ring Pattern Effect:**
+- 2 LED aktif per IC (circular rotation)
+- 3 shift register, 1 per aliran
+- Continuous flowing effect via SPI
 
 ---
 
@@ -1034,8 +984,8 @@ Phase 2: Control Rods Withdrawal (5-30s)
 Phase 3: Steam Generator Humidifiers Activate (30-35s)
 ├─ Kondisi trigger: Shim ≥ 40% AND Regulating ≥ 40%
 ├─ Action automatic:
-│  ├─ RELAY_HUMID_SG1 → ON (GPIO 13)
-│  └─ RELAY_HUMID_SG2 → ON (GPIO 15)
+│  ├─ SG Humidifier 1 → ON (via RasPi software)
+│  └─ SG Humidifier 2 → ON (via RasPi software)
 ├─ Visual effect: Uap keluar dari steam generator mockup 💨
 ├─ Hysteresis: OFF ketika < 35% (mencegah oscillation)
 └─ Display: "HUMIDIFIERS: SG1✓ SG2✓"
@@ -1050,7 +1000,7 @@ Phase 4: Turbine Starting (35-60s)
 │  ├─ Primary: 0% → 50% (gradual +2% per cycle)
 │  ├─ Secondary: 0% → 50% (gradual +2% per cycle)
 │  └─ Tertiary: 0% → 50% (gradual +2% per cycle)
-├─ LED Flow: All 3 flows animate (48 LEDs)
+├─ LED Flow: All 3 flows animate (24 LEDs)
 └─ Display: "TURBINE STARTING"
 
 Phase 5: Power Generation Begins (60-120s)
@@ -1061,7 +1011,7 @@ Phase 5: Power Generation Begins (60-120s)
 │  ├─ Turbine efficiency: 33% (typical PWR)
 │  ├─ Turbine load: 100% (fully loaded)
 │  └─ Electrical output: 900 MWth × 0.33 × 1.0 = ~300 MWe
-├─ Power indicator LEDs: 10 LEDs menyala BERSAMAAN
+├─ Power indicator LEDs: 4 LEDs menyala BERSAMAAN
 │  └─ Brightness: Proporsional dengan output (0-255 PWM)
 ├─ Thermal power: Menampilkan electrical output (kW)
 └─ Display: "POWER: 300 MWe - STABLE OPERATION"
@@ -1069,10 +1019,10 @@ Phase 5: Power Generation Begins (60-120s)
 Phase 6: Cooling Tower Humidifiers Activate (120s+)
 ├─ Kondisi trigger: Electrical power ≥ 80 MWe (80,000 kW)
 ├─ Action automatic:
-│  ├─ RELAY_HUMID_CT1 → ON (GPIO 32)
-│  ├─ RELAY_HUMID_CT2 → ON (GPIO 33)
-│  ├─ RELAY_HUMID_CT3 → ON (GPIO 14)
-│  └─ RELAY_HUMID_CT4 → ON (GPIO 12)
+│  ├─ RELAY_CT1 → ON (ESP-BC GPIO 27)
+│  ├─ RELAY_CT2 → ON (ESP-BC GPIO 26)
+│  ├─ RELAY_CT3 → ON (ESP-BC GPIO 25)
+│  └─ RELAY_CT4 → ON (ESP-BC GPIO 32)
 ├─ Visual effect: Uap keluar dari 4 cooling tower mockup 💨
 ├─ Hysteresis: OFF ketika < 70 MWe
 └─ Display: "HUMIDIFIERS: SG✓ CT(1-4)✓"
@@ -1084,8 +1034,8 @@ Phase 7: Normal Operation (Stable)
 │  └─ Power output: Dikontrol via rod positions
 ├─ System monitoring:
 │  ├─ 9 OLED: Real-time status semua parameter
-│  ├─ 48 LED: Flow animation continuous
-│  ├─ 10 LED: Power indicator brightness
+│  ├─ 24 LED: Flow animation continuous
+│  ├─ 4 LED: Power indicator brightness
 │  ├─ 6 Humidifier: Status sesuai kondisi
 │  └─ Servos: Posisi actual = target
 ├─ Safety interlock: Active monitoring
@@ -1112,7 +1062,7 @@ Phase 8: Emergency Shutdown (Jika diperlukan)
 - ✅ **Gradual Pump Control** - Realistic acceleration/deceleration
 - ✅ **6 Individual Humidifiers** - 2 SG + 4 CT dengan logic berbeda
 - ✅ **Realistic Power Calculation** - 900 MWth × 33% efficiency = 300 MWe
-- ✅ **10 LED Power Indicator** - Simultaneous brightness control
+- ✅ **4 LED Power Indicator** - Simultaneous brightness control
 - ✅ **Safety Interlock** - Mencegah operasi tidak aman
 - ✅ **Emergency SCRAM** - Immediate shutdown capability
 
@@ -1146,20 +1096,23 @@ Phase 8: Emergency Shutdown (Jika diperlukan)
    │
    └─ Update OLED 6: "Shim Rod: 45%"
 
-3. SEND TO ESP-B
-   └─ I2C packet (3 bytes):
-      [0x08][safety_target][shim_target][reg_target]
-      Example: [0x08][50][45][45]
+3. SEND TO ESP-BC (UART)
+   └─ UART binary packet (15 bytes):
+      [STX][CMD=0x55][LEN=10][rod1][rod2][rod3][pump1][pump2][pump3]
+      [humid1][humid2][humid3][humid4][CRC8][ETX]
+      Example: [0x02][0x55][0x0A][50][45][45]...[CRC][0x03]
 
-4. ESP-B EXECUTION
+4. ESP-BC EXECUTION
    ├─ Servo motor 2 moves to 45%
    ├─ Read actual position: 45%
    ├─ Calculate thermal:
    │  thermal_kW = (safety + shim + reg)/3 * 20
    │  = (50 + 45 + 45)/3 * 20 = 933 kW
    │
-   └─ I2C response (16 bytes):
-      [50][45][45][0][thermal_kW_float]...
+   ├─ Control humidifier relays (CT1-CT4)
+   │
+   └─ UART binary response (28 bytes):
+      [STX][ACK][LEN=23][rod actuals][thermal][power][state]...[CRC][ETX]
 
 5. RASPBERRY PI RECEIVES
    ├─ Parse: safety=50%, shim=45%, reg=45%
@@ -1169,55 +1122,34 @@ Phase 8: Emergency Shutdown (Jika diperlukan)
    │  ├─ SG: Shim+Reg both >= 40% → ON ✅
    │  └─ CT: Thermal 933kW >= 800kW → ON ✅
    │
-   └─ Prepare ESP-C command
+   └─ Prepare ESP-E command
 
-6. SEND TO ESP-C
-   └─ I2C packet (12 bytes):
-      [0x00][50][45][45][thermal_933.0][1][1]
-      (rod positions, thermal kW, humid cmds)
+6. SEND TO ESP-E (UART)
+   └─ UART binary packet (12 bytes):
+      [STX][CMD=0x55][LEN=7][thermal_kw (4 bytes)][pump1][pump2][pump3][CRC8][ETX]
 
-7. ESP-C EXECUTION
-   ├─ Power level = (50+45+45)/3 = 46.7%
+7. ESP-E VISUALIZATION
+   ├─ 4 Power LEDs: brightness = (power_mwe / 300) * 255
+   ├─ Primary flow: Pump ON → Ring pattern animation
+   ├─ Secondary flow: Pump ON → Ring pattern animation
+   └─ Tertiary flow: Pump ON → Ring pattern animation
+   → 24 LEDs flowing via 74HC595! 💡
+
+8. OUTPUT VISUALIZATION
+   ├─ OLED 5: "Safety Rod: 50%"  [▓▓▓▓▓░░░░░]
+   ├─ OLED 6: "Shim Rod: 45%"    [▓▓▓▓░░░░░░]
+   ├─ OLED 7: "Reg Rod: 45%"     [▓▓▓▓░░░░░░]
+   ├─ OLED 8: "Thermal: 933 kW"
+   ├─ OLED 9: "Humidifiers: SG✓ CT✓"
    │
-   ├─ Relay control:
-   │  ├─ Steam Gen: ON (power > 20%)
-   │  ├─ Turbine: ON (power > 30%)
-   │  ├─ Condenser: ON (power > 20%)
-   │  └─ Cooling Tower: ON (power > 15%)
+   ├─ LEDs: All 3 flows animating (74HC595)
+   │  ●●○○○○○○  Primary (IC #1)
+   │  ○○●●○○○○  Secondary (IC #2)
+   │  ○○○○●●○○  Tertiary (IC #3)
    │
-   ├─ Humidifier control:
-   │  ├─ GPIO 32 = HIGH → SG Humid ON 🌊
-   │  └─ GPIO 33 = HIGH → CT Humid ON 🌊
-   │
-   └─ I2C response (12 bytes):
-      [power_46.7][state_RUNNING][gen_ON][turb_ON][sg_ON][ct_ON]
-
-8. SEND TO ESP-E
-   └─ I2C packet (16 bytes):
-      [0x00][primary_data][secondary_data][tertiary_data]
-      (pressure floats + pump status for each)
-
-9. ESP-E VISUALIZATION
-   ├─ Primary: Pump ON → Fast animation (40ms)
-   ├─ Secondary: Pump ON → Fast animation (40ms)
-   └─ Tertiary: Pump ON → Fast animation (40ms)
-   → 48 LEDs flowing beautifully! 💡
-
-10. OUTPUT VISUALIZATION
-    ├─ OLED 5: "Safety Rod: 50%"  [▓▓▓▓▓░░░░░]
-    ├─ OLED 6: "Shim Rod: 45%"    [▓▓▓▓░░░░░░]
-    ├─ OLED 7: "Reg Rod: 45%"     [▓▓▓▓░░░░░░]
-    ├─ OLED 8: "Thermal: 933 kW"
-    ├─ OLED 9: "Humidifiers: SG✓ CT✓"
-    │
-    ├─ LEDs: All 3 flows animating
-    │  ●●●○○○○○○○○○○○●●  Primary
-    │  ○○○●●●○○○○○○○○○○  Secondary
-    │  ○○○○○○●●●○○○○○○○  Tertiary
-    │
-    └─ Physical humidifiers:
-       ├─ Steam Gen: UAPS KELUAR 💨
-       └─ Cooling Tower: UAPS KELUAR 💨
+   └─ Physical humidifiers:
+      ├─ Steam Gen: UAPS KELUAR 💨
+      └─ Cooling Tower: UAPS KELUAR 💨
 ```
 
 **Total Latency:** < 250ms (button → visualisasi)
@@ -1398,11 +1330,11 @@ cd raspi_central_control
 # Test button handler (event queue pattern)
 python3 raspi_gpio_buttons.py
 
-# Test UART communication
-python3 test_komunikasi_lengkap.py
-
 # Test OLED displays
 python3 raspi_oled_manager.py
+
+# Test humidifier control
+python3 raspi_humidifier_control.py
 ```
 
 **Run main program:**
@@ -1414,19 +1346,6 @@ python3 raspi_main_panel.py
 cd pltn_video_display
 python3 video_display_app.py --test --windowed
 ```
-python3 raspi_humidifier_control.py
-
-# Test ESP-E LED visualization
-python3 test_esp_e_quick.py
-
-# Test full ESP communication
-python3 test_pca9548a_esp.py
-```
-
-**Run main program:**
-```bash
-python3 raspi_main_panel.py
-```
 
 ---
 
@@ -1434,7 +1353,7 @@ python3 raspi_main_panel.py
 
 **Overall Progress:** 🟢 **100% Complete** (Production Ready v4.0)  
 **Architecture:** ✅ **v4.0 - UART Communication**  
-**Last Updated:** 2025-01-10  
+**Last Updated:** 2025  
 **Status:** ✅ **PRODUCTION READY** (UART protocol implemented and tested)
 
 ### ✅ Version 4.0 Changes (January 2025)
@@ -1457,7 +1376,6 @@ python3 raspi_main_panel.py
 - ✅ **Button Callbacks** - Queue-based processing
 - ✅ **No Deadlocks** - Interrupt-safe design
 - ✅ **< 1μs Response** - Immediate button response
-- ✅ **Documentation** - `BUTTON_EVENT_QUEUE_PATTERN.md`
 
 **📌 GPIO Pin Updates:**
 - ✅ **UART3 Support** - GPIO 4/5 for ESP-E
@@ -1485,8 +1403,8 @@ python3 raspi_main_panel.py
 - [x] **3 Servo Motors** - Control rods (Safety, Shim, Regulating)
 - [x] **4 L298N Drivers** - 3 pumps + 1 turbine with direction control
 - [x] **4 CT Relays** - Cooling tower humidifiers
-- [x] **48 Flow LEDs** - 3 independent flow animations
-- [x] **10 Power LEDs** - Real-time power visualization (0-300 MWe)
+- [x] **24 Flow LEDs** - 3 independent flow animations (via 74HC595)
+- [x] **4 Power LEDs** - Real-time power visualization (0-300 MWe)
 - [x] **17 Push Buttons** - Complete manual control + auto simulation
 - [x] **9 OLED Displays** - Real-time parameter monitoring
 - [x] **Video Display** - Educational visualization (separate monitor)
@@ -1494,11 +1412,10 @@ python3 raspi_main_panel.py
 ### ✅ Documentation (v4.0)
 
 - [x] `README.md` - **This file (completely updated for v4.0)**
-- [x] `BUTTON_EVENT_QUEUE_PATTERN.md` - Event queue implementation
 - [x] `GPIO_PIN_MAPPING.md` - Complete GPIO pin mapping
 - [x] `pltn_video_display/README.md` - Video display guide
-- [x] `pltn_video_display/3_MODE_DESIGN_SPEC.md` - Mode specifications
 - [x] `pltn_video_display/PYGAME_ANIMATION_GUIDE.md` - Animation guide
+- [x] `pltn_video_display/AUDIO_HDMI_SETUP.md` - Audio HDMI setup
 - [x] `raspi_central_control/raspi_README.md` - RasPi installation
 
 ### 📋 Optional Future Enhancements
@@ -1516,7 +1433,7 @@ When hardware is available, test:
 - [ ] Servo movements (3 control rods)
 - [ ] L298N motor control (4 motors)
 - [ ] Relay switching (4 humidifiers)
-- [ ] LED animations (48 flow + 10 power LEDs)
+- [ ] LED animations (24 flow + 4 power LEDs)
 - [ ] OLED displays (9 displays via TCA9548A)
 - [ ] Video display sync (JSON state file)
 - [ ] System health monitoring
@@ -1683,14 +1600,14 @@ ButtonHandler(debounce_time=0.3)  # Was 0.2
 **Problem:** LED tidak nyala
 ```bash
 # Check power
-- 48 LEDs need ~2A at 5V
+- 24 LEDs need ~1A at 5V
 - Use proper power supply (5V 3A recommended)
 - Check common ground with ESP32
 
-# Check multiplexer
-- EN pin LOW = enabled
-- Check S0-S3 connections
-- Test each channel individually
+# Check 74HC595 shift register
+- SPI connections: SCK=18, MOSI=23, LATCH=5
+- Check daisy chain connections between ICs
+- Test each IC individually
 
 # Check LED polarity
 - Long leg = Anode (+)
@@ -1716,7 +1633,7 @@ Serial Monitor → Check "Thermal Power: X kW"
 If 0 kW → Rods not raised or turbine not running
 
 # Check 2: Verify GPIO connections
-10 LEDs on GPIO: 23, 22, 21, 19, 18, 5, 17, 13, 12, 14
+4 LEDs on GPIO: 25, 26, 27, 32
 Check wiring with multimeter
 
 # Check 3: Check resistors
@@ -1744,10 +1661,6 @@ thermal_kw = reactor_thermal * 0.33 * (turbine_load / 100);
 // turbine_load should be 0 when IDLE!
 ```
 
-// Or add delay
-delayMicroseconds(100);  // After each LED
-```
-
 **Problem:** Animation too fast/slow
 ```cpp
 // Adjust animation interval in ESP-E code
@@ -1763,7 +1676,7 @@ sudo i2cdetect -y 1
 # Should see 0x3C
 
 # Check wiring via multiplexer
-- PCA9548A channel select correct?
+- TCA9548A channel select correct?
 - OLED connected to correct channel?
 
 # Test OLED directly (bypass multiplexer)
@@ -1823,31 +1736,12 @@ for retry in range(3):
 
 ## 📚 Documentation Files
 
-### **Core Documentation**
 - `README.md` - **This file** - Complete system documentation
-- `TODO.md` - Task tracking and progress
-- `CHANGELOG_V2.md` - Version history
-
-### **Architecture & Design**
-- `ARCHITECTURE_2ESP.md` - 2 ESP system architecture (v3.0)
-- `ESP_PERFORMANCE_ANALYSIS.md` - Performance benchmarks
-- `HARDWARE_OPTIMIZATION_ANALYSIS.md` - Pin usage analysis
-- `INTEGRATION_CHECKLIST_2ESP.md` - Testing procedures
-
-### **Hardware Configuration (v3.1)**
-- `HARDWARE_UPDATE_SUMMARY.md` - Latest hardware changes
-- `I2C_ADDRESS_MAPPING.md` - Complete I2C wiring guide
-- `TCA9548A_EXPLANATION.md` - Multiplexer safety (9 OLEDs with same address)
-- `POWER_INDICATOR_LED.md` - 10 LED power visualization documentation
-
-### **Code Quality**
-- `REVIEW_SUMMARY.md` - Code review results
-- `COMPILATION_FIX.md` - ESP32 Core v3.x compatibility fixes
-- `ESP32_CORE_V3_CHANGES.md` - API migration guide
-- `CLEANUP_GUIDE.md` - Old file cleanup instructions
-
-### **Raspberry Pi Package**
-- `RASPI_PACKAGE_SUMMARY.md` - Python modules summary
+- `GPIO_PIN_MAPPING.md` - Raspberry Pi GPIO pin mapping
+- `pltn_video_display/README.md` - Video display guide
+- `pltn_video_display/PYGAME_ANIMATION_GUIDE.md` - Animation guide
+- `pltn_video_display/AUDIO_HDMI_SETUP.md` - Audio HDMI setup
+- `raspi_central_control/raspi_README.md` - RasPi installation guide
 
 ---
 
@@ -1864,8 +1758,8 @@ for retry in range(3):
 ✅ **300 MWe PWR Physics** (v3.1 - Realistic thermal model)  
 ✅ **L298N Motor Control** (v4.0 - Direction control, 4 motors)  
 ✅ **4 CT Humidifiers** (v4.0 - Staging control)  
-✅ **10 LED Power Indicator** (0-300 MWe visualization)  
-✅ **48 LED Flow Animation** (3 flows × 16 LEDs)
+✅ **4 LED Power Indicator** (0-300 MWe visualization)  
+✅ **24 LED Flow Animation** (3 flows × 8 LEDs via 74HC595)
 
 ### **Key Features:**
 
@@ -1874,7 +1768,7 @@ for retry in range(3):
 🎯 **Reactor:** 300 MWe PWR (900 MWth thermal)  
 🎯 **Control:** 17 buttons + event queue pattern  
 🎯 **Motors:** 4x L298N (3 pumps + 1 turbine with direction)  
-🎯 **Visualization:** 48 flow LEDs + 10 power LEDs + video display  
+🎯 **Visualization:** 24 flow LEDs + 4 power LEDs + video display  
 🎯 **Display:** 9 OLED (TCA9548A) + separate video monitor  
 🎯 **Safety:** Interlock system + emergency shutdown
 
@@ -1901,7 +1795,7 @@ for retry in range(3):
 4. 🔌 Wire I2C displays (TCA9548A)
 5. 🎮 Test 17 buttons (event queue)
 6. 🤖 Test 3 servos + 4 motors
-7. 💡 Test 48 + 10 LEDs
+7. 💡 Test 24 + 4 LEDs
 8. 📺 Test video display system
 9. ✅ Full system integration test
 
@@ -1915,9 +1809,7 @@ for retry in range(3):
 
 **Status:** 🟢 **100% Software Complete - Ready for Hardware Testing**  
 **Version:** 4.0  
-**Last Updated:** January 10, 2025  
-**Architecture:** 2 ESP32 with UART communication  
-**Documentation:** Fully updated for v4.0
+**Architecture:** 2 ESP32 with UART communication
 
 ---
 
@@ -1925,8 +1817,8 @@ for retry in range(3):
 
 ### Hardware Datasheets
 - [ESP32 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf)
-- [PCA9548A Datasheet](https://www.ti.com/lit/ds/symlink/pca9548a.pdf)
-- [CD74HC4067 Datasheet](https://www.ti.com/lit/ds/symlink/cd74hc4067.pdf)
+- [TCA9548A Datasheet](https://www.ti.com/lit/ds/symlink/tca9548a.pdf)
+- [74HC595 Datasheet](https://www.ti.com/lit/ds/symlink/sn74hc595.pdf)
 - [SSD1306 OLED Datasheet](https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf)
 
 ### PWR (Pressurized Water Reactor) Reference
@@ -2026,7 +1918,7 @@ Special thanks to:
 
 **Additional Documentation:**
 - ✅ `README.md` (this file - complete v4.0 documentation)
-- ✅ `BUTTON_EVENT_QUEUE_PATTERN.md` (event queue implementation)
 - ✅ `GPIO_PIN_MAPPING.md` (complete pin mapping)
 - ✅ `pltn_video_display/README.md` (video display guide)
+- ✅ `pltn_video_display/AUDIO_HDMI_SETUP.md` (audio HDMI setup)
 - ✅ `raspi_central_control/raspi_README.md` (installation guide)
