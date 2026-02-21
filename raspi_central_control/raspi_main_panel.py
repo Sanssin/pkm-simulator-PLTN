@@ -171,7 +171,7 @@ class PLTNPanelController:
         
         # Inactivity timer for auto-reset
         self.last_button_time = time.time()  # Track last button press
-        self.inactivity_timeout = 180  # 3 minutes (180 seconds)
+        self.inactivity_timeout = 900  # 15 minutes (900 seconds)
         self.last_inactivity_check = time.time()
         logger.info(f"Auto-reset enabled: {self.inactivity_timeout}s inactivity timeout")
         
@@ -631,18 +631,20 @@ class PLTNPanelController:
                 # Removed logging for performance
             
             elif event == ButtonEvent.SAFETY_ROD_DOWN:
-                # Safety rod hanya bisa turun jika shim dan regulating sudah 0%
-                if self.state.shim_rod > 0 or self.state.regulating_rod > 0:
-                    logger.warning("Cannot lower Safety Rod! Lower Shim & Regulating first!")
-                    # Trigger buzzer warning if available
+                # Guard proporsional: safety rod harus selalu >= shim dan >= regulating
+                new_pos = self.state.safety_rod - 1
+                if new_pos < self.state.shim_rod or new_pos < self.state.regulating_rod:
+                    logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
+                    logger.warning(f"   Safety={self.state.safety_rod}%, Shim={self.state.shim_rod}%, Reg={self.state.regulating_rod}%")
+                    logger.warning(f"   Lower Shim/Regulating first, then Safety can follow")
                     if self.buzzer:
                         try:
                             self.buzzer.sound_interlock_warning(duration=1.5)
                         except Exception:
-                            pass  # Silent fail
+                            pass
                     return
 
-                self.state.safety_rod = max(self.state.safety_rod - 1, 0)  # 1% decrement
+                self.state.safety_rod = max(new_pos, 0)  # 1% decrement
                 # Removed logging for performance
             
             elif event == ButtonEvent.SHIM_ROD_UP:
@@ -1091,7 +1093,7 @@ class PLTNPanelController:
                         
                         if is_active:
                             logger.info("="*60)
-                            logger.info("AUTO-RESET: 3 minutes inactivity detected")
+                            logger.info("AUTO-RESET: 15 minutes inactivity detected")
                             logger.info("   Resetting simulator to idle state...")
                             logger.info("="*60)
                             
