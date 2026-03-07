@@ -760,7 +760,7 @@ class VideoDisplayApp:
             logo_small_poltek = pygame.transform.smoothscale(self.logo_poltek, self.logo_size_small)
             self.screen.blit(logo_small_poltek, (self.width - self.logo_size_small[0] - margin_x, header_y))
         
-        header_title = self.font_title.render("SIMULATOR PLTN TIPE PWR BERBASIS MIKROKONTROLER", True, self.COLOR_TEXT)
+        header_title = self.font_title.render("ALAT PERGA PLTN TIPE PWR", True, self.COLOR_TEXT)
         self.screen.blit(header_title, header_title.get_rect(center=(self.width//2, header_y + int(40 * self.scale))))
         
         line_y = header_y + int(120 * self.scale)
@@ -860,17 +860,30 @@ class VideoDisplayApp:
         self.screen.blit(inst_title, inst_title.get_rect(center=(right_col_x + right_col_w//2, inst_y + header_h//2)))
         
         step_text = self.get_current_step_instruction(state)
-        y_offset = inst_y + header_h + int(30 * self.scale)
+        y_offset = inst_y + header_h + int(15 * self.scale)
         x_margin = right_col_x + int(25*self.scale)
+        max_text_width = right_col_w - int(50*self.scale)  # Margin kiri & kanan
         
         for i, line in enumerate(step_text):
             if line:
+                # Pilih font berdasarkan baris pertama atau baris lainnya
                 if i == 0:
-                    text = self.font_medium.render(line, True, self.COLOR_TEXT)
+                    font_to_use = self.font_medium
+                    color_to_use = self.COLOR_TEXT
                 else:
-                    text = self.font_body.render(line, True, self.COLOR_TEXT_SECONDARY)
-                self.screen.blit(text, (x_margin, y_offset))
-            y_offset += int(55 * self.scale) # Jarak antar baris diperbesar agar tidak numpuk
+                    font_to_use = self.font_body
+                    color_to_use = self.COLOR_TEXT_SECONDARY
+                
+                # Bungkus text agar sesuai dengan lebar panel
+                wrapped_lines = self.wrap_text(line, font_to_use, max_text_width)
+                
+                # Gambar setiap baris wrapped text
+                for wrapped_line in wrapped_lines:
+                    text = font_to_use.render(wrapped_line, True, color_to_use)
+                    self.screen.blit(text, (x_margin, y_offset))
+                    y_offset += int(40 * self.scale)  # Jarak antar baris wrapped text
+            else:
+                y_offset += int(20 * self.scale)  # Spasi untuk baris kosong
 
         # === FLOATING PRESSURE WARNING OVERLAY === (drawn last, on top of everything)
         # This appears as a pop-up without shifting the layout
@@ -1015,8 +1028,33 @@ class VideoDisplayApp:
             # Final step: Manual control instructions
             return [
                 "Gunakan kontrol batang kendali", "untuk mengatur daya PLTN", "",
-                "Tekan tombol RESET untuk", "mengulang simulasi"
+                "Tekan tombol RESET untuk, mengulang simulasi"
             ]
+    
+    def wrap_text(self, text: str, font: pygame.font.Font, max_width: int) -> list:
+        """
+        Membungkus text agar sesuai dengan max_width
+        Returns: list of strings (tiap string adalah satu baris)
+        """
+        words = text.split()
+        lines = []
+        current_line = ""
+        
+        for word in words:
+            test_line = current_line + (" " if current_line else "") + word
+            text_width = font.size(test_line)[0]
+            
+            if text_width <= max_width:
+                current_line = test_line
+            else:
+                if current_line:
+                    lines.append(current_line)
+                current_line = word
+        
+        if current_line:
+            lines.append(current_line)
+        
+        return lines if lines else [""]
     
     def draw_boxed_panel(self, x: int, y: int, w: int, h: int, title: str = ""):
         """Menggambar kotak panel putih bergaris abu-abu"""
