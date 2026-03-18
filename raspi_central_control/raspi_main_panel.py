@@ -133,8 +133,8 @@ class PLTNPanelController:
     def __init__(self):
         """Initialize PLTN Panel Controller"""
         logger.info("="*60)
-        logger.info("PLTN Simulator v3.3 - Event Queue Pattern")
-        logger.info("ESP-BC (Rods+Turbine+Humid) | ESP-E (48 LED)")
+        logger.info("PLTN Simulator v4.0 - UART Binary Protocol")
+        logger.info("ESP-BC (Rods+Turbine+Humid) | ESP-E (LED Visualizer)")
         logger.info("="*60)
         
         self.state = PanelState()

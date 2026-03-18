@@ -37,6 +37,10 @@
 
 Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 sebagai master controller dan **2 ESP32** sebagai slave controllers menggunakan **UART communication protocol**.
 
+**🔗 For detailed documentation:**
+- **[GPIO_PIN_MAPPING.md](GPIO_PIN_MAPPING.md)** — Complete pin allocation, wiring guide, and hardware setup
+- **[AGENT.md](AGENT.md)** — Full technical architecture for developers & AI agents (40KB)
+
 ### 🎉 What's New in v4.0 (UART Architecture - January 2025)
 
 **🔌 UART Communication Protocol:**

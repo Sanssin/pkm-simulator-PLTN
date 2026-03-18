@@ -1,6 +1,6 @@
 """
 Raspberry Pi Central Control - Configuration
-PLTN Simulator v2.0 with Full I2C Architecture
+PLTN Simulator v4.0 with UART Binary Protocol Architecture
 """
 
 # ============================================
@@ -8,7 +8,7 @@ PLTN Simulator v2.0 with Full I2C Architecture
 # ============================================
 # UART Ports for ESP Communication
 UART_ESP_BC_PORT = '/dev/ttyAMA0'    # GPIO 14/15 (Built-in UART0)
-UART_ESP_E_PORT = '/dev/ttyAMA3'     # GPIO 4/5 (UART3)
+UART_ESP_E_PORT = '/dev/ttyAMA1'     # GPIO 4/5 (UART3) - Fixed: was ttyAMA3
 UART_BAUDRATE = 115200               # Standard baudrate
 UART_TIMEOUT = 0.5                   # Read timeout in seconds
 UART_UPDATE_INTERVAL = 0.1           # Update interval (100ms)
@@ -49,16 +49,8 @@ ESP_E_CHANNEL = 0      # ESP-E on multiplexer #2 (0x71)
 # ============================================
 # GPIO Pin Configuration
 # ============================================
-# Button Pins (Input with Pull-up)
-BTN_PUMP_PRIM_ON = 11    # Pompa Primer ON - MOVED from GPIO 5 (UART3 conflict)
-BTN_PRES_UP = 5          # Naik tekanan pressurizer
-BTN_PRES_DOWN = 6        # Turun tekanan pressurizer
-BTN_PUMP_PRIM_ON = 4     # Pompa Primer ON
-BTN_PUMP_PRIM_OFF = 17   # Pompa Primer OFF
-BTN_PUMP_SEC_ON = 27     # Pompa Sekunder ON
-BTN_PUMP_SEC_OFF = 22    # Pompa Sekunder OFF
-BTN_PUMP_TER_ON = 10     # Pompa Tersier ON
-BTN_PUMP_TER_OFF = 9     # Pompa Tersier OFF
+# NOTE: Button pins are now defined in raspi_gpio_buttons.py ButtonPin enum
+# Only hardware output pins are defined here (buzzer, etc.)
 
 # Output Pins
 BUZZER_PIN = 22          # GPIO 22 for passive buzzer alarm (software PWM)

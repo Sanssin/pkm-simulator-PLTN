@@ -606,7 +606,7 @@ Ketika Anda akan memodifikasi file ini, baca skill yang sesuai:
 | File Pattern | Skill to Read |
 |--------------|---------------|
 | `raspi_gpio_*.py`, `raspi_*_buttons.py` | `firmware-embedded.md` |
-| `raspi_config.py` (bagian THRESHOLD_*) | `nuclear-sim-physics.md` + `safety-logic.md` |
+| `raspi_config.py` (thresholds, timing, hardware constants) | `nuclear-sim-physics.md` + `safety-logic.md` |
 | `esp_utama_uart.ino` (calculateThermalPower, model fisika) | `nuclear-sim-physics.md` + `firmware-embedded.md` |
 | `raspi_main_panel.py` (interlock, SCRAM, pump sequence) | `safety-logic.md` |
 | `raspi_buzzer_alarm.py`, `raspi_oled_manager.py` | `hmi-display.md` |
@@ -727,48 +727,52 @@ Jika task/issue/bug mengandung keyword ini, baca skill yang sesuai:
 
 ## 11. Known Issues & TODO
 
+### ✅ Fixed Issues (v4.0)
+
+1. **`raspi_config.py` duplicate `BTN_PUMP_PRIM_ON`** — **FIXED**
+   - Removed duplicate button pin definitions (lines 54-61)
+   - Button pins now exclusively defined in `raspi_gpio_buttons.py` `ButtonPin` enum
+   - Config.py only contains hardware output pins (buzzer, etc.)
+
+2. **UART3 port path mismatch** — **FIXED**
+   - Was: `/dev/ttyAMA3` (incorrect)
+   - Now: `/dev/ttyAMA1` (correct - matches Raspberry Pi UART3 device tree)
+   - Updated in `raspi_config.py` line 11 and `raspi_uart_master.py` header
+
+3. **`raspi_README.md` outdated** — **FIXED**
+   - Completely rewritten to reflect v4.0 UART architecture
+   - Now includes proper references to main README.md and AGENT.md
+   - Installation guide updated with UART3 setup instructions
+
+4. **`raspi_i2c_master.py` not marked deprecated** — **FIXED**
+   - Added clear deprecation header warning
+   - Notes replacement with `raspi_uart_master.py`
+   - Marked as safe to delete (kept for reference only)
+
 ### Bug Aktif
 
-1. **`raspi_config.py` duplicate `BTN_PUMP_PRIM_ON`** (line 53 & 56)
-   - Line 53: `BTN_PUMP_PRIM_ON = 11` (correct, migrated from GPIO 5)
-   - Line 56: `BTN_PUMP_PRIM_ON = 4` (overwrite! GPIO 4 = UART3 TXD)
-   - **Impact**: Nilai akhir = GPIO 4, yang konflik dengan UART3. Tapi `raspi_config.py` button pins TIDAK digunakan — `raspi_gpio_buttons.py` `ButtonPin` enum adalah source of truth.
-   - **Severity**: Low (config tidak dipakai untuk buttons), tapi membingungkan.
-
-2. **GPIO 22 conflict** — `raspi_config.py` line 59: `BTN_PUMP_SEC_OFF = 22` dan line 64: `BUZZER_PIN = 22`
-   - Keduanya menggunakan GPIO 22.
-   - **Impact**: Low — `raspi_gpio_buttons.py` menggunakan `PUMP_SECONDARY_OFF = 19` (bukan 22). Config.py outdated.
-
-3. **`raspi_config.py` pin mapping outdated** — Hampir semua button pin di config.py berbeda dari `raspi_gpio_buttons.py` `ButtonPin` enum.
-   - Config: `BTN_PRES_UP = 5` (GPIO 5 = UART3 RXD!)
-   - Buttons: `PRESSURE_UP = 24`
-   - **Rekomendasi**: Hapus atau sinkronkan button pin definitions di `raspi_config.py`
+None currently — all critical bugs addressed in v4.0 documentation cleanup.
 
 ### Dead Code
 
-4. **`raspi_i2c_master.py`** (417 baris) — Tidak di-import oleh `raspi_main_panel.py`. Legacy dari arsitektur v3.x I2C. Bisa dihapus atau di-archive.
-
-### Dokumentasi Outdated
-
-5. **`raspi_README.md`** — Masih mendeskripsikan arsitektur I2C dengan 5 ESP32. Kode aktual menggunakan 2 ESP32 via UART. Perlu diupdate.
-
-6. **UART3 port path** — `raspi_config.py` says `/dev/ttyAMA3`, `GPIO_PIN_MAPPING.md` says `/dev/ttyAMA1`. Perlu verifikasi device path yang benar di hardware.
+5. **`raspi_i2c_master.py`** (417 baris) — Legacy dari arsitektur v3.x I2C. 
+   - Now marked with deprecation warning
+   - Safe to delete (kept for reference)
+   - Not imported by `raspi_main_panel.py`
 
 ### Duplikasi
 
-7. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
+6. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
 
 ### TODO / Enhancement Ideas
 
-8. **Refactor `raspi_main_panel.py`** — 1992 baris dalam satu class (God class anti-pattern). Bisa dipecah menjadi:
+7. **Refactor `raspi_main_panel.py`** — 1992 baris dalam satu class (God class anti-pattern). Bisa dipecah menjadi:
    - `reactor_logic.py` — Interlock, rod hierarchy, SCRAM
    - `pump_controller.py` — Pump state machine
    - `auto_simulation.py` — Auto simulation sequence
    - `state_export.py` — JSON export
 
 9. **Unit tests** — Tidak ada test apapun di repositori. Model fisika dan interlock logic sebaiknya punya unit test.
-
-10. **Sinkronisasi `raspi_config.py`** — Button pins, I2C addresses, dan beberapa timing constants perlu di-audit ulang terhadap kode aktual.
 
 ---
 

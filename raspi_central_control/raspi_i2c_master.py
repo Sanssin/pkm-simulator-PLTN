@@ -1,5 +1,22 @@
 """
-I2C Master Communication Module - 2 ESP Architecture
+⚠️ DEPRECATED - This module is no longer used as of v4.0
+================================================================
+
+This file contains the OLD I2C-based communication system.
+As of v4.0, ESP communication uses UART instead of I2C.
+
+**Current architecture:** See raspi_uart_master.py and AGENT.md Section 2
+
+**Why deprecated:**
+- Replaced by Binary UART Protocol (115200 baud, 8N1)
+- Better reliability (CRC8 checksum, ACK/NACK)
+- Lower latency (5-27 bytes vs 42-187 bytes JSON)
+- Eliminates I2C buffer garbage issues
+
+**Safe to delete** - File kept for reference only.
+
+================================================================
+I2C Master Communication Module - 2 ESP Architecture (LEGACY)
 Handles communication with 2 ESP32 slaves (ESP-BC and ESP-E)
 """
 
