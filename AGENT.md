@@ -583,6 +583,78 @@ Upload via Arduino IDE:
 
 ## 10. Panduan untuk AI Agent
 
+### 📚 Domain-Specific Skills
+
+Project ini memiliki **specialized knowledge files** di `.claude/skills/` yang berisi pengetahuan mendalam untuk area tertentu.
+
+**⚡ WAJIB**: Baca skill file yang relevan **SEBELUM** melakukan perubahan di area tersebut.
+
+#### Quick Reference: Task → Skill Mapping
+
+| Saya sedang bekerja pada... | Baca skill ini terlebih dahulu |
+|----------------------------|-------------------------------|
+| **GPIO, sensor, button detection, threading** | `.claude/skills/firmware-embedded.md` |
+| **Thermal power, neutron flux, reactivity, physics formula** | `.claude/skills/nuclear-sim-physics.md` |
+| **SCRAM, interlocks, alarm thresholds, safety sequence** | `.claude/skills/safety-logic.md` |
+| **OLED display, UI layout, buzzer patterns, visual feedback** | `.claude/skills/hmi-display.md` |
+| **Tidak paham istilah nuklir (pressurizer, xenon, dll)** | `.claude/skills/pltn-domain-knowledge.md` |
+
+#### Automatic Triggers: File Pattern → Skill
+
+Ketika Anda akan memodifikasi file ini, baca skill yang sesuai:
+
+| File Pattern | Skill to Read |
+|--------------|---------------|
+| `raspi_gpio_*.py`, `raspi_*_buttons.py` | `firmware-embedded.md` |
+| `raspi_config.py` (bagian THRESHOLD_*) | `nuclear-sim-physics.md` + `safety-logic.md` |
+| `esp_utama_uart.ino` (calculateThermalPower, model fisika) | `nuclear-sim-physics.md` + `firmware-embedded.md` |
+| `raspi_main_panel.py` (interlock, SCRAM, pump sequence) | `safety-logic.md` |
+| `raspi_buzzer_alarm.py`, `raspi_oled_manager.py` | `hmi-display.md` |
+| `pltn_video_display/*.py` | `hmi-display.md` |
+
+#### Keyword-Based Triggers
+
+Jika task/issue/bug mengandung keyword ini, baca skill yang sesuai:
+
+- **GPIO, interrupt, edge detection, level detection, threading, race condition** → `firmware-embedded.md`
+- **thermal power, neutron, reactivity, delayed neutron, xenon, rod worth** → `nuclear-sim-physics.md`
+- **SCRAM, interlock, alarm, threshold, safety limit, trip** → `safety-logic.md`
+- **display, OLED, UI, HMI, buzzer, tone, visual feedback** → `hmi-display.md`
+- **pressurizer, coolant, primary loop, secondary loop, control rod, moderator** → `pltn-domain-knowledge.md`
+
+#### Usage Workflow
+
+```
+1. Terima task atau identifikasi file yang akan dimodifikasi
+2. ✅ Cek tabel/trigger di atas → tentukan skill yang relevan
+3. 📖 Gunakan `view` tool untuk membaca skill file
+4. 💡 Pahami domain context, pattern, dan best practices
+5. 🛠️ Lakukan modifikasi dengan pengetahuan domain yang tepat
+```
+
+#### Contoh Penggunaan
+
+**Scenario 1**: Task = "Tambahkan alarm baru untuk xenon poisoning"
+- ✅ Keyword: "alarm", "xenon" → Baca `safety-logic.md` + `nuclear-sim-physics.md`
+- ✅ File target: `raspi_buzzer_alarm.py` → Baca `hmi-display.md`
+- 📖 View 3 skill files untuk memahami context
+- 🛠️ Implement alarm logic dengan pengetahuan domain
+
+**Scenario 2**: Task = "Fix button debounce issue on SCRAM button"
+- ✅ Keyword: "button", "debounce" → Baca `firmware-embedded.md`
+- ✅ File: `raspi_gpio_buttons.py` → Baca `firmware-embedded.md`
+- ✅ Context: SCRAM → Baca `safety-logic.md` untuk memahami criticality
+- 📖 View 2 skill files
+- 🛠️ Fix dengan mempertimbangkan safety requirements
+
+**Scenario 3**: Task = "Optimize thermal power calculation"
+- ✅ Keyword: "thermal power" → Baca `nuclear-sim-physics.md`
+- ✅ File: `esp_utama_uart.ino` → Baca `firmware-embedded.md` (untuk ESP32 patterns)
+- 📖 View 2 skill files
+- 🛠️ Optimize dengan memahami physics model
+
+---
+
 ### ✅ Boleh dimodifikasi bebas
 - `pltn_video_display/` — UI display, animasi, tata letak visual
 - `speedometer_temp.py` — Gauge visual

@@ -2,6 +2,8 @@
 
 Gunakan skill files ini sebagai konteks tambahan saat bekerja di area tertentu.
 
+**🤖 Untuk AI Agents**: Lihat **`AGENT.md` Section 10** untuk panduan lengkap tentang kapan dan bagaimana menggunakan skills ini (termasuk automatic triggers berdasarkan file pattern dan keyword).
+
 ## Daftar Skills
 
 | Skill | File | Gunakan untuk |
