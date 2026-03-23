@@ -11,8 +11,8 @@
 | 0 | Codebase Refactoring | ⭐ Prioritas | [00-codebase-refactoring.md](development/00-codebase-refactoring.md) |
 | 1 | Migrasi Panel Kontrol ke Touchscreen | 📝 Planning | [01-touchscreen-panel.md](development/01-touchscreen-panel.md) |
 | 2 | Migrasi Aktuator ke RPi (Single Controller) | 📝 Planning | [02-single-controller.md](development/02-single-controller.md) |
-| 3 | (Reserved) | - | - |
-| 4 | CPU Optimization | 📝 Planned | - |
+| 3 | (Reserved for LOFA Simulation) | - | - |
+| 4 | CPU Optimization | 📝 Planning | [04-cpu-optimization.md](development/04-cpu-optimization.md) |
 
 ---
 
