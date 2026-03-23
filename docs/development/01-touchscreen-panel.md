@@ -1,21 +1,10 @@
-# 📋 Rencana Pengembangan PLTN Simulator
+# Pengembangan 1: Migrasi Panel Kontrol ke Touchscreen
 
-> Dokumen ini berisi rencana pengembangan besar yang akan mengubah arsitektur simulator.
-> Dibuat: 2026-03-23
-
----
-
-## Daftar Pengembangan
-
-| # | Nama Pengembangan | Status | Prioritas |
-|---|-------------------|--------|-----------|
-| 1 | [Migrasi Panel Kontrol ke Touchscreen](#pengembangan-1-touchscreen-panel) | 📝 Planning | High |
-| 2 | (TBD) | - | - |
-| 3 | (TBD) | - | - |
+> **Status**: 📝 Planning  
+> **Prioritas**: High  
+> **Dibuat**: 2026-03-23
 
 ---
-
-# Pengembangan 1: Touchscreen Panel
 
 ## 📋 Ringkasan
 
