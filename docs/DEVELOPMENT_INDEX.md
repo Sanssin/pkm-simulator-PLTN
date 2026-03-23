@@ -9,8 +9,9 @@
 | # | Nama Pengembangan | Status | File |
 |---|-------------------|--------|------|
 | 1 | Migrasi Panel Kontrol ke Touchscreen | 📝 Planning | [01-touchscreen-panel.md](development/01-touchscreen-panel.md) |
-| 2 | (TBD) | - | - |
+| 2 | Migrasi Aktuator ke RPi (Single Controller) | 📝 Planning | [02-single-controller.md](development/02-single-controller.md) |
 | 3 | (TBD) | - | - |
+| 4 | CPU Optimization | 📝 Planned | - |
 
 ---
 
@@ -18,6 +19,8 @@
 
 ### Pengembangan Aktif
 - **[01] Touchscreen Panel** — Ganti 17 push button + 9 OLED dengan 10" touchscreen
+- **[02] Single Controller** — Hapus 2 ESP32, kontrol semua aktuator langsung dari RPi
+- **[04] CPU Optimization** — Optimasi performa setelah migrasi (planned)
 
 ### Beads Commands
 ```bash
