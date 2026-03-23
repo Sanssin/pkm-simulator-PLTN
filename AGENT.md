@@ -4,10 +4,10 @@
 
 ## 1. Project Overview
 
-**pkm-simulator-PLTN** adalah simulator Pembangkit Listrik Tenaga Nuklir (PLTN) tipe **PWR (Pressurized Water Reactor)** yang dikembangkan untuk kompetisi **PKM (Program Kreativitas Mahasiswa) 2024**.
+**pkm-simulator-PLTN** adalah simulator Pembangkit Listrik Tenaga Nuklir (PLTN) tipe **PWR (Pressurized Water Reactor)** yang dikembangkan untuk edukasi mengenai cara kerja PLTN dalam menghasilkan energi kepada masyarakat luas.
 
 Tujuan proyek:
-- **Edukasi**: Memberikan pemahaman realistis tentang pengoperasian reaktor nuklir PWR kepada mahasiswa teknik nuklir
+- **Edukasi**: Memberikan pemahaman realistis tentang pengoperasian reaktor nuklir PWR kepada masyarakat luas
 - **Simulasi interaktif**: Panel kontrol fisik dengan tombol, display OLED, buzzer alarm, servo motor (control rod), motor DC (pompa & turbin), dan efek visual (LED Cherenkov, flow animation)
 - **Safety training**: Mengajarkan prosedur keselamatan nuklir (SCRAM, interlock, pump sequence) melalui hands-on experience
 
@@ -127,7 +127,6 @@ pkm-simulator-PLTN/
 │   ├── raspi_humidifier_control.py ← Logika humidifier bertahap (389 baris)
 │   ├── raspi_buzzer_alarm.py       ← Sistem alarm PWM (337 baris)
 │   ├── raspi_oled_manager.py       ← Manager 9 OLED display
-│   ├── raspi_i2c_master.py         ← ❌ Legacy I2C (dead code, 417 baris)
 │   ├── raspi_tca9548a.py           ← I2C multiplexer (masih dipakai untuk OLED)
 │   ├── raspi_system_health.py      ← Health check startup
 │   ├── raspi_README.md             ← ⚠️ Outdated (masih deskripsi I2C 5-ESP)
@@ -753,26 +752,20 @@ Jika task/issue/bug mengandung keyword ini, baca skill yang sesuai:
 
 None currently — all critical bugs addressed in v4.0 documentation cleanup.
 
-### Dead Code
-
-5. **`raspi_i2c_master.py`** (417 baris) — Legacy dari arsitektur v3.x I2C. 
-   - Now marked with deprecation warning
-   - Safe to delete (kept for reference)
-   - Not imported by `raspi_main_panel.py`
 
 ### Duplikasi
 
-6. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
+5. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
 
 ### TODO / Enhancement Ideas
 
-7. **Refactor `raspi_main_panel.py`** — 1992 baris dalam satu class (God class anti-pattern). Bisa dipecah menjadi:
+8. **Refactor `raspi_main_panel.py`** — 1992 baris dalam satu class (God class anti-pattern). Bisa dipecah menjadi:
    - `reactor_logic.py` — Interlock, rod hierarchy, SCRAM
    - `pump_controller.py` — Pump state machine
    - `auto_simulation.py` — Auto simulation sequence
    - `state_export.py` — JSON export
 
-9. **Unit tests** — Tidak ada test apapun di repositori. Model fisika dan interlock logic sebaiknya punya unit test.
+8. **Unit tests** — Tidak ada test apapun di repositori. Model fisika dan interlock logic sebaiknya punya unit test.
 
 ---
 
