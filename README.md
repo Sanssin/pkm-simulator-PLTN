@@ -1,16 +1,12 @@
 # 🏭 PKM PLTN Simulator - Nuclear Power Plant Training Simulator
 
-**Kompetisi PKM 2024 - Simulator PWR (Pressurized Water Reactor)**
+**Simulator PWR (Pressurized Water Reactor)**
 
 [![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue)]()
 [![ESP32](https://img.shields.io/badge/ESP32-Arduino-orange)]()
 [![Architecture](https://img.shields.io/badge/architecture-2%20ESP%20UART-success)]()
 
-> **📌 Dokumentasi lengkap sistem - Semua informasi dalam satu file**  
-> **🎉 NEW: UART Communication Protocol - Reliable & Efficient!**  
-> **🎉 NEW: Video Display System - Educational Visualization!**  
-> **🎉 NEW: Event Queue Pattern - No Deadlocks!**
 
 ---
 
@@ -1341,33 +1337,6 @@ cd pltn_video_display
 python3 video_display_app.py --test --windowed
 ```
 
----
-### ✅ Version 4.0 Changes (January 2025)
-
-**🔌 Communication Protocol Migration:**
-- ✅ **I2C → UART** - Migrated from I2C to hardware UART
-- ✅ **Binary Protocol** - 83% size reduction vs JSON
-- ✅ **CRC8 Checksum** - Error detection and correction
-- ✅ **ACK/NACK** - Reliable delivery mechanism
-- ✅ **115200 baud** - Faster and more reliable
-
-**🎬 Video Display System:**
-- ✅ **Standalone Module** - `pltn_video_display/` complete
-- ✅ **3 Display Modes** - IDLE, AUTO (video), MANUAL (guide)
-- ✅ **JSON State Sync** - Real-time communication
-- ✅ **Pygame UI** - Lightweight visualization
-- ✅ **Testing Mode** - No hardware required
-
-**🎮 Event Queue Pattern:**
-- ✅ **Button Callbacks** - Queue-based processing
-- ✅ **No Deadlocks** - Interrupt-safe design
-- ✅ **< 1μs Response** - Immediate button response
-
-**📌 GPIO Pin Updates:**
-- ✅ **UART3 Support** - GPIO 4/5 for ESP-E
-- ✅ **Pin Remapping** - GPIO 11 for PUMP_PRIMARY_ON
-- ✅ **17 Buttons** - All buttons properly mapped
-- ✅ **Documentation** - `GPIO_PIN_MAPPING.md`
 
 ### ✅ Core Components Status
 
