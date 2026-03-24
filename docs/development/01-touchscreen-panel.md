@@ -133,14 +133,16 @@
     {"type": "PRESSURE", "direction": "DOWN"},
     {"type": "START_AUTO"},
     {"type": "RESET"},
-    {"type": "EMERGENCY"}
+    {"type": "EMERGENCY"},
+    {"type": "LOFA_SIMULATE", "target": "PRIMARY"},
+    {"type": "LOFA_CANCEL"}
   ]
 }
 ```
 
 ### `/tmp/pltn_state.json` (Controller → Displays)
 
-Format existing, tidak berubah:
+Format extended untuk LOFA support:
 ```json
 {
   "timestamp": 1234567890.456,
@@ -153,7 +155,17 @@ Format existing, tidak berubah:
   "pump_tertiary": 2,
   "thermal_kw": 450000,
   "turbine_speed": 85,
-  "emergency_active": false
+  "emergency_active": false,
+  
+  "coolant_temp_primary": 295.5,
+  "coolant_temp_secondary": 252.0,
+  "fuel_cladding_temp": 420.0,
+  "condenser_pressure": 0.05,
+  "lofa_primary": false,
+  "lofa_secondary": false,
+  "lofa_tertiary": false,
+  "pressurizer_relief_open": false,
+  "pressurizer_spray_active": false
 }
 ```
 
@@ -307,21 +319,21 @@ GPIO 22     - Buzzer PWM
 | TS-004 | UI Mockup Review dari Figma | Ready |
 
 ### Phase 2: Core Touch Panel App
-| ID | Task | Status |
-|----|------|--------|
-| TS-010 | Touch Panel Base App | Blocked |
-| TS-011 | Virtual Button Components | Blocked |
-| TS-012 | Status Display Components | Blocked |
-| TS-013 | UI Layout Implementation | Blocked |
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| TS-010 | Touch Panel Base App | Blocked | |
+| TS-011 | Virtual Button Components (18 tombol) | Blocked | +1 tombol SIMULASI LOFA |
+| TS-012 | Status Display Components | Blocked | +temperature displays untuk LOFA |
+| TS-013 | UI Layout Implementation | Blocked | +LOFA area |
 
 ### Phase 3: Integrasi dengan Core System
-| ID | Task | Status |
-|----|------|--------|
-| TS-020 | Event Queue Integration | Blocked |
-| TS-021 | State Binding ke UI | Blocked |
-| TS-022 | Remove GPIO Button Code | Blocked |
-| TS-023 | Remove OLED Code | Blocked |
-| TS-024 | Update Main Panel Architecture | Blocked |
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| TS-020 | Event Queue Integration | Blocked | +LOFA event types |
+| TS-021 | State Binding ke UI | Blocked | |
+| TS-022 | Remove GPIO Button Code | Blocked | |
+| TS-023 | Remove OLED Code | Blocked | |
+| TS-024 | Update Main Panel Architecture | Blocked | |
 
 ### Phase 4: Testing & Refinement
 | ID | Task | Status |
