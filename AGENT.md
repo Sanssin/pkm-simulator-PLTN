@@ -485,6 +485,27 @@ Sistem inti: Panel kontrol dengan 17 tombol, 9 OLED, 2 ESP32 via UART binary pro
 - **Dependensi baru**: Tidak ada
 - **Interaksi dengan core**: Standalone — tidak terhubung ke sistem utama
 
+### Pengembangan 11: Touchscreen Panel ⏳ PLANNED
+- **Deskripsi**: Panel kontrol touchscreen 10" sebagai master control menggunakan Raspberry Pi 4 terpisah dengan Kivy UI. Menggantikan fungsi panel fisik GPIO.
+- **File terkait**: `touch_panel/` (akan dibuat), `docs/development/01-touchscreen-panel.md`
+- **Hardware baru**: Raspberry Pi 4 + Touchscreen 10" + USB-to-TTL adapter
+- **Dependensi baru**: Kivy 2.3+, pyserial
+- **Interaksi dengan core**: IPC via JSON file (`/tmp/pltn_state.json`)
+- **Status**: Planning complete. Lihat `docs/development/01-touchscreen-panel.md`
+
+### Pengembangan 12: LOFA Simulation ⏳ PLANNED
+- **Deskripsi**: Simulasi kondisi Loss of Flow Accident (LOFA) untuk edukasi. Mensimulasikan kegagalan pompa primer/sekunder/tersier dengan respons berbeda.
+- **File terkait**: `raspi_main_panel.py`, `raspi_config.py`, `raspi_buzzer_alarm.py`, `docs/development/03-lofa-simulation.md`
+- **Hardware baru**: Tidak ada
+- **Dependensi baru**: Tidak ada
+- **Fitur utama**:
+  - Temperature modeling sederhana (coolant temp, fuel cladding temp)
+  - Pressurizer mitigation (relief valve, spray)
+  - Auto-SCRAM berdasarkan temperature thresholds
+  - Respons berbeda per pompa (primer=kritis, sekunder=tinggi, tersier=sedang)
+- **Interaksi dengan core**: Extend `control_logic_thread()`, tambah alarm tones, UI di touchscreen
+- **Status**: Planning complete. Blocked by Pengembangan 11 (touchscreen). Lihat `docs/development/03-lofa-simulation.md`
+
 ---
 
 ## 8. Dependensi & Setup
@@ -620,6 +641,7 @@ Jika task/issue/bug mengandung keyword ini, baca skill yang sesuai:
 - **SCRAM, interlock, alarm, threshold, safety limit, trip** → `safety-logic.md`
 - **display, OLED, UI, HMI, buzzer, tone, visual feedback** → `hmi-display.md`
 - **pressurizer, coolant, primary loop, secondary loop, control rod, moderator** → `pltn-domain-knowledge.md`
+- **LOFA, temperature, fuel cladding, relief valve, spray, pump failure, overheat** → `safety-logic.md` + `pltn-domain-knowledge.md`
 
 #### Usage Workflow
 
@@ -799,3 +821,8 @@ None currently — all critical bugs addressed in v4.0 documentation cleanup.
 | Edge Detection | Deteksi perubahan state (press/release) — satu aksi per tekan | Tombol pump, start, reset, emergency |
 | Level Detection | Deteksi state aktif (held down) — aksi berulang selama ditahan | Tombol rod up/down, pressure up/down |
 | God Class | Anti-pattern: satu class yang terlalu banyak tanggung jawab | `PLTNPanelController` (1992 baris) |
+| LOFA | Loss of Flow Accident — kecelakaan akibat hilangnya aliran pendingin | Simulasi di Pengembangan 12 |
+| Fuel Cladding | Selubung bahan bakar (Zircaloy) — pembatas antara fuel dan coolant | `fuel_cladding_temp` — threshold melt 1200°C |
+| Relief Valve | Katup pelepas tekanan di pressurizer — membuka saat overpressure | `pressurizer_relief_open` |
+| Spray Nozzle | Nosel semprot di pressurizer — kondensasi uap untuk turunkan tekanan | `pressurizer_spray_active` |
+| Coolant | Air pendingin dalam loop primer/sekunder | `coolant_temp_primary`, `coolant_temp_secondary` |
