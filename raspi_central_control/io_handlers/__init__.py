@@ -1,5 +1,5 @@
 """
-IO module for PLTN Panel Simulator.
+IO Handlers module for PLTN Panel Simulator.
 
 Contains:
 - ButtonIOHandler: Button polling and hold detection

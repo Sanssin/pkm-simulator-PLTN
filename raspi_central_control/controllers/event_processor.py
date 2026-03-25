@@ -183,7 +183,7 @@ class EventProcessor:
         Args:
             event: ButtonEvent to process
         """
-        from io.button_handler import ButtonEvent
+        from io_handlers.button_handler import ButtonEvent
         
         # Update last button time
         self._last_button_time = time.time()
