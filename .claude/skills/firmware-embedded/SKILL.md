@@ -1,3 +1,8 @@
+---
+name: Firmware & Embedded Systems
+description: GPIO, sensors, threading, ESP32/Raspberry Pi embedded patterns
+---
+
 # Skill: Firmware & Embedded Systems — Raspberry Pi + ESP32
 
 ## Konteks Proyek

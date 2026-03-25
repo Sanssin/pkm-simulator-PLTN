@@ -1,3 +1,8 @@
+---
+name: Safety Systems & SCRAM Logic
+description: SCRAM, alarms, interlocks, safety thresholds
+---
+
 # Skill: Safety Systems & SCRAM Logic
 
 > ⚠️ Skill ini berhubungan dengan safety-critical code.

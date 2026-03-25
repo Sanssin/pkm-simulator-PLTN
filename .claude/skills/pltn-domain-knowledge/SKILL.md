@@ -1,3 +1,8 @@
+---
+name: PLTN Domain Knowledge
+description: Nuclear terminology, concepts, operating scenarios
+---
+
 # Skill: PLTN Domain Knowledge — Konteks Edukasi
 
 ## Jenis Reaktor yang Disimulasikan
