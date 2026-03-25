@@ -1,5 +1,5 @@
 ---
-name: HMI & Display Interface
+name: HMI-Display-Interface
 description: UI updates, display management, visual/audio feedback
 ---
 

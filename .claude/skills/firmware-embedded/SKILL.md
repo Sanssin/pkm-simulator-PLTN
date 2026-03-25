@@ -1,5 +1,5 @@
 ---
-name: Firmware & Embedded Systems
+name: Firmware-Embedded-Systems
 description: GPIO, sensors, threading, ESP32/Raspberry Pi embedded patterns
 ---
 

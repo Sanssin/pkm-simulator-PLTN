@@ -1,5 +1,5 @@
 ---
-name: Safety Systems & SCRAM Logic
+name: Safety-Systems-SCRAM-Logic
 description: SCRAM, alarms, interlocks, safety thresholds
 ---
 
