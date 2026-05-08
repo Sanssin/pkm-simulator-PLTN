@@ -352,6 +352,16 @@ GPIO 22     - Buzzer PWM
 
 **Lihat beads untuk detail dan dependency**: `bd list`
 
+### Evaluasi TS-001
+
+Setelah hardware touchscreen siap, jalankan evaluasi berikut untuk memastikan environment dasar tidak error:
+
+```bash
+python touch_panel/touch_panel_app.py --check-hardware
+```
+
+Jika later UI stack sudah siap, file ini akan jadi entrypoint utama untuk app touchscreen.
+
 ## 📅 Urutan Pengerjaan
 
 1. **TS-001** → Hardware Setup (blocking untuk hampir semua task)
