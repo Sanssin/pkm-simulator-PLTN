@@ -43,6 +43,8 @@
 | Kivy | Khusus multi-touch | Performa variabel di RPi | ❌ |
 | Electron | Mudah dari Figma | Memory overhead, IPC kompleks | ❌ |
 
+**Keputusan TS-002**: PyQt5 dipilih sebagai framework utama untuk touchscreen panel.
+
 ### ✅ Arsitektur: 3-Process
 
 **Alasan pemilihan**:
@@ -314,8 +316,8 @@ GPIO 22     - Buzzer PWM
 | ID | Task | Status |
 |----|------|--------|
 | TS-001 | Hardware Setup Touchscreen 10" | Ready |
-| TS-002 | Framework Decision (PyQt5 ✅) | Blocked by TS-001 |
-| TS-003 | Input Handler Prototype USB HID | Blocked by TS-001 |
+| TS-002 | Framework Decision (PyQt5 ✅) | Ready |
+| TS-003 | Input Handler Prototype USB HID | Prototype ready |
 | TS-004 | UI Mockup Review dari Figma | Ready |
 
 ### Phase 2: Core Touch Panel App
@@ -394,6 +396,7 @@ raspi_central_control/
 ├─ touch_panel/              # NEW - folder untuk touch panel app
 │  ├─ __init__.py
 │  ├─ touch_panel_app.py     # Main PyQt5 application
+│  ├─ input_handler.py       # TS-003 touch input prototype
 │  ├─ components/
 │  │  ├─ buttons.py          # TapButton, HoldButton classes
 │  │  ├─ displays.py         # StatusDisplay, PressureGauge, etc.

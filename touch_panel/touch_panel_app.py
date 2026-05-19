@@ -16,6 +16,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+try:
+    from .input_handler import run_demo as run_input_demo
+except ImportError:  # pragma: no cover - fallback for direct script execution
+    from input_handler import run_demo as run_input_demo
+
 
 @dataclass
 class CheckResult:
@@ -121,8 +126,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--test", action="store_true", help="Run setup evaluation checks")
     parser.add_argument("--check-hardware", action="store_true", help="Alias for --test")
     parser.add_argument("--windowed", action="store_true", help="Accepted for future GUI compatibility")
+    parser.add_argument("--demo-input", action="store_true", help="Run the TS-003 touch input prototype demo")
     args = parser.parse_args(argv)
     _ = args.test, args.check_hardware, args.windowed
+
+    if args.demo_input:
+        return run_input_demo()
 
     checker = TouchPanelSetupChecker()
     results = checker.run()

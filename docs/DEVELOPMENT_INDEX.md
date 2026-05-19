@@ -8,7 +8,7 @@
 
 | # | Nama Pengembangan | Status | File |
 |---|-------------------|--------|------|
-| 0 | Codebase Refactoring | ⭐ Prioritas | [00-codebase-refactoring.md](development/00-codebase-refactoring.md) |
+| 0 | Codebase Refactoring | ✅ Completed | [00-codebase-refactoring.md](development/00-codebase-refactoring.md) |
 | 1 | Migrasi Panel Kontrol ke Touchscreen | 📝 Planning | [01-touchscreen-panel.md](development/01-touchscreen-panel.md) |
 | 2 | Migrasi Aktuator ke RPi (Single Controller) | 📝 Planning | [02-single-controller.md](development/02-single-controller.md) |
 | 3 | LOFA Simulation (Loss of Flow Accident) | 📝 Planning | [03-lofa-simulation.md](development/03-lofa-simulation.md) |
