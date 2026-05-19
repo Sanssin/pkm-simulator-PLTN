@@ -72,6 +72,43 @@
 
 **Keputusan**: Tetap menggunakan GPIO 22 (buzzer fisik) karena touchscreen tidak memiliki speaker internal. Mungkin migrasi ke speaker eksternal di masa depan.
 
+## 🧩 Baseline Mockup TS-004
+
+Karena belum ada file Figma, berikut baseline mockup yang dipakai sebagai acuan awal:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ TOP BAR: PLTN PANEL | mode | pressure | emergency badge      │
+├───────────────────────┬──────────────────────────────────────┤
+│ CONTROL COLUMN        │ STATUS / DISPLAY AREA                │
+│ - Pump ON/OFF         │ - Pressurizer gauge                  │
+│ - START / RESET       │ - 3 pump status cards                │
+│ - EMERGENCY (red)     │ - 3 rod position bars                │
+│ - LOFA SIMULATE       │ - Thermal power                     │
+│ - LOFA CANCEL         │ - System status / alarms             │
+├───────────────────────┴──────────────────────────────────────┤
+│ BOTTOM STRIP: contextual hints + warning / confirmation msg  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Prioritas komponen
+
+| Prioritas | Komponen | Catatan |
+|-----------|----------|---------|
+| P1 | Pump buttons, START, RESET, EMERGENCY | Harus paling besar dan mudah ditekan |
+| P1 | Rod up/down + pressure up/down | Mendukung hold gesture dari TS-003 |
+| P1 | Pressurizer + pump/rod status | Harus selalu terlihat |
+| P2 | Thermal power + system status | Menjadi panel informasi utama |
+| P2 | LOFA simulate / cancel | Disiapkan sejak awal, meski mungkin tersembunyi di mode normal |
+| P3 | Footer hints / help text | Untuk operator dan demo |
+
+### Aturan layout awal
+- Gunakan satu layar utama 1280x800 tanpa tab tersembunyi.
+- Tombol kritikal harus berada di kolom kiri dan warna kontras.
+- Panel status harus tetap terbaca dari jarak operator.
+- LOFA area boleh dibuat sebagai panel tersendiri atau dialog overlay jika terlalu padat.
+- Layout final bisa berubah setelah mockup Anda tersedia; baseline ini hanya acuan implementasi awal.
+
 ## 📐 Arsitektur Sistem Baru
 
 ```
@@ -323,7 +360,7 @@ GPIO 22     - Buzzer PWM
 ### Phase 2: Core Touch Panel App
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| TS-010 | Touch Panel Base App | Blocked | |
+| TS-010 | Touch Panel Base App | Shell ready | Fullscreen 1280x800 PyQt5 baseline shell tersedia |
 | TS-011 | Virtual Button Components (18 tombol) | Blocked | +1 tombol SIMULASI LOFA |
 | TS-012 | Status Display Components | Blocked | +temperature displays untuk LOFA |
 | TS-013 | UI Layout Implementation | Blocked | +LOFA area |
@@ -396,6 +433,7 @@ raspi_central_control/
 ├─ touch_panel/              # NEW - folder untuk touch panel app
 │  ├─ __init__.py
 │  ├─ touch_panel_app.py     # Main PyQt5 application
+│  ├─ base_app.py            # TS-010 touchscreen shell
 │  ├─ input_handler.py       # TS-003 touch input prototype
 │  ├─ components/
 │  │  ├─ buttons.py          # TapButton, HoldButton classes

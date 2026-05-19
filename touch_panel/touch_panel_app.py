@@ -21,6 +21,11 @@ try:
 except ImportError:  # pragma: no cover - fallback for direct script execution
     from input_handler import run_demo as run_input_demo
 
+try:
+    from .base_app import launch_touch_panel, get_layout_spec
+except ImportError:  # pragma: no cover - fallback for direct script execution
+    from base_app import launch_touch_panel, get_layout_spec
+
 
 @dataclass
 class CheckResult:
@@ -127,11 +132,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--check-hardware", action="store_true", help="Alias for --test")
     parser.add_argument("--windowed", action="store_true", help="Accepted for future GUI compatibility")
     parser.add_argument("--demo-input", action="store_true", help="Run the TS-003 touch input prototype demo")
+    parser.add_argument("--launch", action="store_true", help="Launch the TS-010 touchscreen base app")
+    parser.add_argument("--describe-layout", action="store_true", help="Print the TS-010 baseline layout summary")
     args = parser.parse_args(argv)
-    _ = args.test, args.check_hardware, args.windowed
+    _ = args.test, args.check_hardware
 
     if args.demo_input:
         return run_input_demo()
+
+    if args.describe_layout:
+        spec = get_layout_spec()
+        print("PLTN Touch Panel Layout")
+        print(f"Title: {spec.title}")
+        print(f"Subtitle: {spec.subtitle}")
+        print(f"Top badges: {', '.join(spec.top_badges)}")
+        print(f"Control groups: {len(spec.control_groups)}")
+        print(f"Status cards: {len(spec.status_cards)}")
+        return 0
+
+    if args.launch:
+        return launch_touch_panel(windowed=args.windowed)
 
     checker = TouchPanelSetupChecker()
     results = checker.run()
