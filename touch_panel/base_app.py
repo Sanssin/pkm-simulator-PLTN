@@ -148,8 +148,20 @@ class TouchPanelBaseWindow(QMainWindow):
 
         if self.windowed:
             self.show()
+            self._center_window()
         else:
             self.showFullScreen()
+
+    def _center_window(self) -> None:
+        if not _PYQT_AVAILABLE:
+            return
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        frame_geometry = self.frameGeometry()
+        center_point = screen.availableGeometry().center()
+        frame_geometry.moveCenter(center_point)
+        self.move(frame_geometry.topLeft())
 
     def _build_header(self) -> QFrame:
         frame = QFrame()
