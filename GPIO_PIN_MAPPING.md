@@ -1,6 +1,10 @@
 # Raspberry Pi GPIO Pin Mapping - PLTN Simulator
 
-## Current Pin Usage (BEFORE Changes)
+> **✅ STATUS:** This document shows the CURRENT PRODUCTION pin mapping (v4.0)
+> 
+> The "BEFORE Changes" section is kept for historical reference only.
+
+## Pin Usage History (BEFORE v4.0 Migration)
 
 ### Reserved Pins (DO NOT USE)
 ```
@@ -46,7 +50,7 @@ GPIO 4, 5   - UART3 → ESP-E (Visualizer)     [NEED TO FREE GPIO 5]
 
 ---
 
-## GPIO Pin Mapping - AFTER Changes
+## ✅ CURRENT PIN MAPPING (v4.0 Production)
 
 ### Reserved Pins (DO NOT USE)
 ```
@@ -268,6 +272,6 @@ sudo minicom -D /dev/ttyAMA1 -b 115200
 
 ---
 
-**Date**: 2025-12-17  
-**Version**: v3.4  
-**Status**: ✅ Ready to implement
+**Migration Date**: 2025-12-17  
+**Current Version**: v4.0  
+**Status**: ✅ IMPLEMENTED & IN PRODUCTION

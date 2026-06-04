@@ -4,7 +4,7 @@ Replaces I2C communication with UART for ESP32 slaves
 
 Architecture:
 - ESP-BC: /dev/ttyAMA0 (GPIO 14/15) - Control Rods + Turbine + Humidifier
-- ESP-E:  /dev/ttyAMA3 (GPIO 4/5)   - LED Visualizer
+- ESP-E:  /dev/ttyAMA1 (GPIO 4/5)   - LED Visualizer (UART3)
 
 Protocol: Binary Protocol with ACK/NACK (115200 baud, 8N1)
 - Format: STX | CMD | LEN | PAYLOAD | CRC | ETX
