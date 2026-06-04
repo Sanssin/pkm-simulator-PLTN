@@ -296,6 +296,80 @@ class PLTNPanelController:
         
         logger.info("Button hold detection thread stopped")
     
+    def touch_input_polling_thread(self):
+        """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
+        logger.info("Touch input polling thread started")
+        
+        touch_input_file = Path("/tmp/pltn_input.json")
+        last_processed_timestamp = time.time()  # Ignore old events on startup
+        
+        while self.state_manager.running:
+            try:
+                if touch_input_file.exists():
+                    try:
+                        with open(touch_input_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            
+                        file_timestamp = data.get("timestamp", 0.0)
+                        if file_timestamp > last_processed_timestamp:
+                            events = data.get("events", [])
+                            newest_timestamp = last_processed_timestamp
+                            
+                            for evt in events:
+                                evt_ts = evt.get("timestamp", 0.0)
+                                if evt_ts <= last_processed_timestamp:
+                                    continue
+                                    
+                                if evt_ts > newest_timestamp:
+                                    newest_timestamp = evt_ts
+                                    
+                                evt_type = evt.get("type")
+                                target = evt.get("target")
+                                rod = evt.get("rod")
+                                direction = evt.get("direction")
+                                
+                                button_event = None
+                                
+                                if evt_type == "PUMP_ON":
+                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_ON
+                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_ON
+                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_ON
+                                elif evt_type == "PUMP_OFF":
+                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_OFF
+                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_OFF
+                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_OFF
+                                elif evt_type == "ROD_MOVE":
+                                    if rod == "SAFETY" and direction == "UP": button_event = ButtonEvent.SAFETY_ROD_UP
+                                    elif rod == "SAFETY" and direction == "DOWN": button_event = ButtonEvent.SAFETY_ROD_DOWN
+                                    elif rod == "SHIM" and direction == "UP": button_event = ButtonEvent.SHIM_ROD_UP
+                                    elif rod == "SHIM" and direction == "DOWN": button_event = ButtonEvent.SHIM_ROD_DOWN
+                                    elif rod == "REGULATING" and direction == "UP": button_event = ButtonEvent.REGULATING_ROD_UP
+                                    elif rod == "REGULATING" and direction == "DOWN": button_event = ButtonEvent.REGULATING_ROD_DOWN
+                                elif evt_type == "PRESSURE":
+                                    if direction == "UP": button_event = ButtonEvent.PRESSURE_UP
+                                    elif direction == "DOWN": button_event = ButtonEvent.PRESSURE_DOWN
+                                elif evt_type == "START_AUTO":
+                                    button_event = ButtonEvent.START_AUTO_SIMULATION
+                                elif evt_type == "RESET":
+                                    button_event = ButtonEvent.REACTOR_RESET
+                                elif evt_type == "EMERGENCY":
+                                    button_event = ButtonEvent.EMERGENCY
+                                    
+                                if button_event is not None:
+                                    self.button_event_queue.put(button_event)
+                                    logger.info(f"Touch event received from HMI: {button_event.name}")
+                                    
+                            last_processed_timestamp = newest_timestamp
+                            
+                    except json.JSONDecodeError:
+                        pass # Ignore partially written file
+            except Exception as e:
+                logger.debug(f"Touch polling error: {e}")
+                
+            time.sleep(0.05)
+            
+        logger.info("Touch input polling thread stopped")
+    
     def control_logic_thread(self):
         """Thread for control logic (50ms cycle)."""
         logger.info("Control logic thread started")
@@ -487,6 +561,7 @@ class PLTNPanelController:
         threads = [
             threading.Thread(target=self.button_polling_thread, daemon=True, name="ButtonThread"),
             threading.Thread(target=self.button_hold_thread, daemon=True, name="ButtonHoldThread"),
+            threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
             threading.Thread(target=self.esp_communication_thread, daemon=True, name="ESPCommThread"),
             threading.Thread(target=self.oled_update_thread, daemon=True, name="OLEDThread"),
