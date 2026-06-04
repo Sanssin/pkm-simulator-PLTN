@@ -110,16 +110,14 @@ class ButtonHandler:
         }
         
         # LEVEL DETECTION: Trigger while held (continuous actions)
-        # Best for: Rod control, Pressure control (hold for continuous change)
+        # Best for: Rod control (hold for continuous change)
         self.LEVEL_BUTTONS = {
             ButtonPin.SAFETY_ROD_UP,
             ButtonPin.SAFETY_ROD_DOWN,
             ButtonPin.SHIM_ROD_UP,
             ButtonPin.SHIM_ROD_DOWN,
             ButtonPin.REGULATING_ROD_UP,
-            ButtonPin.REGULATING_ROD_DOWN,
-            ButtonPin.PRESSURE_UP,
-            ButtonPin.PRESSURE_DOWN
+            ButtonPin.REGULATING_ROD_DOWN
         }
         
         # Initialize GPIO
@@ -128,6 +126,8 @@ class ButtonHandler:
         
         # Setup all button pins as INPUT with PULL_UP
         # (Buttons connect pin to GND when pressed)
+        self.button_press_times = {}  # pin -> press_time
+        self.button_held_flags = {}   # pin -> is_held
         for pin in ButtonPin:
             GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             self.last_press_time[pin] = 0
@@ -184,6 +184,48 @@ class ButtonHandler:
                                     logger.error(f"Error in callback for {BUTTON_NAMES[pin]}: {e}")
                             else:
                                 logger.warning(f"⚠ No callback registered for {BUTTON_NAMES[pin]}")
+            
+            # ============================================
+            # PRESSURE CLICK VS HOLD DETECTION
+            # ============================================
+            elif pin in [ButtonPin.PRESSURE_UP, ButtonPin.PRESSURE_DOWN]:
+                # Press down (HIGH -> LOW)
+                if current_state == GPIO.LOW and self.last_state[pin] == GPIO.HIGH:
+                    self.button_press_times[pin] = current_time
+                    self.button_held_flags[pin] = False
+                    self.last_press_time[pin] = current_time
+                    logger.debug(f"Pressure button pressed down: {BUTTON_NAMES[pin]}")
+                
+                # Button is currently being held down (LOW)
+                elif current_state == GPIO.LOW:
+                    press_time = self.button_press_times.get(pin)
+                    if press_time is not None:
+                        hold_duration = current_time - press_time
+                        if hold_duration > 0.30:  # 300ms hold threshold
+                            self.button_held_flags[pin] = True
+                            
+                            # Repeat trigger every 50ms while held
+                            time_since_last = current_time - self.last_press_time[pin]
+                            if time_since_last > 0.05:
+                                self.last_press_time[pin] = current_time
+                                logger.debug(f"✓ Button held (LEVEL): {BUTTON_NAMES[pin]}")
+                                if pin in self.callbacks:
+                                    try:
+                                        self.callbacks[pin](is_held=True)
+                                    except Exception as e:
+                                        logger.error(f"Error in callback for {BUTTON_NAMES[pin]}: {e}")
+                
+                # Button release (LOW -> HIGH)
+                elif current_state == GPIO.HIGH and self.last_state[pin] == GPIO.LOW:
+                    press_time = self.button_press_times.pop(pin, None)
+                    is_held = self.button_held_flags.pop(pin, False)
+                    if press_time is not None and not is_held:
+                        logger.info(f"✓ Button clicked (EDGE): {BUTTON_NAMES[pin]}")
+                        if pin in self.callbacks:
+                            try:
+                                self.callbacks[pin](is_held=False)
+                            except Exception as e:
+                                logger.error(f"Error in callback for {BUTTON_NAMES[pin]}: {e}")
             
             # ============================================
             # LEVEL DETECTION (for continuous buttons)

@@ -121,7 +121,7 @@ class InterlockValidator:
         """
         # Check 1: Pressure >= 140 bar
         if state.pressure < self.MIN_PRESSURE_FOR_ROD_MOVEMENT:
-            reason = f"Pressure too low ({state.pressure:.1f} bar < 140 bar)"
+            reason = f"Pressure too low ({state.pressure:.2f} bar < 140 bar)"
             logger.debug(f"Interlock: {reason}")
             if self._on_interlock_violation:
                 self._on_interlock_violation(reason)
@@ -178,7 +178,7 @@ class InterlockValidator:
         # Check 1: Pressure must be >= 40 bar
         if state.pressure < self.MIN_PRESSURE_FOR_PUMP_START:
             reason = (f"Pressure too low for {pump_name} pump start! "
-                     f"Current: {state.pressure:.1f} bar, Required: >= 40 bar")
+                      f"Current: {state.pressure:.2f} bar, Required: >= 40 bar")
             logger.warning(f"PUMP START BLOCKED: {pump_name} pump")
             logger.warning(f"   Reason: {reason}")
             logger.warning(f"   Action: Raise pressure to 40 bar before starting pumps")
@@ -259,7 +259,7 @@ class InterlockValidator:
             Tuple of (is_satisfied, reason_if_not)
         """
         if state.pressure < self.MIN_PRESSURE_FOR_ROD_MOVEMENT:
-            return False, f"Pressure {state.pressure:.1f} bar < 140 bar required"
+            return False, f"Pressure {state.pressure:.2f} bar < 140 bar required"
         
         if state.emergency_active:
             return False, "Emergency shutdown active"

@@ -52,6 +52,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Duplicate ButtonEvent and PanelState definitions removed (imported from controllers/io_handlers instead)
+
+
+
 class PLTNPanelController:
     """
     Main PLTN Panel Controller Class (Refactored)
@@ -128,6 +132,714 @@ class PLTNPanelController:
         except Exception as e:
             logger.warning(f"✗ Buzzer failed: {e}")
             self.buzzer = None
+            # Don't raise - make it non-critical
+    
+    def init_oled_displays(self):
+        """Initialize 9 OLED displays (0.91 inch 128x32) with timeout"""
+        try:
+            from raspi_oled_manager import OLEDManager
+            import threading
+            
+            self.oled_manager = OLEDManager(
+                mux_manager=self.mux_manager,
+                width=128,
+                height=32  # 0.91 inch OLED
+            )
+            
+            # Initialize displays in separate thread with timeout
+            logger.info("Initializing 9 OLED displays (max 5s timeout)...")
+            
+            def init_displays():
+                try:
+                    self.oled_manager.init_all_displays()
+                except Exception as e:
+                    logger.warning(f"OLED init error: {e}")
+            
+            init_thread = threading.Thread(target=init_displays, daemon=True)
+            init_thread.start()
+            init_thread.join(timeout=5.0)  # Max 5 seconds total
+            
+            if init_thread.is_alive():
+                logger.warning("OLED initialization timeout - continuing without displays")
+                self.oled_manager = None
+            else:
+                logger.info("OLED displays initialization complete")
+                logger.info("   Startup screen will be cleared by OLED update thread")
+                
+                # NOTE: sync_interpolators_to_state() moved to oled_update_thread()
+                # This fixes race condition where sync was called before thread started
+            
+        except Exception as e:
+            logger.warning(f"Failed to initialize OLED displays: {e}")
+            logger.warning("Continuing without OLED displays...")
+            self.oled_manager = None
+    
+    # ============================================
+    # Lightweight Button Callbacks (NO LOCK, NO HEAVY WORK)
+    # ============================================
+    
+    def on_pressure_up(self, is_held=False):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PRESSURE_UP)
+        logger.info(f"Button event queued: PRESSURE_UP (held={is_held})")
+    
+    def on_pressure_down(self, is_held=False):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PRESSURE_DOWN)
+        logger.info(f"Button event queued: PRESSURE_DOWN (held={is_held})")
+    
+    def on_pump_primary_on(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_PRIMARY_ON)
+        logger.info("Button event queued: PUMP_PRIMARY_ON")
+    
+    def on_pump_primary_off(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_PRIMARY_OFF)
+        logger.info("Button event queued: PUMP_PRIMARY_OFF")
+    
+    def on_pump_secondary_on(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_SECONDARY_ON)
+        logger.info("Button event queued: PUMP_SECONDARY_ON")
+    
+    def on_pump_secondary_off(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_SECONDARY_OFF)
+        logger.info("Button event queued: PUMP_SECONDARY_OFF")
+    
+    def on_pump_tertiary_on(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_TERTIARY_ON)
+        logger.info("Button event queued: PUMP_TERTIARY_ON")
+    
+    def on_pump_tertiary_off(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.PUMP_TERTIARY_OFF)
+        logger.info("Button event queued: PUMP_TERTIARY_OFF")
+    
+    def on_safety_rod_up(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.SAFETY_ROD_UP)
+        logger.info("Button event queued: SAFETY_ROD_UP")
+    
+    def on_safety_rod_down(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.SAFETY_ROD_DOWN)
+        logger.info("Button event queued: SAFETY_ROD_DOWN")
+    
+    def on_shim_rod_up(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.SHIM_ROD_UP)
+        logger.info("Event queued: SHIM_ROD_UP")
+    
+    def on_shim_rod_down(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.SHIM_ROD_DOWN)
+        logger.info("Button event queued: SHIM_ROD_DOWN")
+    
+    def on_regulating_rod_up(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.REGULATING_ROD_UP)
+        logger.info("Button event queued: REGULATING_ROD_UP")
+    
+    def on_regulating_rod_down(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.REGULATING_ROD_DOWN)
+        logger.info("Button event queued: REGULATING_ROD_DOWN")
+    
+    def on_emergency(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.EMERGENCY)
+        logger.critical("Button event queued: EMERGENCY")
+    
+    def on_reactor_reset(self):
+        """Lightweight callback - just enqueue event"""
+        self.button_event_queue.put(ButtonEvent.REACTOR_RESET)
+        logger.info("Button event queued: REACTOR_RESET")
+    
+    def on_start_auto_simulation(self):
+        """Lightweight callback - start auto simulation"""
+        self.button_event_queue.put(ButtonEvent.START_AUTO_SIMULATION)
+        logger.info("Event queued: START_AUTO_SIMULATION")
+    
+    
+    # ============================================
+    # Sequential SCRAM Execution
+    # ============================================
+    
+    def _execute_scram_sequence(self):
+        """
+        Execute SCRAM sequence: drop ALL rods simultaneously with smooth animation
+        All three rods (Safety, Shim, Regulating) drop together
+        Duration: 3 seconds (smooth descent)
+        Runs in separate thread (non-blocking)
+        """
+        def scram_thread():
+            try:
+                logger.critical("SCRAM SEQUENCE INITIATED")
+                logger.critical("Emergency rod insertion: ALL RODS DROPPING SIMULTANEOUSLY")
+                
+                # Capture initial turbine speed for spin-down
+                with self.state_lock:
+                    initial_turbine_speed = self.state.turbine_speed
+                    # Capture initial rod positions
+                    start_safety = self.state.safety_rod
+                    start_shim = self.state.shim_rod
+                    start_regulating = self.state.regulating_rod
+                
+                # Start turbine spin-down immediately (runs in parallel)
+                if initial_turbine_speed > 0:
+                    turbine_thread = threading.Thread(
+                        target=self._turbine_spindown,
+                        args=(initial_turbine_speed,),
+                        daemon=True
+                    )
+                    turbine_thread.start()
+                
+                # Drop ALL rods simultaneously (3 seconds, smooth)
+                logger.critical("Lowering all control rods...")
+                start_time = time.time()
+                duration = 3.0  # 3 seconds total
+                
+                while time.time() - start_time < duration:
+                    elapsed = time.time() - start_time
+                    progress = elapsed / duration  # 0.0 to 1.0
+                    
+                    # Calculate current positions for all rods (dropping together)
+                    current_safety = int(start_safety * (1 - progress))
+                    current_shim = int(start_shim * (1 - progress))
+                    current_regulating = int(start_regulating * (1 - progress))
+                    
+                    # Update all rods in single lock
+                    with self.state_lock:
+                        self.state.safety_rod = max(0, current_safety)
+                        self.state.shim_rod = max(0, current_shim)
+                        self.state.regulating_rod = max(0, current_regulating)
+                    
+                    self.esp_send_immediate.set()
+                    time.sleep(0.05)  # 50ms update rate = smooth animation
+                
+                # Ensure all rods are at 0%
+                with self.state_lock:
+                    self.state.safety_rod = 0
+                    self.state.shim_rod = 0
+                    self.state.regulating_rod = 0
+                
+                self.esp_send_immediate.set()
+                
+                logger.critical("Safety rod inserted (0%)")
+                logger.critical("Shim rod inserted (0%)")
+                logger.critical("Regulating rod inserted (0%)")
+                logger.critical("SCRAM SEQUENCE COMPLETE - All rods inserted (3 seconds total)")
+                logger.critical("Turbine spin-down continues (~12 seconds total)")
+                
+            except Exception as e:
+                logger.error(f"SCRAM sequence error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+        
+        # Run in separate thread (non-blocking)
+        scram_thread_obj = threading.Thread(target=scram_thread, daemon=True)
+        scram_thread_obj.start()
+    
+    def _turbine_spindown(self, initial_speed):
+        """
+        Gradually reduce turbine speed to 0 (realistic spin-down)
+        Simulates turbine inertia and residual steam energy
+        Duration: ~12 seconds (linear deceleration)
+        
+        Args:
+            initial_speed: Starting turbine speed (%)
+        """
+        try:
+            logger.info(f"Turbine spin-down started (initial: {initial_speed:.1f}%)")
+            
+            duration = 12.0  # 12 seconds total spin-down
+            start_time = time.time()
+            
+            while True:
+                elapsed = time.time() - start_time
+                if elapsed >= duration:
+                    break
+                
+                # Linear deceleration (could use exponential for more realism)
+                progress = elapsed / duration
+                current_speed = initial_speed * (1 - progress)
+                
+                with self.state_lock:
+                    self.state.turbine_speed = max(0, current_speed)
+                
+                self.esp_send_immediate.set()  # Trigger immediate ESP update
+                time.sleep(0.1)  # 100ms update rate (smooth animation)
+            
+            # Ensure final speed is exactly 0
+            with self.state_lock:
+                self.state.turbine_speed = 0
+            self.esp_send_immediate.set()
+            
+            logger.info("Turbine spin-down complete (0%)")
+            
+        except Exception as e:
+            logger.error(f"Turbine spin-down error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    
+    # ============================================
+    # Event Processing (Heavy Work with Lock)
+    # ============================================
+    
+    def process_button_event(self, event: ButtonEvent):
+        """
+        Process button event with proper locking and state update
+        This runs in dedicated thread, NOT in interrupt context
+        """
+        # Update last button time for inactivity tracking
+        self.last_button_time = time.time()
+        
+        with self.state_lock:
+            
+            if event == ButtonEvent.PRESSURE_UP:
+                self.state.pressure = min(self.state.pressure + config.PRESS_INCREMENT_SLOW, 200.0)  # Detailed increment
+            elif event == ButtonEvent.PRESSURE_UP_FAST:
+                self.state.pressure = min(self.state.pressure + config.PRESS_INCREMENT_FAST, 200.0)  # Fast increment
+            elif event == ButtonEvent.PRESSURE_DOWN:
+                self.state.pressure = max(self.state.pressure - config.PRESS_INCREMENT_SLOW, 0.0)  # Detailed decrement
+            elif event == ButtonEvent.PRESSURE_DOWN_FAST:
+                self.state.pressure = max(self.state.pressure - config.PRESS_INCREMENT_FAST, 0.0)  # Fast decrement
+            
+            elif event == ButtonEvent.PUMP_PRIMARY_ON:
+                if self.state.pump_primary_status == 0:
+                    # Check safety conditions before starting
+                    if self._check_pump_start_safe("Primary"):
+                        self.state.pump_primary_status = 1
+                        logger.info("Primary pump starting (safety checks passed)")
+                    # else: already logged and buzzed by _check_pump_start_safe()
+            
+            elif event == ButtonEvent.PUMP_PRIMARY_OFF:
+                if self.state.pump_primary_status == 2:
+                    self.state.pump_primary_status = 3
+            
+            elif event == ButtonEvent.PUMP_SECONDARY_ON:
+                if self.state.pump_secondary_status == 0:
+                    # Check safety conditions before starting
+                    if self._check_pump_start_safe("Secondary"):
+                        self.state.pump_secondary_status = 1
+                        logger.info("Secondary pump starting (safety checks passed)")
+                    # else: already logged and buzzed by _check_pump_start_safe()
+            
+            elif event == ButtonEvent.PUMP_SECONDARY_OFF:
+                if self.state.pump_secondary_status == 2:
+                    self.state.pump_secondary_status = 3
+            
+            elif event == ButtonEvent.PUMP_TERTIARY_ON:
+                if self.state.pump_tertiary_status == 0:
+                    # Check safety conditions before starting
+                    if self._check_pump_start_safe("Tertiary"):
+                        self.state.pump_tertiary_status = 1
+                        logger.info("Tertiary pump starting (safety checks passed)")
+                    # else: already logged and buzzed by _check_pump_start_safe()
+            
+            elif event == ButtonEvent.PUMP_TERTIARY_OFF:
+                if self.state.pump_tertiary_status == 2:
+                    self.state.pump_tertiary_status = 3
+            
+            elif event == ButtonEvent.SAFETY_ROD_UP:
+                if not self._check_interlock_internal():
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise safety rod!")
+                    logger.warning(f"   Pressure: {self.state.pressure:.2f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
+                                 f"Secondary={self.state.pump_secondary_status}, "
+                                 f"Tertiary={self.state.pump_tertiary_status} (need all = 2)")
+                    
+                    # Trigger interlock violation buzzer (1.5 second beep)
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    
+                    return
+                self.state.safety_rod = min(self.state.safety_rod + 1, 100)  # 1% increment
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.SAFETY_ROD_DOWN:
+                # Guard proporsional: safety rod harus selalu >= shim dan >= regulating
+                new_pos = self.state.safety_rod - 1
+                if new_pos < self.state.shim_rod or new_pos < self.state.regulating_rod:
+                    logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
+                    logger.warning(f"   Safety={self.state.safety_rod}%, Shim={self.state.shim_rod}%, Reg={self.state.regulating_rod}%")
+                    logger.warning(f"   Lower Shim/Regulating first, then Safety can follow")
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    return
+
+                self.state.safety_rod = max(new_pos, 0)  # 1% decrement
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.SHIM_ROD_UP:
+                # Check safety rod priority: safety rod must be 100% before raising shim
+                if self.state.safety_rod < 100:
+                    logger.warning("SAFETY ROD PRIORITY: Cannot raise shim rod!")
+                    logger.warning(f"   Safety rod must be at 100% first (currently: {self.state.safety_rod}%)")
+                    logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
+                    
+                    # Trigger buzzer warning
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    
+                    return
+                
+                # Check interlock conditions
+                if not self._check_interlock_internal():
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise shim rod!")
+                    logger.warning(f"   Pressure: {self.state.pressure:.2f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
+                                 f"Secondary={self.state.pump_secondary_status}, "
+                                 f"Tertiary={self.state.pump_tertiary_status} (need all = 2)")
+                    
+                    # Trigger interlock violation buzzer
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    
+                    return
+                self.state.shim_rod = min(self.state.shim_rod + 1, 100)  # 1% increment
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.SHIM_ROD_DOWN:
+                self.state.shim_rod = max(self.state.shim_rod - 1, 0)  # 1% decrement
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.REGULATING_ROD_UP:
+                # Check safety rod priority: safety rod must be 100% before raising regulating
+                if self.state.safety_rod < 100:
+                    logger.warning("SAFETY ROD PRIORITY: Cannot raise regulating rod!")
+                    logger.warning(f"   Safety rod must be at 100% first (currently: {self.state.safety_rod}%)")
+                    logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
+                    
+                    # Trigger buzzer warning
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    
+                    return
+                
+                # Check interlock conditions
+                if not self._check_interlock_internal():
+                    logger.warning("INTERLOCK VIOLATION: Cannot raise regulating rod!")
+                    logger.warning(f"   Pressure: {self.state.pressure:.2f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pumps: Primary={self.state.pump_primary_status}, "
+                                 f"Secondary={self.state.pump_secondary_status}, "
+                                 f"Tertiary={self.state.pump_tertiary_status} (need all = 2)")
+                    
+                    # Trigger interlock violation buzzer
+                    if self.buzzer:
+                        try:
+                            self.buzzer.sound_interlock_warning(duration=1.5)
+                        except Exception:
+                            pass
+                    
+                    return
+                self.state.regulating_rod = min(self.state.regulating_rod + 1, 100)  # 1% increment
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.REGULATING_ROD_DOWN:
+                self.state.regulating_rod = max(self.state.regulating_rod - 1, 0)  # 1% decrement
+                # Removed logging for performance
+            
+            elif event == ButtonEvent.EMERGENCY:
+                self.state.emergency_active = True
+                
+                # Execute sequential SCRAM (non-blocking, smooth animation)
+                logger.critical("EMERGENCY SCRAM ACTIVATED!")
+                logger.critical("   Pumps remain ON for decay heat removal")
+                self._execute_scram_sequence()
+                
+                # Trigger emergency buzzer (will beep for 5 seconds then stop)
+                if self.buzzer:
+                    logger.critical("   Triggering emergency buzzer...")
+                    try:
+                        self.buzzer.trigger_emergency_beep()
+                        logger.critical("Emergency buzzer triggered")
+                    except Exception as e:
+                        logger.error(f"Buzzer trigger failed: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                else:
+                    logger.warning("Buzzer not available")
+                    
+            elif event == ButtonEvent.REACTOR_RESET:
+                # Stop auto simulation if running
+                self.state.auto_sim_running = False
+                self.state.simulation_mode = 'manual'
+                self.state.emergency_active = False
+                self.state.pressure = 0.0
+                self.state.thermal_kw = 0.0
+                self.state.pump_primary_status = 0
+                self.state.pump_secondary_status = 0
+                self.state.pump_tertiary_status = 0
+                self.state.pump_primary_transition_start = 0.0
+                self.state.pump_secondary_transition_start = 0.0
+                self.state.pump_tertiary_transition_start = 0.0
+                self.state.safety_rod = 0
+                self.state.shim_rod = 0
+                self.state.regulating_rod = 0
+                self.state.humid_ct1_cmd = 0
+                self.state.humid_ct2_cmd = 0
+                self.state.humid_ct3_cmd = 0
+                self.state.humid_ct4_cmd = 0
+                self.state.interlock_satisfied = False
+                
+                # Reset OLED interpolators to zero (instant display update)
+                if self.oled_manager:
+                    self.oled_manager.reset_all_interpolators()
+                
+                logger.info("=" * 60)
+                logger.info("SIMULATION RESET")
+                logger.info("All parameters reset. Press START to begin.")
+                logger.info("=" * 60)
+            
+            elif event == ButtonEvent.START_AUTO_SIMULATION:
+                if self.state.auto_sim_running:
+                    logger.warning("Auto simulation already running!")
+                    return
+                
+                # Start auto simulation
+                self.state.simulation_mode = 'auto'
+                self.state.auto_sim_running = True
+                logger.info("=" * 60)
+                logger.info("AUTO SIMULATION MODE ACTIVATED")
+                logger.info("Simulasi akan berjalan otomatis dengan kecepatan lambat")
+                logger.info("untuk memudahkan pemahaman cara kerja PLTN")
+                logger.info("=" * 60)
+            
+            # Log if event not recognized
+            else:
+                logger.warning(f"Unknown event: {event}")
+    
+    def button_event_processor_thread(self):
+        """
+        Process button events from queue
+        This thread can safely use locks and do heavy work
+        """
+        try:
+            logger.info("Button event processor thread STARTING...")
+            
+            # Verify queue exists
+            if not hasattr(self, 'button_event_queue'):
+                logger.error("button_event_queue not initialized!")
+                return
+            
+            logger.info(f"Event queue initialized (max size: 100)")
+            logger.info("Button event processor thread started - waiting for events...")
+            
+            loop_count = 0
+            while self.state.running:
+                try:
+                    # Heartbeat every 60 seconds (reduced logging)
+                    loop_count += 1
+                    if loop_count >= 6000:  # 6000 * 0.01s = 60s
+                        logger.info(f"Event processor alive - Queue size: {self.button_event_queue.qsize()}")
+                        loop_count = 0
+                    
+                    # Wait for event (blocking, with timeout) - optimized to 10ms for fast response
+                    event = self.button_event_queue.get(timeout=0.01)
+                    
+                    # Removed event processing log for performance (too verbose)
+                    
+                    # Process event with lock
+                    self.process_button_event(event)
+                    
+                    # Trigger immediate ESP communication for fast response
+                    self.esp_send_immediate.set()
+                    
+                    # Mark task done
+                    self.button_event_queue.task_done()
+                    
+                except Empty:
+                    # No events, continue loop
+                    pass
+                except Exception as e:
+                    logger.error(f"Event processor error: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+            
+            logger.info("Button event processor thread stopped")
+            
+        except Exception as e:
+            logger.critical(f"FATAL: Event processor thread crashed on startup: {e}")
+            import traceback
+            logger.critical(traceback.format_exc())
+    
+    # ============================================
+    # Interlock Logic
+    # ============================================
+    
+    def check_interlock(self) -> bool:
+        """
+        Check if interlock conditions are satisfied for rod movement
+        PUBLIC version - acquires lock
+        
+        Returns:
+            True if safe to move rods, False otherwise
+        """
+        with self.state_lock:
+            return self._check_interlock_internal()
+    
+    def _check_interlock_internal(self) -> bool:
+        """
+        Check if interlock conditions are satisfied for rod movement
+        INTERNAL version - assumes caller already holds state_lock
+        
+        INTERLOCK LOGIC v3.4 (UPDATED):
+        Berdasarkan alur simulasi 8-phase PWR startup yang realistis:
+        
+        Phase 1-3: Reactor START → Raise pressure to operating level → Raise rods
+        - Allow: Pressure >= 140 bar (operating pressure)
+        - Allow: Reactor started
+        - Allow: No emergency
+        - Require: All three pumps in ON state (status == 2)
+        - NO NEED: Turbine running (turbine belum jalan saat initial rod raise)
+        
+        Phase 4+: Normal operation
+        - Same checks as above
+        - Turbine akan auto-start dari ESP-BC ketika thermal > 50 MWth
+        
+        Returns:
+            True if safe to move rods, False otherwise
+        """
+        
+        # Check 2: Pressure >= 140 bar (operating pressure for rod withdrawal)
+        # Pressure harus mencapai tekanan operasi penuh sebelum rod movement
+        if self.state.pressure < 140.0:
+            logger.debug(f"Interlock: Pressure too low ({self.state.pressure:.2f} bar < 140 bar)")
+            return False
+        
+        # Check 3: No emergency active
+        if self.state.emergency_active:
+            logger.debug("Interlock: Emergency shutdown active")
+            return False
+        
+        # Check 4: All pumps must be ON (status == 2)
+        # Status codes: 0=OFF,1=STARTING,2=ON,3=SHUTTING_DOWN
+        if self.state.pump_primary_status != 2:
+            logger.debug(f"Interlock: Primary pump not ON (status={self.state.pump_primary_status})")
+            return False
+        if self.state.pump_secondary_status != 2:
+            logger.debug(f"Interlock: Secondary pump not ON (status={self.state.pump_secondary_status})")
+            return False
+        if self.state.pump_tertiary_status != 2:
+            logger.debug(f"Interlock: Tertiary pump not ON (status={self.state.pump_tertiary_status})")
+            return False
+        
+        # All checks passed - safe to move rods
+        return True
+    
+    def _check_pump_start_safe(self, pump_name: str) -> bool:
+        """
+        Check if it's safe to start pump (INTERNAL - assumes caller holds state_lock)
+        
+        Safety requirements:
+        1. Pressure >= 40 bar (prevent pump cavitation)
+        2. Correct startup sequence: Tertiary → Secondary → Primary
+        
+        Args:
+            pump_name: Name of pump ("Tertiary", "Secondary", or "Primary")
+        
+        Returns:
+            True if safe to start, False otherwise (with buzzer warning)
+        """
+        # ============================================
+        # CHECK 1: Pressure must be >= 40 bar
+        # ============================================
+        if self.state.pressure < 40.0:
+            logger.warning(f"PUMP START BLOCKED: {pump_name} pump")
+            logger.warning(f"   Reason: Pressure too low!")
+            logger.warning(f"   Current: {self.state.pressure:.2f} bar, Required: >= 40 bar")
+            logger.warning(f"   Action: Raise pressure to 40 bar before starting pumps")
+            
+            # Trigger buzzer warning (procedure violation - 2 seconds)
+            if self.buzzer:
+                try:
+                    self.buzzer.sound_procedure_warning(duration=2.0)
+                except Exception:
+                    pass  # Silent fail
+            
+            return False
+        
+        # ============================================
+        # CHECK 2: Enforce correct pump sequence
+        # Sequence: Tertiary → Secondary → Primary
+        # ============================================
+        if pump_name == "Secondary":
+            # Secondary can only start if Tertiary is already ON
+            if self.state.pump_tertiary_status != 2:
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Secondary pump")
+                logger.warning(f"   Reason: Tertiary pump must be ON first!")
+                logger.warning(f"   Tertiary status: {self.state.pump_tertiary_status} (2=ON)")
+                logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
+                
+                # Trigger sequence violation buzzer (procedure warning)
+                if self.buzzer:
+                    try:
+                        self.buzzer.sound_procedure_warning(duration=1.5)
+                    except Exception:
+                        pass
+                
+                return False
+        
+        elif pump_name == "Primary":
+            # Primary can only start if BOTH Tertiary AND Secondary are ON
+            if self.state.pump_tertiary_status != 2:
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
+                logger.warning(f"   Reason: Tertiary pump must be ON first!")
+                logger.warning(f"   Tertiary status: {self.state.pump_tertiary_status} (2=ON)")
+                logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
+                
+                # Trigger buzzer
+                if self.buzzer:
+                    try:
+                        self.buzzer.sound_procedure_warning(duration=1.5)
+                    except Exception:
+                        pass
+                
+                return False
+            
+            if self.state.pump_secondary_status != 2:
+                logger.warning(f"PUMP SEQUENCE VIOLATION: Cannot start Primary pump")
+                logger.warning(f"   Reason: Secondary pump must be ON first!")
+                logger.warning(f"   Secondary status: {self.state.pump_secondary_status} (2=ON)")
+                logger.warning(f"   Correct sequence: Tertiary → Secondary → Primary")
+                
+                # Trigger buzzer
+                if self.buzzer:
+                    try:
+                        self.buzzer.sound_procedure_warning(duration=1.5)
+                    except Exception:
+                        pass
+                
+                return False
+        
+        # Tertiary pump has no prerequisites (can start anytime if P >= 40)
+        # All checks passed
+        logger.info(f"Pump start authorized: {pump_name}")
+        return True
+    
+    # ============================================
+    # Control Logic Thread
+    # ============================================
         
         # Initialize humidifier controller
         try:
@@ -409,6 +1121,83 @@ class PLTNPanelController:
         
         logger.info("ESP communication thread stopped")
     
+    # ============================================
+    # Button Polling Thread
+    # ============================================
+    
+    def button_polling_thread(self):
+        """Thread for button polling (10ms cycle)"""
+        logger.info("Button polling thread started")
+        
+        loop_count = 0
+        while self.state.running:
+            try:
+                self.button_manager.check_all_buttons()
+                time.sleep(0.005)  # 5ms polling - 2x faster for better responsiveness
+                
+                # Log heartbeat every 10 seconds (2000 loops x 5ms)
+                loop_count += 1
+                if loop_count >= 2000:
+                    logger.debug("Button polling thread: alive (2000 loops)")
+                    loop_count = 0
+                
+            except Exception as e:
+                logger.error(f"Error in button polling thread: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                time.sleep(0.05)
+        
+        logger.info("Button polling thread stopped")
+    
+    def button_hold_thread(self):
+        """Thread for detecting held buttons (rod and pressure control)"""
+        logger.info("Button hold detection thread started")
+        
+        # Define which buttons support hold
+        HOLD_BUTTONS = {
+            ButtonPin.SAFETY_ROD_UP,
+            ButtonPin.SAFETY_ROD_DOWN,
+            ButtonPin.SHIM_ROD_UP,
+            ButtonPin.SHIM_ROD_DOWN,
+            ButtonPin.REGULATING_ROD_UP,
+            ButtonPin.REGULATING_ROD_DOWN
+        }
+        
+        while self.state.running:
+            try:
+                # Check which buttons are held (50ms interval)
+                pressed = self.button_manager.check_hold_buttons(hold_interval=0.05)
+                
+                # Process only hold-supported buttons
+                for pin in pressed & HOLD_BUTTONS:
+                    # Queue event for held button
+                    if pin == ButtonPin.SAFETY_ROD_UP:
+                        self.button_event_queue.put(ButtonEvent.SAFETY_ROD_UP)
+                    elif pin == ButtonPin.SAFETY_ROD_DOWN:
+                        self.button_event_queue.put(ButtonEvent.SAFETY_ROD_DOWN)
+                    elif pin == ButtonPin.SHIM_ROD_UP:
+                        self.button_event_queue.put(ButtonEvent.SHIM_ROD_UP)
+                    elif pin == ButtonPin.SHIM_ROD_DOWN:
+                        self.button_event_queue.put(ButtonEvent.SHIM_ROD_DOWN)
+                    elif pin == ButtonPin.REGULATING_ROD_UP:
+                        self.button_event_queue.put(ButtonEvent.REGULATING_ROD_UP)
+                    elif pin == ButtonPin.REGULATING_ROD_DOWN:
+                        self.button_event_queue.put(ButtonEvent.REGULATING_ROD_DOWN)
+                    elif pin == ButtonPin.PRESSURE_UP:
+                        self.button_event_queue.put(ButtonEvent.PRESSURE_UP)
+                    elif pin == ButtonPin.PRESSURE_DOWN:
+                        self.button_event_queue.put(ButtonEvent.PRESSURE_DOWN)
+                
+                time.sleep(0.01)  # 10ms polling (same as button_polling)
+                
+            except Exception as e:
+                logger.error(f"Error in button hold thread: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                time.sleep(0.05)
+        
+        logger.info("Button hold detection thread stopped")
+    
     def oled_update_thread(self):
         """Thread for OLED display updates."""
         logger.info("OLED update thread started")
@@ -503,7 +1292,7 @@ class PLTNPanelController:
                 
                 # Print status
                 with self.state_manager as state:
-                    logger.info(f"Status: P={state.pressure:.1f}bar, "
+                    logger.info(f"Status: P={state.pressure:.2f}bar, "
                               f"Rods=[{state.safety_rod},{state.shim_rod},{state.regulating_rod}]%, "
                               f"Thermal={state.thermal_kw:.1f}kW")
                 

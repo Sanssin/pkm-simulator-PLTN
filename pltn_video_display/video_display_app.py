@@ -237,6 +237,8 @@ class VideoDisplayApp:
             # Keyboard state tracking (untuk level detection)
             self.last_key_trigger = {}  # Last trigger time for each button
             self.key_repeat_interval = 0.05  # 50ms repeat for held keys
+            self.key_press_times = {}  # key_code -> press_time
+            self.key_held_flags = {}   # key_code -> is_held
             
             # Track user interaction untuk mode transition
             self.user_has_interacted = False  # Start False, switch to True on first input
@@ -439,11 +441,16 @@ class VideoDisplayApp:
         if not self.test_mode:
             return
         
+        current_time = time.time()
+        
         if event.type == pygame.KEYDOWN:
             # Check if key is mapped to a button
             if event.key in KEYBOARD_MAPPING:
                 button_name = KEYBOARD_MAPPING[event.key]
-                if button_name in EDGE_BUTTONS:
+                if button_name in ["PRESSURE_UP", "PRESSURE_DOWN"]:
+                    self.key_press_times[event.key] = current_time
+                    self.key_held_flags[event.key] = False
+                elif button_name in EDGE_BUTTONS:
                     self.trigger_button_action(button_name)
             
             # Mode switching keys (Test mode only)
@@ -460,6 +467,18 @@ class VideoDisplayApp:
                 print(f"  → Mode: AUTO")
             elif event.key == pygame.K_ESCAPE:
                 return False  # Exit signal
+                
+        elif event.type == pygame.KEYUP:
+            if event.key in KEYBOARD_MAPPING:
+                button_name = KEYBOARD_MAPPING[event.key]
+                if button_name in ["PRESSURE_UP", "PRESSURE_DOWN"]:
+                    if event.key in self.key_press_times:
+                        is_held = self.key_held_flags.get(event.key, False)
+                        if not is_held:
+                            fast_action = "PRESSURE_UP_FAST" if button_name == "PRESSURE_UP" else "PRESSURE_DOWN_FAST"
+                            self.trigger_button_action(fast_action)
+                        self.key_press_times.pop(event.key, None)
+                        self.key_held_flags.pop(event.key, None)
     
     def check_held_keys(self):
         """Check for held keys (level detection) - called in update loop"""
@@ -472,11 +491,20 @@ class VideoDisplayApp:
         for key_code, button_name in KEYBOARD_MAPPING.items():
             if button_name in LEVEL_BUTTONS:
                 if keys[key_code]:
-                    # Check if enough time has passed for repeat trigger
-                    last_trigger = self.last_key_trigger.get(button_name, 0)
-                    if current_time - last_trigger >= self.key_repeat_interval:
-                        self.trigger_button_action(button_name)
-                        self.last_key_trigger[button_name] = current_time
+                    if button_name in ["PRESSURE_UP", "PRESSURE_DOWN"]:
+                        press_time = self.key_press_times.get(key_code)
+                        if press_time is not None and (current_time - press_time > 0.30):
+                            self.key_held_flags[key_code] = True
+                            last_trigger = self.last_key_trigger.get(button_name, 0)
+                            if current_time - last_trigger >= self.key_repeat_interval:
+                                self.trigger_button_action(button_name)
+                                self.last_key_trigger[button_name] = current_time
+                    else:
+                        # Check if enough time has passed for repeat trigger
+                        last_trigger = self.last_key_trigger.get(button_name, 0)
+                        if current_time - last_trigger >= self.key_repeat_interval:
+                            self.trigger_button_action(button_name)
+                            self.last_key_trigger[button_name] = current_time
     
     def trigger_button_action(self, button_name: str):
         """Execute action untuk button yang ditekan"""
@@ -520,11 +548,15 @@ class VideoDisplayApp:
         elif button_name == "REGULATING_ROD_DOWN":
             self.mock_state["regulating_rod"] = max(0, self.mock_state["regulating_rod"] - 2)
         
-        # Pressure (increment/decrement by 2 bar per trigger)
+        # Pressure (increment/decrement by 0.05 bar on hold/tap, 0.25 bar on fast)
         elif button_name == "PRESSURE_UP":
-            self.mock_state["pressure"] = min(200, self.mock_state["pressure"] + 2)
+            self.mock_state["pressure"] = min(200.0, self.mock_state["pressure"] + 0.05)
         elif button_name == "PRESSURE_DOWN":
-            self.mock_state["pressure"] = max(0, self.mock_state["pressure"] - 2)
+            self.mock_state["pressure"] = max(0.0, self.mock_state["pressure"] - 0.05)
+        elif button_name == "PRESSURE_UP_FAST":
+            self.mock_state["pressure"] = min(200.0, self.mock_state["pressure"] + 0.25)
+        elif button_name == "PRESSURE_DOWN_FAST":
+            self.mock_state["pressure"] = max(0.0, self.mock_state["pressure"] - 0.25)
         
         # System controls
         elif button_name == "START_AUTO_SIMULATION":
@@ -736,7 +768,6 @@ class VideoDisplayApp:
             "Pembangkit Listrik Tenaga Nuklir (PLTN)",
             "Dengan Teknologi Pressurized Water Reactor (PWR)"
         ]
-        
         for i, line in enumerate(desc_lines):
             # Menggunakan warna biru muda sesuai mockup
             desc_text = self.font_small.render(line, True, self.COLOR_PRIMARY)
@@ -745,6 +776,119 @@ class VideoDisplayApp:
         
         pygame.display.flip()
     
+    def draw_reactor_diagnostic_displays(self, state: Dict, start_x: int, start_y: int, width: int, height: int):
+        """Draw Reactor Diagnostic Displays in a hierarchical layout"""
+        
+        # 1. Thermal Power Output (Most Prominent - Top)
+        thermal_mw = state.get("thermal_kw", 0.0) / 1000.0
+        gauge_cx = start_x + width // 2
+        gauge_cy = start_y + int(120 * self.scale)
+        self.draw_gauge(gauge_cx, gauge_cy, thermal_mw, 300.0, "Listrik Dihasilkan", "{:.2f} MW")
+        
+        # 2. Pressurizer (Below Thermal Power)
+        press_val = state.get("pressure", 0)
+        press_y = start_y + int(245 * self.scale)
+        
+        # Label for Pressurizer
+        lbl_press = self.font_medium.render(f"Tekanan Pressurizer: {press_val:.2f} bar", True, self.COLOR_TEXT)
+        self.screen.blit(lbl_press, lbl_press.get_rect(center=(start_x + width // 2, press_y)))
+        
+        # Horizontal progress bar for Pressurizer
+        bar_w = width - int(80 * self.scale)
+        bar_x = start_x + (width - bar_w) // 2
+        bar_y = press_y + int(25 * self.scale)
+        bar_h = int(20 * self.scale)
+        
+        bar_rect = pygame.Rect(bar_x, bar_y, bar_w, bar_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(6 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(2 * self.scale), 1), border_radius=int(6 * self.scale))
+        
+        # Fill (max 200 bar)
+        fill_ratio = min(max(press_val / 200.0, 0.0), 1.0)
+        fill_w = int((bar_w - 4) * fill_ratio)
+        if fill_w > 0:
+            fill_rect = pygame.Rect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4)
+            pygame.draw.rect(self.screen, self.COLOR_PRIMARY, fill_rect, border_radius=int(4 * self.scale))
+            
+        # 3. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
+        bottom_y = start_y + int(310 * self.scale)
+        bottom_h = height - int(320 * self.scale)
+        box_w = (width - int(30 * self.scale)) // 2
+        
+        # Sub-panel 3.1: Pump Status (Left)
+        left_box_x = start_x + int(10 * self.scale)
+        left_rect = pygame.Rect(left_box_x, bottom_y, box_w, bottom_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, left_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, left_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
+        
+        # Title of Pump sub-panel
+        pump_title = self.font_medium.render("STATUS POMPA", True, self.COLOR_TEXT)
+        self.screen.blit(pump_title, pump_title.get_rect(center=(left_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
+        
+        # Draw 3 pumps stacked vertically
+        pumps = [
+            ("Primer", state.get("pump_primary", 0) > 0),
+            ("Sekunder", state.get("pump_secondary", 0) > 0),
+            ("Tersier", state.get("pump_tertiary", 0) > 0)
+        ]
+        
+        item_gap = int(22 * self.scale)
+        start_item_y = bottom_y + int(45 * self.scale)
+        
+        for idx, (name, is_on) in enumerate(pumps):
+            item_y = start_item_y + idx * item_gap
+            # Draw status circle indicator
+            circ_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
+            pygame.draw.circle(self.screen, circ_color, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale))
+            pygame.draw.circle(self.screen, self.COLOR_BORDER, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale), max(int(1 * self.scale), 1))
+            
+            # Draw label
+            status_str = "AKTIF" if is_on else "MATI"
+            lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, self.COLOR_TEXT)
+            self.screen.blit(lbl_pump, (left_box_x + int(50 * self.scale), item_y - int(10 * self.scale)))
+            
+        # Sub-panel 3.2: Active System Alarm (Right)
+        right_box_x = start_x + width - box_w - int(10 * self.scale)
+        right_rect = pygame.Rect(right_box_x, bottom_y, box_w, bottom_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, right_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, right_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
+        
+        # Title of Alarm sub-panel
+        alarm_title = self.font_medium.render("ALARM SISTEM AKTIF", True, self.COLOR_TEXT)
+        self.screen.blit(alarm_title, alarm_title.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
+        
+        # Determine Alarms
+        alarms = []
+        if state.get("emergency", False):
+            alarms.append("EMERGENCY SHUTDOWN")
+        elif state.get("pressure", 0) >= 180.0:
+            alarms.append("TEKANAN KRITIS")
+        elif state.get("pressure", 0) >= 160.0:
+            alarms.append("TEKANAN TINGGI")
+            
+        # Check interlock condition
+        pressure_ok = state.get("pressure", 0) >= 140.0
+        pumps_ok = (state.get("pump_primary", 0) > 0 and 
+                    state.get("pump_secondary", 0) > 0 and 
+                    state.get("pump_tertiary", 0) > 0)
+        rods_moved = (state.get("safety_rod", 0) > 0 or 
+                      state.get("shim_rod", 0) > 0 or 
+                      state.get("regulating_rod", 0) > 0)
+                      
+        if rods_moved and not (pressure_ok and pumps_ok):
+            alarms.append("MELANGGAR INTERLOCK")
+            
+        # Render alarms list
+        if not alarms:
+            # Show "SISTEM NORMAL" in Green
+            lbl_normal = self.font_body.render("SISTEM NORMAL", True, self.COLOR_SUCCESS)
+            self.screen.blit(lbl_normal, lbl_normal.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(60 * self.scale))))
+        else:
+            # Render each alarm in Red/Orange
+            for idx, alarm_msg in enumerate(alarms[:3]):  # Limit to 3 alarms to avoid overflow
+                lbl_alarm = self.font_body.render(alarm_msg, True, self.COLOR_ERROR)
+                self.screen.blit(lbl_alarm, lbl_alarm.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(50 * self.scale) + idx * int(22 * self.scale))))
+
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
         self.screen.fill(self.COLOR_BG)
@@ -776,59 +920,17 @@ class VideoDisplayApp:
         right_col_w = int((self.width - 2 * margin_x - col_gap) * 0.37)
         right_col_x = margin_x + left_col_w + col_gap
         
-        # === KIRI 1: PANEL PARAMETER SISTEM (Content centered) ===
-        param_h = int(480 * self.scale)
-        self.draw_boxed_panel(margin_x, content_y, left_col_w, param_h, "PARAMETER SISTEM")
+        # === KIRI: REACTOR DIAGNOSTIC DISPLAYS ===
+        diag_h = self.height - content_y - int(40 * self.scale)
+        self.draw_boxed_panel(margin_x, content_y, left_col_w, diag_h, "REACTOR DIAGNOSTIC DISPLAYS")
         
         # Content area setelah judul (80px reserved untuk judul + garis)
-        param_content_y = content_y + int(80 * self.scale)
-        param_content_h = param_h - int(100 * self.scale)
-        self.draw_segmented_bars(state, margin_x, param_content_y, left_col_w, param_content_h)
-        
-        # === KIRI 2: PANEL POMPA (3 KOTAK TERPISAH - Content centered) ===
-        pump_y = content_y + param_h + panel_gap
-        pump_h = self.height - pump_y - int(40 * self.scale)
-        pump_gap = int(25 * self.scale)
-        pump_w = (left_col_w - 2 * pump_gap) // 3
-        
-        pumps = [
-            ("POMPA PRIMER", state.get("pump_primary", 0) > 0),
-            ("POMPA SEKUNDER", state.get("pump_secondary", 0) > 0),
-            ("POMPA TERSIER", state.get("pump_tertiary", 0) > 0)
-        ]
-        
-        for i, (name, is_on) in enumerate(pumps):
-            px = margin_x + i * (pump_w + pump_gap)
-            self.draw_boxed_panel(px, pump_y, pump_w, pump_h, name)
-            
-            # Content area setelah judul
-            pump_content_y = pump_y + int(80 * self.scale)
-            pump_content_h = pump_h - int(160 * self.scale)
-            
-            # Gambar ikon sentrifugal di tengah content area
-            icon_y = pump_content_y + pump_content_h // 2
-            self.draw_centrifugal_pump(px + pump_w//2, icon_y, is_on)
-            
-            # Status text di bawah (centered)
-            status_y = pump_y + pump_h - int(55 *self.scale)
-            status_label = self.font_body.render("Status Pompa:", True, self.COLOR_TEXT)
-            self.screen.blit(status_label, status_label.get_rect(center=(px + pump_w//2, status_y)))
-            
-            status_text = "AKTIF" if is_on else "MATI"
-            status_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
-            lbl = self.font_large.render(status_text, True, status_color)
-            self.screen.blit(lbl, lbl.get_rect(center=(px + pump_w//2, status_y + int(35*self.scale))))
+        diag_content_y = content_y + int(80 * self.scale)
+        diag_content_h = diag_h - int(100 * self.scale)
+        self.draw_reactor_diagnostic_displays(state, margin_x, diag_content_y, left_col_w, diag_content_h)
 
-        # === KANAN 1: DAYA OUTPUT (Content centered) ===
-        daya_h = int(340 * self.scale)
-        self.draw_boxed_panel(right_col_x, content_y, right_col_w, daya_h, "DAYA OUTPUT")
-        thermal_mw = state.get("thermal_kw", 0.0) / 1000.0
-        
-        # Posisi gauge dengan spacing yang cukup dari judul
-        self.draw_gauge(right_col_x + right_col_w//2, content_y + int(210 * self.scale), thermal_mw, 300.0, "Listrik Dihasilkan", "{:.1f} MW")
-
-        # === KANAN 2: CORE TEMPERATURE (dengan thermometer) ===
-        temp_y = content_y + daya_h + panel_gap
+        # === KANAN 1: SUHU INTI (dengan thermometer) ===
+        temp_y = content_y
         temp_h = int(240 * self.scale)
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "SUHU INTI")
         
@@ -844,7 +946,7 @@ class VideoDisplayApp:
         temp_val = self.font_display.render(f"{core_temp:.0f}°C", True, self.COLOR_TEXT)
         self.screen.blit(temp_val, (temp_val_x, temp_val_y))
 
-        # === KANAN 3: INSTRUKSI (Lebih pendek/tipis ke bawah) ===
+        # === KANAN 2: PANDUAN OPERASI ===
         inst_y = temp_y + temp_h + panel_gap
         inst_h = self.height - inst_y - int(40 * self.scale)
         inst_rect = pygame.Rect(right_col_x, inst_y, right_col_w, inst_h)
@@ -963,7 +1065,7 @@ class VideoDisplayApp:
             
             # 7. Current pressure value
             value_y = box_y + int(390 * self.scale)
-            value_text = f"Tekanan saat ini: {current_pressure:.1f} bar"
+            value_text = f"Tekanan saat ini: {current_pressure:.2f} bar"
             value_surface = self.font_body.render(value_text, True, self.COLOR_TEXT)
             value_rect = value_surface.get_rect(center=(self.width // 2, value_y))
             self.screen.blit(value_surface, value_rect)

@@ -33,7 +33,7 @@ class DisplayValueInterpolator:
     - No impact on I2C timing or communication flow
     """
     
-    def __init__(self, speed=50.0, name="value"):
+    def __init__(self, speed=50.0, name="value", decimals=0):
         """
         Initialize interpolator
         
@@ -42,6 +42,7 @@ class DisplayValueInterpolator:
                    - For pressure: 50 bar/second
                    - For rods: 50%/second
             name: Name for debug logging
+            decimals: Number of decimal places to round display value to (default 0)
         """
         self.current_value = 0.0
         self.target_value = 0.0
@@ -49,6 +50,7 @@ class DisplayValueInterpolator:
         self.last_update_time = time.time()
         self.speed = speed
         self.name = name
+        self.decimals = decimals
         
     def set_target(self, new_target):
         """
@@ -65,13 +67,14 @@ class DisplayValueInterpolator:
         Get smoothly interpolated value for display
         
         Returns:
-            Integer value ready for display
+            Rounded value (int or float) ready for display
         """
         current_time = time.time()
         elapsed = current_time - self.last_update_time
         
         # Calculate smooth transition
-        if abs(self.current_value - self.target_value) > 0.5:
+        threshold = 0.5 if self.decimals == 0 else (10 ** -self.decimals) / 2.0
+        if abs(self.current_value - self.target_value) > threshold:
             # Calculate delta based on speed and elapsed time
             max_delta = self.speed * elapsed
             
@@ -84,7 +87,10 @@ class DisplayValueInterpolator:
             self.current_value = self.target_value
         
         self.last_update_time = current_time
-        return int(round(self.current_value))
+        if self.decimals == 0:
+            return int(round(self.current_value))
+        else:
+            return round(self.current_value, self.decimals)
     
     def needs_update(self):
         """
@@ -95,7 +101,10 @@ class DisplayValueInterpolator:
         Returns:
             True if value changed and display needs update, False otherwise
         """
-        current = int(round(self.current_value))
+        if self.decimals == 0:
+            current = int(round(self.current_value))
+        else:
+            current = round(self.current_value, self.decimals)
         if current != self.last_displayed:
             self.last_displayed = current
             return True
@@ -306,7 +315,7 @@ class OLEDManager:
         
         # Interpolators for smooth display transitions (NO impact on I2C timing)
         # Speed: 50 units/second for smooth UX
-        self.interp_pressure = DisplayValueInterpolator(speed=50.0, name="pressure")
+        self.interp_pressure = DisplayValueInterpolator(speed=50.0, name="pressure", decimals=2)
         self.interp_safety_rod = DisplayValueInterpolator(speed=50.0, name="safety_rod")
         self.interp_shim_rod = DisplayValueInterpolator(speed=50.0, name="shim_rod")
         self.interp_regulating_rod = DisplayValueInterpolator(speed=50.0, name="regulating_rod")
@@ -430,7 +439,7 @@ class OLEDManager:
         display.clear()
         
         # Show smoothly interpolated value with large font
-        pressure_text = f"{display_pressure:.1f} bar"
+        pressure_text = f"{display_pressure:.2f} bar"
         display.draw_text_centered(pressure_text, 8, display.font_xlarge)
         
         display.show()
@@ -554,7 +563,7 @@ class OLEDManager:
         
         # Show smoothly interpolated power value
         power_mwe = display_power_kw / 1000.0
-        power_text = f"{power_mwe:.1f} MWe"
+        power_text = f"{power_mwe:.2f} MWe"
         display.draw_text_centered(power_text, 8, display.font_xlarge)
         
         display.show()
@@ -989,7 +998,7 @@ class OLEDManager:
             'system_status': None
         }
         
-        logger.info(f"Interpolators synced to state: P={state.pressure:.1f}bar, "
+        logger.info(f"Interpolators synced to state: P={state.pressure:.2f}bar, "
                    f"Rods=[{state.safety_rod},{state.shim_rod},{state.regulating_rod}]%, "
                    f"Thermal={state.thermal_kw:.1f}kW")
         

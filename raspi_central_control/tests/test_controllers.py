@@ -341,13 +341,13 @@ class TestEventProcessor(unittest.TestCase):
             # Manually handle the events
             with self.state_manager as state:
                 if event.value == "PRESSURE_UP":
-                    state.pressure = min(state.pressure + 1.0, 200.0)
+                    state.pressure = min(state.pressure + 0.05, 200.0)
                 elif event.value == "PRESSURE_DOWN":
-                    state.pressure = max(state.pressure - 1.0, 0.0)
+                    state.pressure = max(state.pressure - 0.05, 0.0)
         
         # Test with mock events
         patched_process(MockButtonEvent.PRESSURE_UP)
-        self.assertEqual(self.state_manager.get('pressure'), 1.0)
+        self.assertEqual(self.state_manager.get('pressure'), 0.05)
         
         patched_process(MockButtonEvent.PRESSURE_DOWN)
         self.assertEqual(self.state_manager.get('pressure'), 0.0)

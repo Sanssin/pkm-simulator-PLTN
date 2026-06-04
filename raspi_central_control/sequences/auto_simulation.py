@@ -448,7 +448,7 @@ class AutoSimulator:
         
         with self._state_manager as state:
             logger.info("Current Status:")
-            logger.info(f"   • Pressure: {state.pressure:.1f} bar")
+            logger.info(f"   • Pressure: {state.pressure:.2f} bar")
             logger.info(f"   • Control Rods: Shim={state.shim_rod}%, Reg={state.regulating_rod}%")
             logger.info(f"   • Safety Rod: {state.safety_rod}% (for SCRAM)")
             logger.info(f"   • Pumps: Primary={state.pump_primary_status}, "

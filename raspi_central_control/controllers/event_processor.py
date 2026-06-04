@@ -15,6 +15,7 @@ from queue import Queue, Empty
 from typing import Callable, Optional, TYPE_CHECKING
 
 from .interlock_validator import InterlockValidator, PUMP_ON, PUMP_OFF, PUMP_STARTING, PUMP_SHUTTING_DOWN
+import raspi_config as config
 
 if TYPE_CHECKING:
     from .state_manager import StateManager
@@ -191,10 +192,16 @@ class EventProcessor:
         with self._state_manager as state:
             # Pressure events
             if event == ButtonEvent.PRESSURE_UP:
-                state.pressure = min(state.pressure + 1.0, 200.0)
+                state.pressure = min(state.pressure + config.PRESS_INCREMENT_SLOW, 200.0)
+            
+            elif event == ButtonEvent.PRESSURE_UP_FAST:
+                state.pressure = min(state.pressure + config.PRESS_INCREMENT_FAST, 200.0)
             
             elif event == ButtonEvent.PRESSURE_DOWN:
-                state.pressure = max(state.pressure - 1.0, 0.0)
+                state.pressure = max(state.pressure - config.PRESS_INCREMENT_SLOW, 0.0)
+            
+            elif event == ButtonEvent.PRESSURE_DOWN_FAST:
+                state.pressure = max(state.pressure - config.PRESS_INCREMENT_FAST, 0.0)
             
             # Pump events
             elif event == ButtonEvent.PUMP_PRIMARY_ON:
@@ -231,7 +238,7 @@ class EventProcessor:
             elif event == ButtonEvent.SAFETY_ROD_UP:
                 if not self._interlock_validator.check_rod_movement(state):
                     logger.warning("INTERLOCK VIOLATION: Cannot raise safety rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pressure: {state.pressure:.2f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
                                  f"Secondary={state.pump_secondary_status}, "
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
@@ -262,7 +269,7 @@ class EventProcessor:
                 
                 if not self._interlock_validator.check_rod_movement(state):
                     logger.warning("INTERLOCK VIOLATION: Cannot raise shim rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pressure: {state.pressure:.2f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
                                  f"Secondary={state.pump_secondary_status}, "
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
@@ -285,7 +292,7 @@ class EventProcessor:
                 
                 if not self._interlock_validator.check_rod_movement(state):
                     logger.warning("INTERLOCK VIOLATION: Cannot raise regulating rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
+                    logger.warning(f"   Pressure: {state.pressure:.2f} bar (need >= 140 bar)")
                     logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
                                  f"Secondary={state.pump_secondary_status}, "
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
