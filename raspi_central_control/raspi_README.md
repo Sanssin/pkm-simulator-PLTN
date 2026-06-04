@@ -5,7 +5,8 @@
 **PLTN Simulator v4.0** - Raspberry Pi 4 sebagai master controller dengan arsitektur **UART Binary Protocol**.
 
 **Raspberry Pi mengontrol:**
-- 17x Push buttons (GPIO input dengan edge + level detection)
+- Touchscreen HMI (via `/tmp/pltn_input.json`)
+- LOFA Thermodynamics Engine
 - 9x OLED Display SSD1306 128x32 (via I2C multiplexer TCA9548A)
 - 2x ESP32 via UART (ESP-BC dan ESP-E)
 - 1x Buzzer alarm (PWM)
@@ -47,8 +48,8 @@ raspi_central_control/
 - **I2C Bus 1** (GPIO 2/3) → TCA9548A → 9× OLED displays
 
 ### 3. Peripherals
+- **1x Touchscreen Display** 1024x600 (HMI Operator Input)
 - **9× OLED** 128×32 SSD1306 (I2C address 0x3C)
-- **17× Push buttons** (see GPIO_PIN_MAPPING.md for pin assignments)
 - **1× Passive buzzer** (GPIO 22)
 - **1× TCA9548A** I2C multiplexer (address 0x70, for OLEDs only)
 
