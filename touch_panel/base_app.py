@@ -72,8 +72,8 @@ except ImportError:  # pragma: no cover - fallback for direct execution
         TouchInputWriter = None  # type: ignore[assignment]
 
 
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 800
+WINDOW_WIDTH = 1024
+WINDOW_HEIGHT = 600
 
 
 @dataclass(frozen=True)
