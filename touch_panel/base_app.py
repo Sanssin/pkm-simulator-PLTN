@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Tuple, Callable, Dict
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
 try:  # pragma: no cover - optional dependency
     from PyQt5.QtCore import Qt, QTimer
