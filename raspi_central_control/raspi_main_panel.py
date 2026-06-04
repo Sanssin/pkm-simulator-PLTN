@@ -20,7 +20,6 @@ from queue import Queue
 import raspi_config as config
 from raspi_tca9548a import DualMultiplexerManager
 from raspi_uart_master import UARTMaster
-from raspi_gpio_buttons import ButtonHandler as ButtonManager, ButtonPin
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
@@ -92,9 +91,6 @@ class PLTNPanelController:
         # Initialize refactored modules
         self._init_modules()
         
-        # Setup button callbacks
-        self._setup_button_callbacks()
-        
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller initialized successfully")
         logger.info("=" * 60)
@@ -112,14 +108,6 @@ class PLTNPanelController:
             logger.warning(f"✗ UART master failed: {e}")
             self.uart_master = None
             self.uart_lock = threading.Lock()
-        
-        # Initialize button manager
-        try:
-            self.button_manager = ButtonManager()
-            logger.info("✓ Button manager initialized")
-        except Exception as e:
-            logger.warning(f"✗ Button manager failed: {e}")
-            self.button_manager = None
         
         # Initialize buzzer
         try:
@@ -212,89 +200,9 @@ class PLTNPanelController:
         # Note: Full ESPProtocol integration would replace esp_communication_thread
         logger.info("✓ ESP communication ready")
     
-    def _setup_button_callbacks(self):
-        """Setup button callbacks to queue events."""
-        if not self.button_manager:
-            return
-        
-        # Map buttons to event queue
-        button_event_map = {
-            ButtonPin.PUMP_PRIMARY_ON: ButtonEvent.PUMP_PRIMARY_ON,
-            ButtonPin.PUMP_PRIMARY_OFF: ButtonEvent.PUMP_PRIMARY_OFF,
-            ButtonPin.PUMP_SECONDARY_ON: ButtonEvent.PUMP_SECONDARY_ON,
-            ButtonPin.PUMP_SECONDARY_OFF: ButtonEvent.PUMP_SECONDARY_OFF,
-            ButtonPin.PUMP_TERTIARY_ON: ButtonEvent.PUMP_TERTIARY_ON,
-            ButtonPin.PUMP_TERTIARY_OFF: ButtonEvent.PUMP_TERTIARY_OFF,
-            ButtonPin.EMERGENCY: ButtonEvent.EMERGENCY,
-            ButtonPin.REACTOR_RESET: ButtonEvent.REACTOR_RESET,
-            ButtonPin.START_AUTO_SIMULATION: ButtonEvent.START_AUTO_SIMULATION,
-        }
-        
-        for pin, event in button_event_map.items():
-            def make_callback(evt):
-                return lambda: self.button_event_queue.put(evt)
-            self.button_manager.register_callback(pin, make_callback(event))
-        
-        logger.info("✓ Button callbacks registered")
-    
     # ============================================
     # Thread Functions
     # ============================================
-    
-    def button_polling_thread(self):
-        """Thread for button polling (5ms cycle)."""
-        logger.info("Button polling thread started")
-        
-        while self.state_manager.running:
-            try:
-                if self.button_manager:
-                    self.button_manager.check_all_buttons()
-                time.sleep(0.005)
-            except Exception as e:
-                logger.error(f"Button polling error: {e}")
-                time.sleep(0.05)
-        
-        logger.info("Button polling thread stopped")
-    
-    def button_hold_thread(self):
-        """Thread for detecting held buttons."""
-        logger.info("Button hold detection thread started")
-        
-        HOLD_BUTTONS = {
-            ButtonPin.SAFETY_ROD_UP,
-            ButtonPin.SAFETY_ROD_DOWN,
-            ButtonPin.SHIM_ROD_UP,
-            ButtonPin.SHIM_ROD_DOWN,
-            ButtonPin.REGULATING_ROD_UP,
-            ButtonPin.REGULATING_ROD_DOWN,
-            ButtonPin.PRESSURE_UP,
-            ButtonPin.PRESSURE_DOWN
-        }
-        
-        pin_to_event = {
-            ButtonPin.SAFETY_ROD_UP: ButtonEvent.SAFETY_ROD_UP,
-            ButtonPin.SAFETY_ROD_DOWN: ButtonEvent.SAFETY_ROD_DOWN,
-            ButtonPin.SHIM_ROD_UP: ButtonEvent.SHIM_ROD_UP,
-            ButtonPin.SHIM_ROD_DOWN: ButtonEvent.SHIM_ROD_DOWN,
-            ButtonPin.REGULATING_ROD_UP: ButtonEvent.REGULATING_ROD_UP,
-            ButtonPin.REGULATING_ROD_DOWN: ButtonEvent.REGULATING_ROD_DOWN,
-            ButtonPin.PRESSURE_UP: ButtonEvent.PRESSURE_UP,
-            ButtonPin.PRESSURE_DOWN: ButtonEvent.PRESSURE_DOWN
-        }
-        
-        while self.state_manager.running:
-            try:
-                if self.button_manager:
-                    pressed = self.button_manager.check_hold_buttons(hold_interval=0.05)
-                    for pin in pressed & HOLD_BUTTONS:
-                        if pin in pin_to_event:
-                            self.button_event_queue.put(pin_to_event[pin])
-                time.sleep(0.01)
-            except Exception as e:
-                logger.error(f"Button hold error: {e}")
-                time.sleep(0.05)
-        
-        logger.info("Button hold detection thread stopped")
     
     def touch_input_polling_thread(self):
         """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
@@ -559,8 +467,6 @@ class PLTNPanelController:
         
         # Start all threads
         threads = [
-            threading.Thread(target=self.button_polling_thread, daemon=True, name="ButtonThread"),
-            threading.Thread(target=self.button_hold_thread, daemon=True, name="ButtonHoldThread"),
             threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
             threading.Thread(target=self.esp_communication_thread, daemon=True, name="ESPCommThread"),
@@ -600,9 +506,6 @@ class PLTNPanelController:
         self.event_processor.stop()
         
         # Cleanup hardware
-        if self.button_manager:
-            self.button_manager.cleanup()
-        
         if self.buzzer:
             self.buzzer.cleanup()
         
