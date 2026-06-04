@@ -54,6 +54,9 @@ class InterlockValidator:
     MIN_PRESSURE_FOR_ROD_MOVEMENT = 140.0
     MIN_PRESSURE_FOR_PUMP_START = 40.0
     
+    # LOFA safety thresholds (in Celsius)
+    MAX_CORE_TEMPERATURE_LOFA = 300.0
+    
     def __init__(self, 
                  on_interlock_violation: Optional[Callable[[str], None]] = None,
                  on_procedure_violation: Optional[Callable[[str], None]] = None):

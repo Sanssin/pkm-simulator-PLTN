@@ -65,6 +65,10 @@ class PanelState:
     # Thermal power from ESP-BC (kW)
     thermal_kw: float = 0.0
     
+    # Temperatures
+    temperature_core: float = 25.0
+    temperature_coolant: float = 25.0
+    
     # Turbine speed from ESP-BC (%)
     turbine_speed: float = 0.0
     
@@ -104,6 +108,8 @@ class PanelState:
         self.shim_rod = 0
         self.regulating_rod = 0
         self.thermal_kw = 0.0
+        self.temperature_core = 25.0
+        self.temperature_coolant = 25.0
         self.turbine_speed = 0.0
         self.humid_ct1_cmd = 0
         self.humid_ct2_cmd = 0
