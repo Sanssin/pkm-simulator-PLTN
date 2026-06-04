@@ -176,6 +176,14 @@ class PLTNPanelController:
         )
         logger.info("✓ SCRAMSequence initialized")
         
+        # LOFA Simulator
+        from controllers.lofa_simulator import LOFASimulator
+        self.lofa_simulator = LOFASimulator(
+            max_core_temp=self.interlock_validator.MAX_CORE_TEMPERATURE_LOFA,
+            trigger_scram_callback=self.scram_sequence.trigger
+        )
+        logger.info("✓ LOFASimulator initialized")
+        
         # Auto simulator
         self.auto_simulator = AutoSimulator(
             state_manager=self.state_manager,
@@ -324,6 +332,10 @@ class PLTNPanelController:
                             elif current_time - transition_start >= pump_transition_time:
                                 setattr(state, status_attr, 0)  # OFF
                                 setattr(state, transition_attr, 0)
+                                
+                    # Update LOFA thermodynamics
+                    if hasattr(self, 'lofa_simulator'):
+                        self.lofa_simulator.update(state)
                 
                 time.sleep(0.05)
                 
@@ -438,6 +450,8 @@ class PLTNPanelController:
                         "pump_secondary": int(state.pump_secondary_status),
                         "pump_tertiary": int(state.pump_tertiary_status),
                         "thermal_kw": float(state.thermal_kw),
+                        "temperature_core": float(state.temperature_core),
+                        "temperature_coolant": float(state.temperature_coolant),
                         "turbine_speed": float(state.turbine_speed),
                         "emergency": bool(state.emergency_active)
                     }
