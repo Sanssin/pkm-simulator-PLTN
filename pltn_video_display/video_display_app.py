@@ -117,11 +117,38 @@ class VideoDisplayApp:
             
         pygame.init()
         
-        # Fullscreen window atau windowed (untuk testing)
-        if self.fullscreen:
-            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        # Cek apakah display yang diminta tersedia
+        num_displays = pygame.display.get_num_displays()
+        print(f"🔍 Found {num_displays} displays. Target: {display_idx}")
+        
+        # Jika display_idx tidak ditemukan, hapus environment variable dan coba atur posisi manual
+        if display_idx >= num_displays and num_displays > 0:
+            print(f"⚠️ Display {display_idx} tidak terdeteksi oleh SDL. Fallback ke windowed borderless offset.")
+            pygame.quit()
+            del os.environ['SDL_VIDEO_DISPLAY_INDEX']
+            
+            # Asumsi standar: offset 1920 untuk layar kedua (HDMI-A-2)
+            offset_x = 1920 if display_idx == 1 else 0
+            os.environ['SDL_VIDEO_WINDOW_POS'] = f"{offset_x},0"
+            pygame.init()
+            
+            if self.fullscreen:
+                print(f"🚀 Membuka fallback di koordinat {offset_x},0 dengan mode NOFRAME.")
+                # Gunakan NOFRAME karena FULLSCREEN sering error di xinerama/spanning
+                # Resolusi diatur ke 1920x1080 (standar) atau biarkan sistem menyesuaikan
+                self.screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
+            else:
+                self.screen = pygame.display.set_mode((1280, 720))
         else:
-            self.screen = pygame.display.set_mode((1280, 720))
+            # Fullscreen window atau windowed (untuk testing)
+            if self.fullscreen:
+                try:
+                    self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=display_idx)
+                except Exception as e:
+                    print(f"⚠️ Error FULLSCREEN Pygame: {e}. Fallback ke NOFRAME.")
+                    self.screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
+            else:
+                self.screen = pygame.display.set_mode((1280, 720))
         
         self.width, self.height = self.screen.get_size()
         pygame.display.set_caption("PLTN Simulator - Educational Display")
