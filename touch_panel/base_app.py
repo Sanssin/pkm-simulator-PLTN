@@ -194,10 +194,11 @@ else:
 class TouchPanelBaseWindow(QMainWindow):
     """Fullscreen base window for the touchscreen panel."""
 
-    def __init__(self, layout_spec: Optional[TouchPanelLayoutSpec] = None, windowed: bool = False) -> None:
+    def __init__(self, layout_spec: Optional[TouchPanelLayoutSpec] = None, windowed: bool = False, screen_idx: int = 0) -> None:
         super().__init__()
         self.layout_spec = layout_spec or get_layout_spec()
         self.windowed = windowed
+        self.screen_idx = screen_idx
         self._footer_label = None
         self._mode_label = None
         
@@ -284,6 +285,14 @@ class TouchPanelBaseWindow(QMainWindow):
             self.show()
             self._center_window()
         else:
+            if _PYQT_AVAILABLE:
+                screens = QApplication.screens()
+                if 0 <= self.screen_idx < len(screens):
+                    target_screen = screens[self.screen_idx]
+                    self.move(target_screen.geometry().topLeft())
+                    self.show()
+                    if self.windowHandle():
+                        self.windowHandle().setScreen(target_screen)
             self.showFullScreen()
 
     def _center_window(self) -> None:
@@ -1348,15 +1357,15 @@ class TouchPanelBaseWindow(QMainWindow):
         """
 
 
-def build_touch_panel_app(windowed: bool = False) -> Tuple[QApplication, TouchPanelBaseWindow]:
+def build_touch_panel_app(windowed: bool = False, screen_idx: int = 0) -> Tuple[QApplication, TouchPanelBaseWindow]:
     if not _PYQT_AVAILABLE:
         raise RuntimeError("PyQt5 is not installed; touchscreen base app cannot be launched")
 
     app = QApplication.instance() or QApplication(sys.argv)
-    window = TouchPanelBaseWindow(windowed=windowed)
+    window = TouchPanelBaseWindow(windowed=windowed, screen_idx=screen_idx)
     return app, window
 
 
-def launch_touch_panel(windowed: bool = False) -> int:
-    app, _window = build_touch_panel_app(windowed=windowed)
+def launch_touch_panel(windowed: bool = False, screen_idx: int = 0) -> int:
+    app, _window = build_touch_panel_app(windowed=windowed, screen_idx=screen_idx)
     return app.exec_()

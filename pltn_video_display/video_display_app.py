@@ -99,18 +99,25 @@ class VideoDisplayApp:
     2. PRODUCTION MODE: Read dari simulasi backend
     """
     
-    def __init__(self, test_mode: bool = False, fullscreen: bool = True):
+    def __init__(self, test_mode: bool = False, fullscreen: bool = True, display_idx: int = 0):
         """
         Initialize video display app
         
         Args:
-            test_mode: If True, gunakan mock data tanpa simulasi
-            fullscreen: If True, fullscreen window
+            test_mode: Jika True, masuk mode tes
+            fullscreen: Jika True, fullscreen
+            display_idx: Indeks monitor untuk fullscreen
         """
         self.test_mode = test_mode
+        self.fullscreen = fullscreen
+        
+        # Menentukan display yang akan digunakan
+        os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
+            
+        pygame.init()
         
         # Fullscreen window atau windowed (untuk testing)
-        if fullscreen:
+        if self.fullscreen:
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
             self.screen = pygame.display.set_mode((1280, 720))
@@ -249,7 +256,7 @@ class VideoDisplayApp:
         
         print(f"🎬 Video Display App initialized")
         print(f"   Screen: {self.width}x{self.height}")
-        print(f"   Fullscreen: {fullscreen}")
+        print(f"   Fullscreen: {self.fullscreen}")
         if self.logo_brin and self.logo_poltek:
             print(f"   ✅ Logos loaded successfully")
         else:
@@ -1716,7 +1723,9 @@ class VideoDisplayApp:
 
 def main():
     """Main entry point with argument parsing"""
-    parser = argparse.ArgumentParser(description='PLTN Video Display Application')
+    parser = argparse.ArgumentParser(description='Video Display App untuk Simulator PLTN')
+    parser.add_argument('--display', type=int, default=0,
+                       help='Indeks monitor display (0, 1, dst. default=0)')
     parser.add_argument('--test', action='store_true', 
                        help='Run in test mode (no simulation required)')
     parser.add_argument('--windowed', action='store_true',
@@ -1727,7 +1736,8 @@ def main():
     # Run application
     app = VideoDisplayApp(
         test_mode=args.test,
-        fullscreen=not args.windowed
+        fullscreen=not args.windowed,
+        display_idx=args.display
     )
     
     try:

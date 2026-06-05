@@ -130,6 +130,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PLTN touch panel setup checker")
     parser.add_argument("--test", action="store_true", help="Run setup evaluation checks")
     parser.add_argument("--check-hardware", action="store_true", help="Alias for --test")
+    parser.add_argument("--screen", type=int, default=0, help="Screen index to display the app on (0, 1, etc.)")
     parser.add_argument("--windowed", action="store_true", help="Accepted for future GUI compatibility")
     parser.add_argument("--demo-input", action="store_true", help="Run the TS-003 touch input prototype demo")
     parser.add_argument("--launch", action="store_true", help="Launch the TS-010 touchscreen base app")
@@ -151,7 +152,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.launch:
-        return launch_touch_panel(windowed=args.windowed)
+        return launch_touch_panel(windowed=args.windowed, screen_idx=args.screen)
 
     checker = TouchPanelSetupChecker()
     results = checker.run()
