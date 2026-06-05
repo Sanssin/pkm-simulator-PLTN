@@ -41,7 +41,7 @@ class CheckResult:
 class TouchPanelSetupChecker:
     """Run basic environment checks for the touchscreen setup."""
 
-    def __init__(self, expected_resolution: Tuple[int, int] = (1024, 600)) -> None:
+    def __init__(self, expected_resolution: Tuple[int, int] = (1280, 800)) -> None:
         self.expected_resolution = expected_resolution
         self.ipc_dir = Path(tempfile.gettempdir())
         self.input_path = self.ipc_dir / "pltn_input.json"

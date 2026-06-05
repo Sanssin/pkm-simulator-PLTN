@@ -18,10 +18,29 @@ import time
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Callable, Dict
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Callable, Dict
+
+if TYPE_CHECKING:  # pragma: no cover
+    from PyQt5.QtCore import Qt, QTimer
+    from PyQt5.QtWidgets import (
+        QApplication,
+        QFrame,
+        QGridLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QMainWindow,
+        QPushButton,
+        QSizePolicy,
+        QSpacerItem,
+        QVBoxLayout,
+        QWidget,
+        QProgressBar,
+        QGraphicsDropShadowEffect,
+    )
+    from PyQt5.QtGui import QColor, QPixmap
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
 try:  # pragma: no cover - optional dependency
     from PyQt5.QtCore import Qt, QTimer
@@ -41,26 +60,9 @@ try:  # pragma: no cover - optional dependency
         QProgressBar,
         QGraphicsDropShadowEffect,
     )
-    from PyQt5.QtGui import QColor
+    from PyQt5.QtGui import QColor, QPixmap
     _PYQT_AVAILABLE = True
 except Exception:  # pragma: no cover - import guard for environments without PyQt5
-    QApplication = None  # type: ignore[assignment]
-    QFrame = object  # type: ignore[assignment]
-    QGridLayout = object  # type: ignore[assignment]
-    QGroupBox = object  # type: ignore[assignment]
-    QHBoxLayout = object  # type: ignore[assignment]
-    QLabel = object  # type: ignore[assignment]
-    QMainWindow = object  # type: ignore[assignment]
-    QPushButton = object  # type: ignore[assignment]
-    QSizePolicy = object  # type: ignore[assignment]
-    QSpacerItem = object  # type: ignore[assignment]
-    QVBoxLayout = object  # type: ignore[assignment]
-    QWidget = object  # type: ignore[assignment]
-    QProgressBar = object  # type: ignore[assignment]
-    QGraphicsDropShadowEffect = object  # type: ignore[assignment]
-    Qt = None  # type: ignore[assignment]
-    QColor = None  # type: ignore[assignment]
-    QTimer = None  # type: ignore[assignment]
     _PYQT_AVAILABLE = False
 
 try:
@@ -73,8 +75,8 @@ except ImportError:  # pragma: no cover - fallback for direct execution
         TouchInputWriter = None  # type: ignore[assignment]
 
 
-WINDOW_WIDTH = 1024
-WINDOW_HEIGHT = 600
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 800
 
 
 @dataclass(frozen=True)
@@ -153,20 +155,37 @@ if _PYQT_AVAILABLE:
             self.hold_timer = QTimer(self)
             self.hold_timer.setInterval(50)  # 50ms = 20 Hz
             self.hold_timer.timeout.connect(self._on_timeout)
+            self.press_time = 0.0
+            self.is_held = False
             
             self.pressed.connect(self._on_pressed)
             self.released.connect(self._on_released)
 
         def _on_pressed(self) -> None:
-            self.window_ref._on_button_press(self.action)
+            self.press_time = time.time()
+            self.is_held = False
+            # Rod controls should begin touch immediately
+            if "ROD" in self.action:
+                self.window_ref._on_button_press(self.action)
             self.hold_timer.start()
 
         def _on_timeout(self) -> None:
-            self.window_ref._on_button_hold(self.action)
+            if time.time() - self.press_time > 0.30:
+                if not self.is_held:
+                    self.is_held = True
+                    # Pressure controls start their touch when hold is confirmed
+                    if "ROD" not in self.action:
+                        self.window_ref._on_button_press(self.action)
+                self.window_ref._on_button_hold(self.action)
 
         def _on_released(self) -> None:
             self.hold_timer.stop()
-            self.window_ref._on_button_release(self.action)
+            if self.is_held or "ROD" in self.action:
+                self.window_ref._on_button_release(self.action)
+            
+            # If not held, trigger a click action
+            if not self.is_held and (time.time() - self.press_time <= 0.30):
+                self.window_ref._on_button_click(self.action)
 else:
     class HoldButton:  # type: ignore[no-redef]
         pass
@@ -199,8 +218,10 @@ class TouchPanelBaseWindow(QMainWindow):
             self.update_timer.start()
 
     def _init_ipc(self) -> None:
+        self.input_writer = None
+        self.input_handler = None
+
         if TouchInputHandler is None or TouchInputWriter is None:
-            self.input_handler = None
             return
 
         # Setup platform paths
@@ -208,7 +229,7 @@ class TouchPanelBaseWindow(QMainWindow):
             self.input_writer = TouchInputWriter(Path("C:/temp/pltn_input.json"))
         else:
             self.input_writer = TouchInputWriter(Path("/tmp/pltn_input.json"))
-            
+
         self.input_handler = TouchInputHandler(writer=self.input_writer)
 
     def _init_simulation_state(self) -> None:
@@ -240,6 +261,8 @@ class TouchPanelBaseWindow(QMainWindow):
         self.local_mode = True
 
     def _build_window(self) -> None:
+        if not _PYQT_AVAILABLE:
+            return
         self.setWindowTitle(self.layout_spec.title)
         self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -281,14 +304,28 @@ class TouchPanelBaseWindow(QMainWindow):
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(12)
 
+        # Load BRIN logo in PyQt5
+        logo_label = QLabel()
+        logo_path = Path(__file__).resolve().parents[1] / "pltn_video_display" / "assets" / "logo-brin.png"
+        logo_exists = logo_path.exists() and _PYQT_AVAILABLE
+        if logo_exists:
+            pixmap = QPixmap(str(logo_path))
+            scaled_pixmap = pixmap.scaledToHeight(48, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+            
         title_block = QVBoxLayout()
         title_block.setSpacing(2)
-        title = QLabel("⚛️ " + self.layout_spec.title)
-        title.setObjectName("titleLabel")
+        
+        title_text = QLabel(self.layout_spec.title)
+        title_text.setObjectName("titleLabel")
+        title_block.addWidget(title_text)
+        
         subtitle = QLabel("REACTOR SIMULATION MANAGEMENT SYSTEM • TS-010")
         subtitle.setObjectName("subtitleLabel")
-        title_block.addWidget(title)
         title_block.addWidget(subtitle)
+
+        if logo_exists:
+            layout.addWidget(logo_label, 0, Qt.AlignBottom)
         layout.addLayout(title_block)
         layout.addItem(QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
@@ -309,81 +346,169 @@ class TouchPanelBaseWindow(QMainWindow):
     def _build_body(self) -> QHBoxLayout:
         body = QHBoxLayout()
         body.setSpacing(16)
-        body.addLayout(self._build_control_column(), 40)
-        body.addLayout(self._build_status_column(), 60)
+        body.addLayout(self._build_control_column(), 70)
+        body.addLayout(self._build_status_column(), 30)
         return body
 
     def _build_control_column(self) -> QVBoxLayout:
         column = QVBoxLayout()
         column.setSpacing(12)
 
-        # 1. Primary Pumps Control Group (Arranged in a grid)
+        # 1. Primary Pumps Control Group (Arranged vertically for each pump)
         pumps_group = QGroupBox("Primary Coolant Pumps")
-        pumps_layout = QGridLayout(pumps_group)
-        pumps_layout.setContentsMargins(12, 16, 12, 12)
-        pumps_layout.setSpacing(10)
+        pumps_layout = QHBoxLayout(pumps_group)
+        pumps_layout.setContentsMargins(12, 2, 12, 8)
+        pumps_layout.setSpacing(20)
         
         self.btn_pump_p1_on = QPushButton("P1 ON")
+        self.btn_pump_p1_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_on.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_ON"))
         self.btn_pump_p1_off = QPushButton("P1 OFF")
+        self.btn_pump_p1_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_off.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_OFF"))
         
         self.btn_pump_p2_on = QPushButton("P2 ON")
+        self.btn_pump_p2_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_on.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_ON"))
         self.btn_pump_p2_off = QPushButton("P2 OFF")
+        self.btn_pump_p2_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_off.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_OFF"))
         
         self.btn_pump_p3_on = QPushButton("P3 ON")
+        self.btn_pump_p3_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_on.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_ON"))
         self.btn_pump_p3_off = QPushButton("P3 OFF")
+        self.btn_pump_p3_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_off.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_OFF"))
 
-        pumps_layout.addWidget(QLabel("Primary Loop (P1):"), 0, 0)
-        pumps_layout.addWidget(self.btn_pump_p1_on, 0, 1)
-        pumps_layout.addWidget(self.btn_pump_p1_off, 0, 2)
+        # P1 layout (Vertical)
+        p1_layout = QVBoxLayout()
+        p1_layout.setSpacing(12)
+        lbl_p1 = QLabel("Primary Loop (P1):")
+        lbl_p1.setWordWrap(True)
+        lbl_p1.setFixedHeight(36)
+        p1_layout.addWidget(lbl_p1)
+        p1_buttons_layout = QVBoxLayout()
+        p1_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        p1_buttons_layout.setSpacing(8)
+        p1_buttons_layout.addWidget(self.btn_pump_p1_on)
+        p1_buttons_layout.addWidget(self.btn_pump_p1_off)
+        p1_layout.addLayout(p1_buttons_layout)
         
-        pumps_layout.addWidget(QLabel("Secondary Loop (P2):"), 1, 0)
-        pumps_layout.addWidget(self.btn_pump_p2_on, 1, 1)
-        pumps_layout.addWidget(self.btn_pump_p2_off, 1, 2)
+        # P2 layout (Vertical)
+        p2_layout = QVBoxLayout()
+        p2_layout.setSpacing(12)
+        lbl_p2 = QLabel("Secondary Loop (P2):")
+        lbl_p2.setWordWrap(True)
+        lbl_p2.setFixedHeight(36)
+        p2_layout.addWidget(lbl_p2)
+        p2_buttons_layout = QVBoxLayout()
+        p2_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        p2_buttons_layout.setSpacing(8)
+        p2_buttons_layout.addWidget(self.btn_pump_p2_on)
+        p2_buttons_layout.addWidget(self.btn_pump_p2_off)
+        p2_layout.addLayout(p2_buttons_layout)
         
-        pumps_layout.addWidget(QLabel("Tertiary Loop (P3):"), 2, 0)
-        pumps_layout.addWidget(self.btn_pump_p3_on, 2, 1)
-        pumps_layout.addWidget(self.btn_pump_p3_off, 2, 2)
+        # P3 layout (Vertical)
+        p3_layout = QVBoxLayout()
+        p3_layout.setSpacing(12)
+        lbl_p3 = QLabel("Tertiary Loop (P3):")
+        lbl_p3.setWordWrap(True)
+        lbl_p3.setFixedHeight(36)
+        p3_layout.addWidget(lbl_p3)
+        p3_buttons_layout = QVBoxLayout()
+        p3_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        p3_buttons_layout.setSpacing(8)
+        p3_buttons_layout.addWidget(self.btn_pump_p3_on)
+        p3_buttons_layout.addWidget(self.btn_pump_p3_off)
+        p3_layout.addLayout(p3_buttons_layout)
+        
+        pumps_layout.addLayout(p1_layout, 1)
+        pumps_layout.addLayout(p2_layout, 1)
+        pumps_layout.addLayout(p3_layout, 1)
         column.addWidget(pumps_group)
 
-        # 2. Control Rods & Pressure Group (Holdable buttons)
+        # 2. Control Rods & Pressure Group (Holdable buttons in stacked layout)
         rods_group = QGroupBox("Reactor Adjustments (Press and Hold)")
-        rods_layout = QGridLayout(rods_group)
-        rods_layout.setContentsMargins(12, 16, 12, 12)
-        rods_layout.setSpacing(8)
+        rods_layout = QHBoxLayout(rods_group)
+        rods_layout.setContentsMargins(12, 2, 12, 8)
+        rods_layout.setSpacing(15)
 
         # Safety Rod
-        rods_layout.addWidget(QLabel("Safety Rod:"), 0, 0)
+        saf_layout = QVBoxLayout()
+        saf_layout.setSpacing(12)
+        lbl_saf = QLabel("Safety Rod:")
+        lbl_saf.setWordWrap(True)
+        lbl_saf.setFixedHeight(36)
+        saf_layout.addWidget(lbl_saf)
+        saf_buttons_layout = QVBoxLayout()
+        saf_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        saf_buttons_layout.setSpacing(8)
         btn_saf_up = HoldButton("▲ UP", "SAFETY_ROD_UP", self)
+        btn_saf_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_saf_down = HoldButton("▼ DOWN", "SAFETY_ROD_DOWN", self)
-        rods_layout.addWidget(btn_saf_up, 0, 1)
-        rods_layout.addWidget(btn_saf_down, 0, 2)
+        btn_saf_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        saf_buttons_layout.addWidget(btn_saf_up)
+        saf_buttons_layout.addWidget(btn_saf_down)
+        saf_layout.addLayout(saf_buttons_layout)
+        rods_layout.addLayout(saf_layout, 1)
 
         # Shim Rod
-        rods_layout.addWidget(QLabel("Shim Rod:"), 1, 0)
+        shim_layout = QVBoxLayout()
+        shim_layout.setSpacing(12)
+        lbl_shim = QLabel("Shim Rod:")
+        lbl_shim.setWordWrap(True)
+        lbl_shim.setFixedHeight(36)
+        shim_layout.addWidget(lbl_shim)
+        shim_buttons_layout = QVBoxLayout()
+        shim_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        shim_buttons_layout.setSpacing(8)
         btn_shim_up = HoldButton("▲ UP", "SHIM_ROD_UP", self)
+        btn_shim_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_shim_down = HoldButton("▼ DOWN", "SHIM_ROD_DOWN", self)
-        rods_layout.addWidget(btn_shim_up, 1, 1)
-        rods_layout.addWidget(btn_shim_down, 1, 2)
+        btn_shim_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        shim_buttons_layout.addWidget(btn_shim_up)
+        shim_buttons_layout.addWidget(btn_shim_down)
+        shim_layout.addLayout(shim_buttons_layout)
+        rods_layout.addLayout(shim_layout, 1)
 
         # Regulating Rod
-        rods_layout.addWidget(QLabel("Regulating Rod:"), 2, 0)
+        reg_layout = QVBoxLayout()
+        reg_layout.setSpacing(12)
+        lbl_reg = QLabel("Regulating Rod:")
+        lbl_reg.setWordWrap(True)
+        lbl_reg.setFixedHeight(36)
+        reg_layout.addWidget(lbl_reg)
+        reg_buttons_layout = QVBoxLayout()
+        reg_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        reg_buttons_layout.setSpacing(8)
         btn_reg_up = HoldButton("▲ UP", "REGULATING_ROD_UP", self)
+        btn_reg_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_reg_down = HoldButton("▼ DOWN", "REGULATING_ROD_DOWN", self)
-        rods_layout.addWidget(btn_reg_up, 2, 1)
-        rods_layout.addWidget(btn_reg_down, 2, 2)
+        btn_reg_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        reg_buttons_layout.addWidget(btn_reg_up)
+        reg_buttons_layout.addWidget(btn_reg_down)
+        reg_layout.addLayout(reg_buttons_layout)
+        rods_layout.addLayout(reg_layout, 1)
 
         # Pressurizer
-        rods_layout.addWidget(QLabel("Pressurizer Pressure:"), 3, 0)
+        press_layout = QVBoxLayout()
+        press_layout.setSpacing(12)
+        lbl_press = QLabel("Pressurizer Pressure:")
+        lbl_press.setWordWrap(True)
+        lbl_press.setFixedHeight(36)
+        press_layout.addWidget(lbl_press)
+        press_buttons_layout = QVBoxLayout()
+        press_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        press_buttons_layout.setSpacing(8)
         btn_press_up = HoldButton("▲ INC", "PRESSURE_UP", self)
+        btn_press_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_press_down = HoldButton("▼ DEC", "PRESSURE_DOWN", self)
-        rods_layout.addWidget(btn_press_up, 3, 1)
-        rods_layout.addWidget(btn_press_down, 3, 2)
+        btn_press_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        press_buttons_layout.addWidget(btn_press_up)
+        press_buttons_layout.addWidget(btn_press_down)
+        press_layout.addLayout(press_buttons_layout)
+        rods_layout.addLayout(press_layout, 1)
         column.addWidget(rods_group)
 
         # 3. System Operations Group
@@ -426,7 +551,7 @@ class TouchPanelBaseWindow(QMainWindow):
         column = QVBoxLayout()
         column.setSpacing(12)
 
-        # 1. Main Telemetry Cards (3x2 Grid Layout)
+        # 1. Main Telemetry Cards (Hierarchical Grid Layout)
         grid_group = QGroupBox("Reactor Diagnostic Displays")
         grid = QGridLayout(grid_group)
         grid.setContentsMargins(12, 16, 12, 12)
@@ -440,13 +565,20 @@ class TouchPanelBaseWindow(QMainWindow):
         self.card_val_status = QLabel("Ready")
         self.card_val_alarm = QLabel("None")
 
-        grid.addWidget(self._make_card("🌡️ Pressurizer", self.card_val_pressurizer, "cyan"), 0, 0)
-        grid.addWidget(self._make_card("⚙️ Pump Status", self.card_val_pumps, "blue"), 0, 1)
-        grid.addWidget(self._make_card("🍢 Rod Position (S/S/R)", self.card_val_rods, "purple"), 1, 0)
-        grid.addWidget(self._make_card("⚡ Thermal Power Output", self.card_val_power, "amber"), 1, 1)
-        grid.addWidget(self._make_card("📡 Operational Mode", self.card_val_status, "green"), 2, 0)
+        # Row 0: Thermal Power Output (Most Prominent - Spanned over 2 columns)
+        grid.addWidget(self._make_card("⚡ Thermal Power Output", self.card_val_power, "amber"), 0, 0, 1, 2)
+
+        # Row 1: Pressurizer (Next Prominent - Spanned over 2 columns)
+        grid.addWidget(self._make_card("🌡️ Pressurizer", self.card_val_pressurizer, "cyan"), 1, 0, 1, 2)
+
+        # Row 2: Pump Status and Active System Alarm (Side-by-side)
+        grid.addWidget(self._make_card("⚙️ Pump Status", self.card_val_pumps, "blue"), 2, 0)
         grid.addWidget(self._make_card("🚨 Active System Alarms", self.card_val_alarm, "danger"), 2, 1)
-        
+
+        # Row 3: Control Rod Positions and System Status (Side-by-side)
+        grid.addWidget(self._make_card("🎛️ Rod Positions (S/Sh/R)", self.card_val_rods, "purple"), 3, 0)
+        grid.addWidget(self._make_card("📊 System Status", self.card_val_status, "green"), 3, 1)
+
         column.addWidget(grid_group, 3)
 
         # 2. Control Rod Positions progress bars (Visual indicators)
@@ -493,7 +625,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # 3. Active LOFA Monitoring workspace (Temperatures grid & alarms)
         lofa_group = QGroupBox("Coolant Temperature & LOFA Safety Monitors")
         lofa_layout = QGridLayout(lofa_group)
-        lofa_layout.setContentsMargins(12, 16, 12, 12)
+        lofa_layout.setContentsMargins(12, 10, 12, 10)
         lofa_layout.setHorizontalSpacing(16)
         lofa_layout.setVerticalSpacing(8)
 
@@ -507,26 +639,55 @@ class TouchPanelBaseWindow(QMainWindow):
         self.temp_val_fuel.setObjectName("diagValue")
         self.temp_val_condenser.setObjectName("diagValue")
 
-        # Layout temperature sensors
-        lofa_layout.addWidget(QLabel("Primary Coolant Temp:"), 0, 0)
-        lofa_layout.addWidget(self.temp_val_primary, 0, 1)
-        lofa_layout.addWidget(QLabel("Secondary Coolant Temp:"), 0, 2)
-        lofa_layout.addWidget(self.temp_val_secondary, 0, 3)
+        # Layout temperature sensors with styled labels & stretches
+        lbl_p_temp = QLabel("Primary Coolant Temp:")
+        lbl_p_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
+        lbl_s_temp = QLabel("Secondary Coolant Temp:")
+        lbl_s_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
+        lbl_f_temp = QLabel("Fuel Cladding Temp:")
+        lbl_f_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
+        lbl_c_vac = QLabel("Condenser Vacuum Pressure:")
+        lbl_c_vac.setStyleSheet("color: #94a3b8; font-weight: 500;")
 
-        lofa_layout.addWidget(QLabel("Fuel Cladding Temp:"), 1, 0)
-        lofa_layout.addWidget(self.temp_val_fuel, 1, 1)
-        lofa_layout.addWidget(QLabel("Condenser Vacuum Pressure:"), 1, 2)
-        lofa_layout.addWidget(self.temp_val_condenser, 1, 3)
+        lofa_layout.addWidget(lbl_p_temp, 0, 0, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(self.temp_val_primary, 0, 1, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(lbl_s_temp, 0, 2, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(self.temp_val_secondary, 0, 3, Qt.AlignLeft | Qt.AlignVCenter)
+
+        lofa_layout.addWidget(lbl_f_temp, 1, 0, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(self.temp_val_fuel, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(lbl_c_vac, 1, 2, Qt.AlignLeft | Qt.AlignVCenter)
+        lofa_layout.addWidget(self.temp_val_condenser, 1, 3, Qt.AlignLeft | Qt.AlignVCenter)
+
+        lofa_layout.setColumnStretch(0, 3)
+        lofa_layout.setColumnStretch(1, 2)
+        lofa_layout.setColumnStretch(2, 3)
+        lofa_layout.setColumnStretch(3, 2)
 
         # Status lights indicators
         self.indicator_relief = QLabel("RELIEF VALVE: CLOSED")
         self.indicator_relief.setObjectName("statusIndicatorLabel")
+        self.indicator_relief.setAlignment(Qt.AlignCenter)
+        self.indicator_relief.setStyleSheet(
+            "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
+        )
+        
         self.indicator_spray = QLabel("SPRAY VALVE: INACTIVE")
         self.indicator_spray.setObjectName("statusIndicatorLabel")
+        self.indicator_spray.setAlignment(Qt.AlignCenter)
+        self.indicator_spray.setStyleSheet(
+            "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
+        )
+        
         self.indicator_lofa = QLabel("SAFE OPERATIONAL ZONE")
         self.indicator_lofa.setObjectName("statusIndicatorLabel")
+        self.indicator_lofa.setAlignment(Qt.AlignCenter)
+        self.indicator_lofa.setStyleSheet(
+            "color: #34d399; background-color: #064e3b; border: 1px solid #059669; border-radius: 6px; padding: 6px 8px;"
+        )
         
         indicator_layout = QHBoxLayout()
+        indicator_layout.setSpacing(10)
         indicator_layout.addWidget(self.indicator_relief)
         indicator_layout.addWidget(self.indicator_spray)
         indicator_layout.addWidget(self.indicator_lofa)
@@ -548,6 +709,14 @@ class TouchPanelBaseWindow(QMainWindow):
         title = QLabel(title_text)
         title.setObjectName("cardTitle")
         value_widget.setObjectName("cardValue")
+        
+        # Apply larger font size to more prominent elements
+        if "Thermal Power" in title_text:
+            value_widget.setStyleSheet("font-size: 28px; font-weight: bold; color: #fbbf24;")
+            title.setStyleSheet("font-size: 13px; font-weight: bold; color: #ffffff;")
+        elif "Pressurizer" in title_text:
+            value_widget.setStyleSheet("font-size: 22px; font-weight: bold; color: #22d3ee;")
+            title.setStyleSheet("font-size: 12px; font-weight: bold; color: #ffffff;")
         
         layout.addWidget(title)
         layout.addWidget(value_widget)
@@ -671,6 +840,11 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_pump_primary = 0
             self.sim_pump_secondary = 0
             self.sim_pump_tertiary = 0
+            
+        elif action == "PRESSURE_UP":
+            self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
+        elif action == "PRESSURE_DOWN":
+            self.sim_pressure = max(0.0, self.sim_pressure - 0.05)
 
     def _update_local_simulation_hold(self, action: str) -> None:
         if self.sim_emergency:
@@ -690,9 +864,9 @@ class TouchPanelBaseWindow(QMainWindow):
         elif action == "REGULATING_ROD_DOWN":
             self.sim_regulating_rod = max(0, self.sim_regulating_rod - 2)
         elif action == "PRESSURE_UP":
-            self.sim_pressure = min(200.0, self.sim_pressure + 0.8)
+            self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
         elif action == "PRESSURE_DOWN":
-            self.sim_pressure = max(0.0, self.sim_pressure - 0.8)
+            self.sim_pressure = max(0.0, self.sim_pressure - 0.05)
 
     def _run_local_simulation_step(self) -> None:
         self.tick_counter += 1
@@ -850,7 +1024,7 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _update_ui_displays(self) -> None:
         # 1. Update Diagnostics Cards values
-        self.card_val_pressurizer.setText(f"{self.sim_pressure:.1f} bar")
+        self.card_val_pressurizer.setText(f"{self.sim_pressure:.2f} bar")
         
         self.card_val_pumps.setText(
             f"P1: {'ON' if self.sim_pump_primary else 'OFF'} | "
@@ -902,39 +1076,49 @@ class TouchPanelBaseWindow(QMainWindow):
         self.temp_val_fuel.setText(f"{self.sim_fuel_cladding_temp:.1f} °C")
         self.temp_val_condenser.setText(f"{self.sim_condenser_pressure:.3f} bar")
 
-        # Set Valve labels
-        self.indicator_relief.setText(
-            f"RELIEF VALVE: {'OPEN' if self.sim_pressure > 175 else 'CLOSED'}"
-        )
-        self.indicator_relief.setStyleSheet(
-            "color: #fb923c;" if self.sim_pressure > 175 else "color: #94a3b8;"
-        )
+        # Set Valve labels with badge styling
+        if self.sim_pressure > 175:
+            self.indicator_relief.setText("RELIEF VALVE: OPEN")
+            self.indicator_relief.setStyleSheet(
+                "color: #ffffff; background-color: #7c2d12; border: 1px solid #fb923c; border-radius: 6px; padding: 6px 8px;"
+            )
+        else:
+            self.indicator_relief.setText("RELIEF VALVE: CLOSED")
+            self.indicator_relief.setStyleSheet(
+                "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
+            )
 
-        self.indicator_spray.setText(
-            f"SPRAY VALVE: {'ACTIVE' if self.sim_pressure > 162 else 'INACTIVE'}"
-        )
-        self.indicator_spray.setStyleSheet(
-            "color: #38bdf8;" if self.sim_pressure > 162 else "color: #94a3b8;"
-        )
+        if self.sim_pressure > 162:
+            self.indicator_spray.setText("SPRAY VALVE: ACTIVE")
+            self.indicator_spray.setStyleSheet(
+                "color: #ffffff; background-color: #0c4a6e; border: 1px solid #38bdf8; border-radius: 6px; padding: 6px 8px;"
+            )
+        else:
+            self.indicator_spray.setText("SPRAY VALVE: INACTIVE")
+            self.indicator_spray.setStyleSheet(
+                "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
+            )
 
         # Alarm indicator styling
         if self.sim_emergency:
-            self.indicator_lofa.setText("⚠️ REACTOR EMERGENCY SCRAM ACTIVE ⚠️")
+            self.indicator_lofa.setText("⚠️ EMERGENCY SCRAM ACTIVE")
             self.indicator_lofa.setStyleSheet(
-                "color: #ffffff; background-color: #991b1b; border: 1px solid #ef4444; border-radius: 4px; padding: 2px;"
+                "color: #ffffff; background-color: #991b1b; border: 1px solid #ef4444; border-radius: 6px; padding: 6px 8px;"
                 if self.flash_toggle else
-                "color: #ef4444; background-color: #450a0a; border: 1px solid #991b1b; border-radius: 4px; padding: 2px;"
+                "color: #ef4444; background-color: #450a0a; border: 1px solid #991b1b; border-radius: 6px; padding: 6px 8px;"
             )
         elif self.sim_alarm != "None":
-            self.indicator_lofa.setText(f"🚨 {self.sim_alarm.upper()} 🚨")
+            self.indicator_lofa.setText(f"🚨 {self.sim_alarm.upper()}")
             self.indicator_lofa.setStyleSheet(
-                "color: #ffffff; background-color: #9a3412; border: 1px solid #f97316; border-radius: 4px; padding: 2px;"
+                "color: #ffffff; background-color: #9a3412; border: 1px solid #f97316; border-radius: 6px; padding: 6px 8px;"
                 if self.flash_toggle else
-                "color: #f97316; background-color: #431407; border: 1px solid #9a3412; border-radius: 4px; padding: 2px;"
+                "color: #f97316; background-color: #431407; border: 1px solid #9a3412; border-radius: 6px; padding: 6px 8px;"
             )
         else:
-            self.indicator_lofa.setText("✅ ALL MONITORING LOOPS SECURE")
-            self.indicator_lofa.setStyleSheet("color: #34d399; background: transparent; border: none;")
+            self.indicator_lofa.setText("✅ MONITORING LOOPS SECURE")
+            self.indicator_lofa.setStyleSheet(
+                "color: #34d399; background-color: #064e3b; border: 1px solid #059669; border-radius: 6px; padding: 6px 8px;"
+            )
 
         # Active alarm display card flashing style
         if self.sim_alarm != "None" or self.sim_emergency:
@@ -996,7 +1180,7 @@ class TouchPanelBaseWindow(QMainWindow):
             border-radius: 12px;
             margin-top: 14px;
             background-color: #0b0f19;
-            padding: 10px;
+            padding: 6px 10px 10px 10px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -1008,7 +1192,7 @@ class TouchPanelBaseWindow(QMainWindow):
 
         QLabel {
             font-size: 13px;
-            color: #94a3b8;
+            color: #ffffff;
         }
         QLabel#diagValue {
             font-size: 14px;
@@ -1094,7 +1278,7 @@ class TouchPanelBaseWindow(QMainWindow):
         }
         
         QLabel#cardTitle {
-            color: #94a3b8;
+            color: #ffffff;
             font-size: 11px;
             font-weight: bold;
             text-transform: uppercase;
@@ -1126,7 +1310,7 @@ class TouchPanelBaseWindow(QMainWindow):
             letter-spacing: 0.5px;
         }
         QLabel#subtitleLabel {
-            color: #475569;
+            color: #ffffff;
             font-size: 10px;
             font-weight: bold;
         }
@@ -1153,7 +1337,7 @@ class TouchPanelBaseWindow(QMainWindow):
             border-radius: 8px;
         }
         QLabel#footerLabel {
-            color: #64748b;
+            color: #ffffff;
             font-size: 11px;
         }
         QLabel#statusIndicatorLabel {
@@ -1164,7 +1348,7 @@ class TouchPanelBaseWindow(QMainWindow):
         """
 
 
-def build_touch_panel_app(windowed: bool = False) -> tuple[QApplication, TouchPanelBaseWindow]:
+def build_touch_panel_app(windowed: bool = False) -> Tuple[QApplication, TouchPanelBaseWindow]:
     if not _PYQT_AVAILABLE:
         raise RuntimeError("PyQt5 is not installed; touchscreen base app cannot be launched")
 
