@@ -40,7 +40,7 @@ CMD_PING = 0x50  # 'P'
 CMD_UPDATE = 0x55  # 'U'
 
 # Protocol configuration
-USE_BINARY_PROTOCOL = True  # Set to False to use legacy JSON protocol
+USE_BINARY_PROTOCOL = False  # Set to False to use legacy JSON protocol
 MAX_RETRIES = 3
 RETRY_DELAYS = [0.03, 0.05, 0.1]  # Optimized: 30ms, 50ms, 100ms (was 50ms, 100ms, 200ms)
 

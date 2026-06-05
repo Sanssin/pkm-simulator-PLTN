@@ -377,7 +377,7 @@ class SystemHealthMonitor:
         """Check GPIO button initialization"""
         logger.info("\n[6/8] Checking GPIO Buttons...")
         
-        if not panel.button_manager:
+        if not hasattr(panel, 'button_manager') or not panel.button_manager:
             self.components["buttons"] = ComponentHealth(
                 name="GPIO Buttons",
                 status=HealthStatus.WARNING,
