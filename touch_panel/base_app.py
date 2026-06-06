@@ -287,12 +287,29 @@ class TouchPanelBaseWindow(QMainWindow):
         else:
             if _PYQT_AVAILABLE:
                 screens = QApplication.screens()
-                if 0 <= self.screen_idx < len(screens):
+                target_screen = None
+                
+                # Deterministically detect HDMI-A-2 for touchscreen panel
+                for screen in screens:
+                    if "HDMI-A-2" in screen.name():
+                        target_screen = screen
+                        logger.info(f"Detected target touchscreen: {screen.name()}")
+                        break
+                
+                if not target_screen and 0 <= self.screen_idx < len(screens):
                     target_screen = screens[self.screen_idx]
+                    logger.info(f"Fallback to screen index {self.screen_idx}: {target_screen.name()}")
+                
+                if target_screen:
+                    # For Wayland deterministic output assignment, we must create native window handle
+                    self.setAttribute(Qt.WA_NativeWindow, True)
+                    self.winId()  # Force creation of the platform window handle
+                    window_handle = self.windowHandle()
+                    if window_handle:
+                        window_handle.setScreen(target_screen)
+                    # For XWayland/X11 compatibility
                     self.move(target_screen.geometry().topLeft())
-                    self.show()
-                    if self.windowHandle():
-                        self.windowHandle().setScreen(target_screen)
+                    
             self.showFullScreen()
 
     def _center_window(self) -> None:
