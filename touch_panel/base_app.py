@@ -290,11 +290,11 @@ class TouchPanelBaseWindow(QMainWindow):
                 screens = QApplication.screens()
                 target_screen = None
                 
-                # Deterministically detect HDMI-A-2 for touchscreen panel
+                # Deterministically detect HDMI-A-2 for touchscreen panel (Wayland name or XWayland resolution)
                 for screen in screens:
-                    if "HDMI-A-2" in screen.name():
+                    if "HDMI-A-2" in screen.name() or (screen.size().width() == 1024 and screen.size().height() == 600):
                         target_screen = screen
-                        logger.info(f"Detected target touchscreen: {screen.name()}")
+                        logger.info(f"Detected target touchscreen: {screen.name()} with size {screen.size().width()}x{screen.size().height()}")
                         break
                 
                 if not target_screen and 0 <= self.screen_idx < len(screens):
