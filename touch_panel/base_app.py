@@ -265,8 +265,9 @@ class TouchPanelBaseWindow(QMainWindow):
         if not _PYQT_AVAILABLE:
             return
         self.setWindowTitle(self.layout_spec.title)
-        self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)
-        self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        if self.windowed:
+            self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+            self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
         root = QWidget()
         root.setObjectName("centralWidget")
