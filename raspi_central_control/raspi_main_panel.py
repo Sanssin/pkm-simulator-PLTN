@@ -23,6 +23,7 @@ from raspi_uart_master import UARTMaster
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
+import cpu_manager
 
 # Import refactored modules
 from controllers import StateManager, PanelState, InterlockValidator, EventProcessor
@@ -216,6 +217,10 @@ class PLTNPanelController:
         """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
         logger.info("Touch input polling thread started")
         
+        # CPU-012: Configure Touch affinity (Core 1)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        
         touch_input_file = Path("/tmp/pltn_input.json")
         last_processed_timestamp = time.time()  # Ignore old events on startup
         
@@ -290,6 +295,10 @@ class PLTNPanelController:
         """Thread for control logic (50ms cycle)."""
         logger.info("Control logic thread started")
         
+        # Configure Controller affinity (Core 1)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        
         while self.state_manager.running:
             try:
                 with self.state_manager as state:
@@ -349,6 +358,12 @@ class PLTNPanelController:
         """Thread for ESP communication (50ms cycle)."""
         logger.info("ESP communication thread started")
         
+        # CPU-010: Configure Controller/ESP affinity (Core 3 - Highest Priority)
+        if hasattr(os, 'gettid'):
+            tid = os.gettid()
+            cpu_manager.set_cpu_affinity(tid, [3])
+            cpu_manager.set_realtime_priority(tid)
+        
         if not self.uart_master:
             logger.warning("UART master not available, exiting ESP thread")
             return
@@ -407,6 +422,10 @@ class PLTNPanelController:
         """Thread for OLED display updates."""
         logger.info("OLED update thread started")
         
+        # CPU-011: Configure Video/OLED affinity (Core 2)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [2])
+        
         if not self.oled_manager:
             logger.warning("OLED manager not available")
             return
@@ -433,6 +452,10 @@ class PLTNPanelController:
     def state_export_thread(self):
         """Export state to JSON for video display."""
         logger.info("State export thread started")
+        
+        # CPU-013: Configure System IO affinity (Core 0)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [0])
         
         while self.state_manager.running:
             try:
