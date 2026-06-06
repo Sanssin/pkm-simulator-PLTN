@@ -19,7 +19,6 @@ from queue import Queue
 
 # Import our modules
 import raspi_config as config
-from raspi_tca9548a import DualMultiplexerManager
 from raspi_uart_master import UARTMaster
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
@@ -127,17 +126,6 @@ class PLTNPanelController:
             logger.warning(f"✗ Humidifier failed: {e}")
             self.humidifier = None
         
-        # Initialize OLED manager
-        try:
-            self.mux_manager = DualMultiplexerManager()
-            from raspi_oled_manager import OLEDManager
-            self.oled_manager = OLEDManager(self.mux_manager)
-            logger.info("✓ OLED manager initialized")
-        except Exception as e:
-            logger.warning(f"✗ OLED manager failed: {e}")
-            self.mux_manager = None
-            self.oled_manager = None
-        
         # Initialize health monitor
         try:
             self.health_monitor = SystemHealthMonitor()
@@ -202,7 +190,7 @@ class PLTNPanelController:
             auto_simulator=self.auto_simulator,
             buzzer=self.buzzer,
             esp_trigger=self.esp_send_immediate.set,
-            oled_reset=self.oled_manager.reset_all_interpolators if self.oled_manager else None
+            oled_reset=None
         )
         logger.info("✓ EventProcessor initialized")
         
@@ -419,37 +407,6 @@ class PLTNPanelController:
         
         logger.info("ESP communication thread stopped")
     
-    def oled_update_thread(self):
-        """Thread for OLED display updates."""
-        logger.info("OLED update thread started")
-        
-        # CPU-011: Configure Video/OLED affinity (Core 2)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [2])
-        
-        if not self.oled_manager:
-            logger.warning("OLED manager not available")
-            return
-        
-        first_update = True
-        
-        while self.state_manager.running:
-            try:
-                with self.state_manager as state:
-                    if first_update:
-                        self.oled_manager.sync_interpolators_to_state(state)
-                        first_update = False
-                    else:
-                        self.oled_manager.update_all(state)
-                
-                time.sleep(0.1)
-                
-            except Exception as e:
-                logger.debug(f"OLED update error: {e}")
-                time.sleep(0.5)
-        
-        logger.info("OLED update thread stopped")
-    
     def state_export_thread(self):
         """Export state to JSON for video display."""
         logger.info("State export thread started")
@@ -508,7 +465,6 @@ class PLTNPanelController:
             threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
             threading.Thread(target=self.esp_communication_thread, daemon=True, name="ESPCommThread"),
-            threading.Thread(target=self.oled_update_thread, daemon=True, name="OLEDThread"),
             threading.Thread(target=self.state_export_thread, daemon=True, name="StateExportThread"),
         ]
         
@@ -551,9 +507,6 @@ class PLTNPanelController:
             self.uart_master.update_esp_bc(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             self.uart_master.update_esp_e(0.0)
             self.uart_master.close()
-        
-        if self.mux_manager:
-            self.mux_manager.close()
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller shutdown complete")

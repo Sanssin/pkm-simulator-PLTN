@@ -12,30 +12,6 @@ UART_ESP_E_PORT = '/dev/ttyAMA1'     # GPIO 4/5 (UART3) - Fixed: was ttyAMA3
 UART_BAUDRATE = 115200               # Standard baudrate
 UART_TIMEOUT = 0.5                   # Read timeout in seconds
 UART_UPDATE_INTERVAL = 0.1           # Update interval (100ms)
-
-# ============================================
-# I2C Configuration (OLEDs ONLY now)
-# ============================================
-# TCA9548A Multiplexer Addresses (OLEDs ONLY)
-TCA9548A_DISPLAY_ADDRESS = 0x70  # For OLED displays only
-TCA9548A_ESP_ADDRESS = 0x71      # For OLED displays only (ESP now on UART)
-
-# I2C Bus Configuration
-# NOTE: Raspberry Pi typically only has I2C bus 1 available
-# Both multiplexers will share the same I2C bus
-# ESPs are now on UART, not I2C!
-I2C_BUS = 1          # I2C Bus 1 (GPIO 2=SDA, GPIO 3=SCL)
-I2C_BUS_DISPLAY = 1  # Same bus for displays
-
-# OLED Configuration
-OLED_ADDRESS = 0x3C
-OLED_CHANNEL_PRESSURIZER = 0
-OLED_CHANNEL_PUMP_PRIMARY = 1
-OLED_CHANNEL_PUMP_SECONDARY = 2
-OLED_CHANNEL_PUMP_TERTIARY = 3
-SCREEN_WIDTH = 128
-SCREEN_HEIGHT = 32
-
 # ESP32 Slave Addresses (2-ESP Architecture MERGED)
 ESP_BC_ADDRESS = 0x08  # ESP-BC: Control Rods + Turbine + Humidifier + Pumps (MERGED B+C)
 ESP_E_ADDRESS = 0x0A   # ESP-E: 3-Flow Visualizer (Primer, Sekunder, Tersier)
@@ -94,7 +70,6 @@ DEBOUNCE_DELAY = 0.1
 PWM_UPDATE_INTERVAL = 0.1
 I2C_UPDATE_INTERVAL_FAST = 0.05    # ESP-B (critical)
 I2C_UPDATE_INTERVAL_NORMAL = 0.1   # ESP-C, ESP-E
-OLED_UPDATE_INTERVAL = 0.2
 BLINK_INTERVAL = 0.25
 
 # I2C Timeout

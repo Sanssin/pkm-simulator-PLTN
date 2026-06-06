@@ -39,8 +39,6 @@ class EventProcessor:
             scram_sequence=scram_sequence,
             auto_simulator=auto_simulator,
             buzzer=buzzer,
-            esp_trigger=esp_send_immediate.set,
-            oled_reset=oled_manager.reset_all_interpolators
         )
         
         # Start processing thread
@@ -59,8 +57,7 @@ class EventProcessor:
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
                  buzzer = None,
-                 esp_trigger: Optional[Callable[[], None]] = None,
-                 oled_reset: Optional[Callable[[], None]] = None):
+                 esp_trigger: Optional[Callable[[], None]] = None):
         """
         Initialize EventProcessor.
         
@@ -72,7 +69,6 @@ class EventProcessor:
             auto_simulator: AutoSimulator for auto startup
             buzzer: BuzzerAlarm instance for audio feedback
             esp_trigger: Callback to trigger immediate ESP update
-            oled_reset: Callback to reset OLED interpolators
         """
         self._state_manager = state_manager
         self._event_queue = event_queue
@@ -81,7 +77,6 @@ class EventProcessor:
         self._auto_simulator = auto_simulator
         self._buzzer = buzzer
         self._esp_trigger = esp_trigger
-        self._oled_reset = oled_reset
         
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -323,10 +318,6 @@ class EventProcessor:
                 
                 # Reset state
                 state.reset()
-                
-                # Reset OLED interpolators
-                if self._oled_reset:
-                    self._oled_reset()
                 
                 logger.info("=" * 60)
                 logger.info("SIMULATION RESET")
