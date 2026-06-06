@@ -180,7 +180,7 @@ class PLTNPanelController:
         from controllers.lofa_simulator import LOFASimulator
         self.lofa_simulator = LOFASimulator(
             max_core_temp=self.interlock_validator.MAX_CORE_TEMPERATURE_LOFA,
-            trigger_scram_callback=self.scram_sequence.trigger
+            trigger_scram_callback=self.scram_sequence.execute
         )
         logger.info("✓ LOFASimulator initialized")
         
