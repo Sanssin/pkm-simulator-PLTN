@@ -126,7 +126,7 @@ def format_results(results: Sequence[CheckResult]) -> str:
     return "\n".join(lines)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] = None) -> int:
     parser = argparse.ArgumentParser(description="PLTN touch panel setup checker")
     parser.add_argument("--test", action="store_true", help="Run setup evaluation checks")
     parser.add_argument("--check-hardware", action="store_true", help="Alias for --test")
