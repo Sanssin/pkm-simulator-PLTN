@@ -88,7 +88,7 @@ Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 se
 | ESP32 (ESP-E) | 1 | LED visualization + power indicator (UART) | ✅ |
 | Touchscreen HMI | 1 | Operator input (1024x600 Display) | ✅ NEW |
 | Push Button | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
-| OLED Display | 9 | Real-time monitoring (128x64 I2C) | ✅ |
+| OLED Display | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
 | Servo Motor | 3 | Control rod simulation (safety, shim, regulating) | ✅ |
 | LED Flow | 24 | Flow visualization (8 LEDs × 3 flows via 74HC595) | ✅ |
 | **LED Power** | **4** | **Power output visualization (0-300 MWe)** | ✅ |
@@ -193,10 +193,7 @@ pkm-simulator-PLTN/
 │   ├── raspi_gpio_buttons.py           # ✅ Button handler (event queue)
 │   ├── raspi_humidifier_control.py     # ✅ Humidifier logic
 │   ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
-│   ├── raspi_oled_manager.py           # ✅ OLED display manager
-│   ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
-│   ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs only)
-│   ├── raspi_system_health.py          # ✅ Health monitoring
+│   │   │   │   ├── raspi_system_health.py          # ✅ Health monitoring
 │   ├── raspi_config.py                 # ✅ Configuration
 │   ├── raspi_README.md                 # ✅ Installation guide
 │   └── raspi_requirements.txt          # ✅ Python dependencies
@@ -249,12 +246,7 @@ python3 video_display_app.py --test --windowed
 │                 PANEL KONTROL OPERATOR                        │
 │  ┌──────────────────────┐  ┌───────────────────────────────┐ │
 │  │  17 Push Buttons     │  │  9 OLED Displays (128x64)     │ │
-│  │  ├─ 6 Pump (ON/OFF)  │  │  ├─ 1: Presurizer (I2C 0x70)  │ │
-│  │  ├─ 6 Rod (UP/DOWN)  │  │  ├─ 2-4: Pumps (Ch1-3)       │ │
-│  │  ├─ 2 Pressure       │  │  ├─ 5-7: Rods (Ch4-6)        │ │
-│  │  ├─ 2 Mode/Control   │  │  ├─ 8: Thermal kW (Ch7)      │ │
-│  │  └─ 1 Emergency      │  │  └─ 9: Status (0x70 Ch7)     │ │
-│  └──────────────────────┘  └───────────────────────────────┘ │
+│  │  ├─ 6 Pump (ON/OFF)  │  │  ├─ 6 Rod (UP/DOWN)  │  │  ├─ 2 Pressure       │  │  ├─ 2 Mode/Control   │  │  └─ 1 Emergency      │  └──────────────────────┘  └───────────────────────────────┘ │
 │         ↓ GPIO 6-27            ↓ I2C Bus (TCA9548A 0x70)     │
 └───────────────────────────────────────────────────────────────┘
                              ↓
@@ -267,8 +259,7 @@ python3 video_display_app.py --test --windowed
 │  │  ├─ Thread 3: Control logic (50ms)                   │  │
 │  │  ├─ Thread 4: UART ESP-BC comm (100ms)              │  │
 │  │  ├─ Thread 5: UART ESP-E comm (100ms)               │  │
-│  │  ├─ Thread 6: OLED display update (200ms)           │  │
-│  │  └─ Thread 7: System health monitor (1000ms)        │  │
+│  │  │  └─ Thread 7: System health monitor (1000ms)        │  │
 │  │                                                          │  │
 │  │  Program: raspi_main_panel.py ✅                       │  │
 │  │  Protocol: Touch JSON IPC + Binary UART + LOFA Sim ✅  │  │
@@ -651,10 +642,7 @@ pkm-simulator-PLTN/
     ├── raspi_gpio_buttons.py           # ✅ Button handler (event queue)
     ├── raspi_humidifier_control.py     # ✅ Humidifier logic
     ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
-    ├── raspi_oled_manager.py           # ✅ OLED display manager
-    ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
-    ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs)
-    ├── raspi_system_health.py          # ✅ System health monitor
+                ├── raspi_system_health.py          # ✅ System health monitor
     ├── raspi_config.py                 # ✅ Configuration
     ├── raspi_README.md                 # ✅ Installation guide
     └── raspi_requirements.txt          # ✅ Python dependencies

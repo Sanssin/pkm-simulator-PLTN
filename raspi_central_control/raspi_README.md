@@ -7,7 +7,6 @@
 **Raspberry Pi mengontrol:**
 - Touchscreen HMI (via `/tmp/pltn_input.json`)
 - LOFA Thermodynamics Engine
-- 9x OLED Display SSD1306 128x32 (via I2C multiplexer TCA9548A)
 - 2x ESP32 via UART (ESP-BC dan ESP-E)
 - 1x Buzzer alarm (PWM)
 - 4x Cooling Tower humidifiers (staged control via ESP-BC)
@@ -25,12 +24,9 @@ raspi_central_control/
 ├── raspi_config.py              # Configuration & constants
 ├── raspi_gpio_buttons.py        # Button input handler (hybrid edge+level)
 ├── raspi_uart_master.py         # UART binary protocol (ESP-BC & ESP-E)
-├── raspi_oled_manager.py        # 9× OLED display manager
-├── raspi_tca9548a.py            # I2C multiplexer driver (OLEDs only)
 ├── raspi_buzzer_alarm.py        # PWM alarm tones (5 alarm types)
 ├── raspi_humidifier_control.py  # Staged CT1-4 activation logic
 ├── raspi_system_health.py       # 8-point health check at startup
-├── raspi_i2c_master.py          # ⚠️ DEPRECATED (legacy, safe to delete)
 └── raspi_README.md              # This file
 ```
 

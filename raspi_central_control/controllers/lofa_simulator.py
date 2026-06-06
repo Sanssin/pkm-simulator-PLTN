@@ -27,6 +27,7 @@ class LOFASimulator:
         self.max_core_temp = max_core_temp
         self.ambient_temp = ambient_temp
         self.trigger_scram = trigger_scram_callback
+        self.lofa_power_threshold = 50.0  # kW threshold to trigger LOFA if pump fails
         
         self.last_update_time = time.time()
         
@@ -42,6 +43,39 @@ class LOFASimulator:
         if dt <= 0:
             return
             
+        # 0. Check LOFA Conditions per pump
+        lofa_detected_now = False
+        
+        if state.pump_primary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
+            if not state.lofa_primary:
+                state.lofa_primary = True
+                logger.critical("⚠️ LOFA PRIMARY DETECTED! Primary pump failed while reactor is active!")
+                lofa_detected_now = True
+        else:
+            state.lofa_primary = False
+            
+        if state.pump_secondary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
+            if not state.lofa_secondary:
+                state.lofa_secondary = True
+                logger.critical("⚠️ LOFA SECONDARY DETECTED! Secondary pump failed while reactor is active!")
+                lofa_detected_now = True
+        else:
+            state.lofa_secondary = False
+            
+        if state.pump_tertiary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
+            if not state.lofa_tertiary:
+                state.lofa_tertiary = True
+                logger.critical("⚠️ LOFA TERTIARY DETECTED! Tertiary pump failed while reactor is active!")
+                lofa_detected_now = True
+        else:
+            state.lofa_tertiary = False
+            
+        # If any new LOFA is detected, trigger SCRAM immediately
+        if lofa_detected_now and not state.emergency_active:
+            logger.critical("Initiating EMERGENCY SCRAM due to immediate LOFA condition!")
+            if self.trigger_scram:
+                self.trigger_scram()
+                
         # 1. Heat Generation from Core
         # thermal_kw typically reaches up to ~3000 kW in full power simulation.
         # We use a scaling factor to make the temperature rise visible but not instant.

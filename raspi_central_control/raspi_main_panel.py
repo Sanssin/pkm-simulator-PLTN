@@ -434,7 +434,10 @@ class PLTNPanelController:
                         "temperature_core": float(state.temperature_core),
                         "temperature_coolant": float(state.temperature_coolant),
                         "turbine_speed": float(state.turbine_speed),
-                        "emergency": bool(state.emergency_active)
+                        "emergency": bool(state.emergency_active),
+                        "lofa_primary": bool(state.lofa_primary),
+                        "lofa_secondary": bool(state.lofa_secondary),
+                        "lofa_tertiary": bool(state.lofa_tertiary)
                     }
                 
                 temp_file = self.state_export_file.with_suffix('.tmp')

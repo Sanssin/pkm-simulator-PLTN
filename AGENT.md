@@ -126,9 +126,7 @@ pkm-simulator-PLTN/
 │   ├── raspi_gpio_buttons.py       ← Handler 17 tombol (273 baris)
 │   ├── raspi_humidifier_control.py ← Logika humidifier bertahap (389 baris)
 │   ├── raspi_buzzer_alarm.py       ← Sistem alarm PWM (337 baris)
-│   ├── raspi_oled_manager.py       ← Manager 9 OLED display
-│   ├── raspi_tca9548a.py           ← I2C multiplexer (masih dipakai untuk OLED)
-│   ├── raspi_system_health.py      ← Health check startup
+│   │   │   ├── raspi_system_health.py      ← Health check startup
 │   ├── raspi_README.md             ← ⚠️ Outdated (masih deskripsi I2C 5-ESP)
 │   ├── requirements.txt            ← (tidak ada — dependensi di README utama)
 │   ├── PYGAME_ANIMATION_GUIDE.md   ← Panduan animasi pygame

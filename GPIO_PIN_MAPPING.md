@@ -9,7 +9,7 @@
 ### Reserved Pins (DO NOT USE)
 ```
 GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - I2C Bus 1 (SDA, SCL) - OLED Displays
+GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
 ```
 
@@ -55,7 +55,7 @@ GPIO 4, 5   - UART3 → ESP-E (Visualizer)     [NEED TO FREE GPIO 5]
 ### Reserved Pins (DO NOT USE)
 ```
 GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - I2C Bus 1 (SDA, SCL) - OLED Displays
+GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
 GPIO 4, 5    - UART3 (TXD, RXD) - ESP-E Communication  ✅ NEW
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
 ```
@@ -87,8 +87,8 @@ GPIO 9, 10, 11 - SPI0 (if SPI not needed, can use as GPIO)
 |------|-------------------|------------------|-------|
 | 0 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
 | 1 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
-| 2 | I2C SDA (OLEDs) | I2C SDA (OLEDs) | Don't use |
-| 3 | I2C SCL (OLEDs) | I2C SCL (OLEDs) | Don't use |
+| 2 | Available | Available | Don't use |
+| 3 | Available | Available | Don't use |
 | **4** | **Available** | **UART3 TXD (ESP-E)** | ✅ NEW |
 | **5** | **PUMP_PRIMARY_ON** | **UART3 RXD (ESP-E)** | ✅ MOVED |
 | 6 | PUMP_PRIMARY_OFF | PUMP_PRIMARY_OFF | Same |

@@ -78,6 +78,11 @@ class PanelState:
     humid_ct3_cmd: int = 0
     humid_ct4_cmd: int = 0
     
+    # LOFA (Loss of Flow Accident) flags
+    lofa_primary: bool = False
+    lofa_secondary: bool = False
+    lofa_tertiary: bool = False
+    
     # Emergency state
     emergency_active: bool = False
     
@@ -115,6 +120,9 @@ class PanelState:
         self.humid_ct2_cmd = 0
         self.humid_ct3_cmd = 0
         self.humid_ct4_cmd = 0
+        self.lofa_primary = False
+        self.lofa_secondary = False
+        self.lofa_tertiary = False
         self.emergency_active = False
         self.interlock_satisfied = False
 
