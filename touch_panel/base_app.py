@@ -1379,6 +1379,10 @@ def build_touch_panel_app(windowed: bool = False, screen_idx: int = 0) -> Tuple[
     if not _PYQT_AVAILABLE:
         raise RuntimeError("PyQt5 is not installed; touchscreen base app cannot be launched")
 
+    # Pastikan aplikasi PyQt5 mensintesis event klik mouse dari event sentuhan (Penting untuk Wayland)
+    QApplication.setAttribute(Qt.AA_SynthesizeMouseForUnhandledTouchEvents, True)
+    QApplication.setAttribute(Qt.AA_SynthesizeTouchForUnhandledMouseEvents, True)
+
     app = QApplication.instance() or QApplication(sys.argv)
     window = TouchPanelBaseWindow(windowed=windowed, screen_idx=screen_idx)
     return app, window
