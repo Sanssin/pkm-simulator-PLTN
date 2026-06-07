@@ -111,6 +111,7 @@ class VideoDisplayApp:
         """
         self.test_mode = test_mode
         self.fullscreen = fullscreen
+        self.display_idx = display_idx
         
         # Menentukan display yang akan digunakan
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
@@ -661,6 +662,8 @@ class VideoDisplayApp:
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
             '--gpu-context=wayland',    # Use Wayland context
+            f'--fs-screen={self.display_idx}', # Ensure it opens on correct monitor
+            f'--screen={self.display_idx}',    # Redundancy for different mpv versions
             
             # === AUDIO OUTPUT (HDMI) ===
             '--ao=pipewire',            # Use PipeWire audio server (modern)
