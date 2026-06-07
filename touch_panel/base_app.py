@@ -183,9 +183,10 @@ if _PYQT_AVAILABLE:
             if self.is_held or "ROD" in self.action:
                 self.window_ref._on_button_release(self.action)
             
-            # If not held, trigger a click action
+            # If not held, trigger a click action (Rods already triggered on press)
             if not self.is_held and (time.time() - self.press_time <= 0.30):
-                self.window_ref._on_button_click(self.action)
+                if "ROD" not in self.action:
+                    self.window_ref._on_button_click(self.action)
 else:
     class HoldButton:  # type: ignore[no-redef]
         pass
@@ -790,12 +791,14 @@ class TouchPanelBaseWindow(QMainWindow):
         self._update_ui_displays()
 
     def _on_button_press(self, action: str) -> None:
-        if self.input_handler is not None:
+        self._active_holds[action] = time.time()
+        
+        # Emit one event immediately for rods, so they feel responsive instantly
+        if "ROD" in action and self.input_handler is not None:
             try:
-                self.input_handler.begin_touch(action)
+                self.input_handler.emit(action, duration=0.0)
             except Exception as e:
                 logger.error("Failed to begin touch for %s: %s", action, e)
-        self._active_holds[action] = time.time()
 
         if self._footer_label is not None:
             self._footer_label.setText(f"Adjusting: {action}...")
@@ -805,17 +808,18 @@ class TouchPanelBaseWindow(QMainWindow):
         if self.local_mode:
             self._update_local_simulation_hold(action)
             self._update_ui_displays()
+            
+        # Send IPC event periodically for real-time update
+        if self.input_handler is not None:
+            try:
+                self.input_handler.emit(action, duration=0.0)
+            except Exception as e:
+                logger.error("Failed to write hold input event: %s", e)
 
     def _on_button_release(self, action: str) -> None:
         if action in self._active_holds:
             start_ts = self._active_holds.pop(action)
             duration = max(0.0, time.time() - start_ts)
-            
-            if self.input_handler is not None:
-                try:
-                    self.input_handler.end_touch(action)
-                except Exception as e:
-                    logger.error("Failed to end touch for %s: %s", action, e)
 
             if self._footer_label is not None:
                 self._footer_label.setText(f"Adjusted: {action} (duration: {duration:.2f}s)")
