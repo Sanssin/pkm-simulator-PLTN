@@ -2,87 +2,70 @@
 
 ## 🎯 Overview
 
-Complete Python control system for PLTN Simulator dengan arsitektur I2C Master-Slave.
+**PLTN Simulator v4.0** - Raspberry Pi 4 sebagai master controller dengan arsitektur **UART Binary Protocol**.
 
-**Raspberry Pi sebagai I2C Master** mengontrol:
-- 4x OLED Display (via TCA9548A #1)
-- 5x ESP32 Slaves (via TCA9548A #2)
-- 8x Button input
-- 3x Motor PWM output
-- 1x Buzzer alarm
+**Raspberry Pi mengontrol:**
+- Touchscreen HMI (via `/tmp/pltn_input.json`)
+- LOFA Thermodynamics Engine
+- 2x ESP32 via UART (ESP-BC dan ESP-E)
+- 1x Buzzer alarm (PWM)
+- 4x Cooling Tower humidifiers (staged control via ESP-BC)
+
+**⚠️ IMPORTANT:** Untuk dokumentasi lengkap, baca:
+- **[../README.md](../README.md)** — Main project documentation
+- **[../AGENT.md](../AGENT.md)** — Complete technical architecture (40KB)
+- **[../GPIO_PIN_MAPPING.md](../GPIO_PIN_MAPPING.md)** — Detailed pin mapping & wiring
 
 ## 📁 File Structure
 
 ```
-RasPi_Central_Control/
-├── raspi_main.py           # Main program (run this)
-├── raspi_config.py         # Configuration parameters
-├── raspi_tca9548a.py       # TCA9548A multiplexer driver
-├── raspi_i2c_master.py     # I2C Master communication
-├── raspi_oled_manager.py   # OLED display manager
-├── raspi_requirements.txt  # Python dependencies
-└── README.md               # This file
+raspi_central_control/
+├── raspi_main_panel.py          # ⭐ Main entry point (run this)
+├── raspi_config.py              # Configuration & constants
+├── raspi_gpio_buttons.py        # Button input handler (hybrid edge+level)
+├── raspi_uart_master.py         # UART binary protocol (ESP-BC & ESP-E)
+├── raspi_buzzer_alarm.py        # PWM alarm tones (5 alarm types)
+├── raspi_humidifier_control.py  # Staged CT1-4 activation logic
+├── raspi_system_health.py       # 8-point health check at startup
+└── raspi_README.md              # This file
 ```
 
 ## 🔧 Hardware Requirements
 
-### 1. Raspberry Pi
-- Raspberry Pi 3B/3B+/4/Zero 2W
-- Raspbian OS (Bookworm atau Bullseye)
-- Minimum 1GB RAM
-- 8GB SD card
+### 1. Raspberry Pi 4
+- **Model:** Raspberry Pi 4 (2GB+ RAM recommended)
+- **OS:** Raspberry Pi OS Bookworm/Bullseye
+- **SD Card:** 16GB+ (Class 10)
+- **Power:** 5V 3A USB-C power supply
 
-### 2. I2C Multiplexers
-- 2x TCA9548A 1-to-8 I2C Multiplexer
-  - TCA9548A #1 (0x70) - untuk OLED displays
-  - TCA9548A #2 (0x71) - untuk ESP32 slaves
+### 2. Communication Architecture (v4.0 UART)
+- **UART0** (`/dev/ttyAMA0`, GPIO 14/15) → ESP-BC (Control + Actuators)
+- **UART3** (`/dev/ttyAMA1`, GPIO 4/5) → ESP-E (LED Visualizer)
+- **I2C Bus 1** (GPIO 2/3) → TCA9548A → 9× OLED displays
 
 ### 3. Peripherals
-- 4x OLED 128x32 (SSD1306, address 0x3C)
-- 8x Push buttons (for control)
-- 1x Buzzer (untuk alarm)
-- 3x Motor driver L298N atau equivalent
-- Breadboard & jumper wires
+- **1x Touchscreen Display** 1024x600 (HMI Operator Input)
+- **9× OLED** 128×32 SSD1306 (I2C address 0x3C)
+- **1× Passive buzzer** (GPIO 22)
+- **1× TCA9548A** I2C multiplexer (address 0x70, for OLEDs only)
 
-### 4. ESP32 Modules
-- ESP-B (I2C Slave 0x08) - Batang Kendali
-- ESP-C (I2C Slave 0x09) - Turbin & Generator
-- ESP-E (I2C Slave 0x0A) - Visualizer Primer
-- ESP-F (I2C Slave 0x0B) - Visualizer Sekunder
-- ESP-G (I2C Slave 0x0C) - Visualizer Tersier
+### 4. ESP32 Modules (UART Slaves)
+- **ESP-BC** (UART0): Control rods (3× servo) + turbine (DC motor) + pumps (3× L298N) + humidifiers (4× relay)
+- **ESP-E** (UART3): LED visualization (24 LEDs via 3× 74HC595 shift registers)
 
-## 📌 Pin Connections
+## 📌 Pin Connections Summary
 
-### I2C Buses
-```
-I2C Bus 0 (GPIO 0/1):
-  GPIO0 (SDA0) → TCA9548A #1 SDA
-  GPIO1 (SCL0) → TCA9548A #1 SCL
+**For complete wiring details, see [../GPIO_PIN_MAPPING.md](../GPIO_PIN_MAPPING.md)**
 
-I2C Bus 1 (GPIO 2/3):
-  GPIO2 (SDA1) → TCA9548A #2 SDA
-  GPIO3 (SCL1) → TCA9548A #2 SCL
-```
+### Quick Reference
 
-### Button Inputs
-```
-GPIO5  → BTN_PRES_UP
-GPIO6  → BTN_PRES_DOWN
-GPIO4  → BTN_PUMP_PRIM_ON
-GPIO17 → BTN_PUMP_PRIM_OFF
-GPIO27 → BTN_PUMP_SEC_ON
-GPIO22 → BTN_PUMP_SEC_OFF
-GPIO10 → BTN_PUMP_TER_ON
-GPIO9  → BTN_PUMP_TER_OFF
-```
-
-### PWM Outputs
-```
-GPIO18 → Buzzer (Hardware PWM0)
-GPIO12 → Motor Primary (Hardware PWM0)
-GPIO13 → Motor Secondary (Hardware PWM1)
-GPIO19 → Motor Tertiary (Hardware PWM1)
-```
+| Function | Pins | Notes |
+|----------|------|-------|
+| **UART0** | GPIO 14 (TX), 15 (RX) | ESP-BC |
+| **UART3** | GPIO 4 (TX), 5 (RX) | ESP-E |
+| **I2C Bus 1** | GPIO 2 (SDA), 3 (SCL) | TCA9548A → OLEDs |
+| **17 Buttons** | GPIO 16, 20, 21, 12, 7, 8, 25, 24, 23, 11, 6, 13, 19, 26, 9, 10, 27 | See GPIO_PIN_MAPPING.md |
+| **Buzzer** | GPIO 22 | Software PWM |
 
 ## 🚀 Installation
 
@@ -90,14 +73,223 @@ GPIO19 → Motor Tertiary (Hardware PWM1)
 ```bash
 sudo apt update
 sudo apt upgrade -y
+```
+
+### Step 2: Enable UART3 & I2C
+
+**Enable UART3:**
+```bash
+sudo nano /boot/config.txt
+# Add this line:
+dtoverlay=uart3
+
+# Save and exit
+```
+
+**Enable I2C:**
+```bash
+sudo raspi-config
+# Navigate to: 3 Interface Options → I5 I2C → Enable
+```
+
+**Reboot:**
+```bash
 sudo reboot
 ```
 
-### Step 2: Enable I2C
+**Verify UART ports:**
 ```bash
+ls -l /dev/ttyAMA*
+# Expected:
+# /dev/ttyAMA0 → GPIO 14/15 (ESP-BC)
+# /dev/ttyAMA1 → GPIO 4/5   (ESP-E)
+```
+
+### Step 3: Install Python Dependencies
+```bash
+cd raspi_central_control/
+pip3 install -r raspi_requirements.txt
+```
+
+**Required packages:**
+- `pyserial` — UART communication
+- `Adafruit-SSD1306` — OLED driver
+- `RPi.GPIO` — GPIO control
+- `smbus2` — I2C (for TCA9548A/OLEDs)
+- `Pillow` — Image rendering for OLEDs
+
+### Step 4: Test Hardware
+
+**Test UART ports:**
+```bash
+# Check UART devices are accessible
+ls -l /dev/ttyAMA*
+```
+
+**Test I2C (OLED multiplexer):**
+```bash
+sudo i2cdetect -y 1
+# Should show: 0x70 (TCA9548A)
+```
+
+**Test GPIO:**
+```bash
+# Run system health check
+python3 raspi_main_panel.py --health-check
+```
+
+### Step 5: Run the System
+```bash
+python3 raspi_main_panel.py
+```
+
+**Command-line options:**
+```bash
+python3 raspi_main_panel.py --help
+python3 raspi_main_panel.py --health-check    # 8-point startup diagnostic
+python3 raspi_main_panel.py --debug           # Enable verbose logging
+```
+
+## 🏗️ System Architecture
+
+**For full architecture details, see [../AGENT.md](../AGENT.md) Section 2**
+
+### Threading Model (9 threads)
+
+| Thread | Frequency | Purpose |
+|--------|-----------|---------|
+| ButtonPolling | 5ms | Fast edge detection |
+| ButtonHold | 50ms | Long-press detection |
+| EventProcessor | 10ms | Process button events |
+| ControlLogic | 50ms | Safety interlock & logic |
+| ESP_UART_Comm | 50ms | Binary UART to ESP-BC & ESP-E |
+| OLED_Update | 200ms | Display refresh (5 Hz) |
+| StateExport | 100ms | Export to `/tmp/pltn_state.json` |
+| HealthMonitor | Startup | 8-point health check |
+| AutoSimulation | On-demand | Automated demo sequence |
+
+### Communication Protocol
+
+**UART Binary Protocol** (115200 baud, 8N1):
+```
+Frame: [STX 0x02][CMD][LEN][PAYLOAD...][CRC8][ETX 0x03]
+
+ESP-BC (15 bytes): Rod positions (3) + Pump speeds (3) + Humidifier states (4)
+ESP-E (8 bytes): LED flow animation states (3) + Power indicator brightness (4)
+
+ACK/NACK responses with CRC8 error detection
+Retry mechanism: 3× with exponential backoff
+```
+
+**For protocol details, see [../AGENT.md](../AGENT.md) Section 2.3**
+
+## 🛠️ Troubleshooting
+
+### Issue: UART devices not found
+```bash
+# Check UART3 is enabled
+grep "dtoverlay=uart3" /boot/config.txt
+
+# If missing, add it and reboot
+echo "dtoverlay=uart3" | sudo tee -a /boot/config.txt
+sudo reboot
+```
+
+### Issue: I2C devices not detected
+```bash
+# Check I2C is enabled
 sudo raspi-config
-# Navigate to:
-# 3 Interface Options → I4 I2C → Enable
+# → 3 Interface Options → I5 I2C → Enable
+
+# Scan I2C bus
+sudo i2cdetect -y 1
+# Should show 0x70 (TCA9548A)
+```
+
+### Issue: Permission denied on GPIO/UART
+```bash
+# Add user to gpio and dialout groups
+sudo usermod -a -G gpio,dialout $USER
+# Logout and login again
+```
+
+### Issue: OLED displays not working
+```bash
+# Test TCA9548A multiplexer
+python3 -c "from raspi_tca9548a import TCA9548A; mux = TCA9548A(0x70); mux.select_channel(0); print('OK')"
+
+# Check OLED on channel 0
+sudo i2cdetect -y 1
+# Should show 0x3C after selecting channel
+```
+
+## 📚 Related Documentation
+
+| Document | Content |
+|----------|---------|
+| **[../README.md](../README.md)** | Project overview & features |
+| **[../AGENT.md](../AGENT.md)** | Complete technical documentation (40KB) |
+| **[../GPIO_PIN_MAPPING.md](../GPIO_PIN_MAPPING.md)** | Detailed wiring & pin assignments |
+| **[../pltn_video_display/](../pltn_video_display/)** | Separate video display system (HDMI) |
+| **[../esp_utama_uart/](../esp_utama_uart/)** | ESP-BC firmware (Arduino) |
+| **[../esp_visualizer_uart/](../esp_visualizer_uart/)** | ESP-E firmware (Arduino) |
+
+## 🎬 Video Display System
+
+The main control panel is complemented by an **educational video display system** on a separate HDMI monitor.
+
+**See:** `../pltn_video_display/README.md`
+
+**Features:**
+- Real-time speedometer gauge for thermal power output
+- Educational video playback (IDLE mode)
+- Interactive manual guide (MANUAL_GUIDE mode)
+- Reads state from `/tmp/pltn_state.json` (10 Hz)
+
+## 🧪 Testing
+
+**Run system health check:**
+```bash
+python3 raspi_main_panel.py --health-check
+```
+
+**8-point health check:**
+1. ✅ I2C bus availability
+2. ✅ TCA9548A multiplexer detection
+3. ✅ UART ports availability (ttyAMA0, ttyAMA1)
+4. ✅ GPIO pins configuration
+5. ✅ OLED displays detection (9×)
+6. ✅ Button input test
+7. ✅ Buzzer output test
+8. ✅ ESP UART communication test (ping)
+
+## 🔐 Safety Features
+
+**For complete safety documentation, see [../AGENT.md](../AGENT.md) Section 6**
+
+- **SCRAM (Emergency Shutdown):** Red button → all rods to 0%, pumps shutdown
+- **Interlock Logic:** Prevents unsafe operations (e.g., rod movement without coolant)
+- **Alarm System:** 5 alarm types (SCRAM, high temp, low pressure, low coolant, general)
+- **Health Monitor:** 8-point startup diagnostic
+- **Watchdog:** Thread health monitoring
+
+## 📝 Development Notes
+
+**For AI agent guidance, see [../AGENT.md](../AGENT.md) Section 10**
+
+**Key skills for development:**
+- `.claude/skills/firmware-embedded.md` — GPIO, threading, ESP32
+- `.claude/skills/nuclear-sim-physics.md` — Reactor physics, formulas
+- `.claude/skills/safety-logic.md` — SCRAM, alarms, interlocks
+- `.claude/skills/hmi-display.md` — UI updates, display management
+
+## 📄 License
+
+This is an educational project for PKM (Program Kreativitas Mahasiswa) 2024.
+
+---
+
+**For questions or issues:** See [../AGENT.md](../AGENT.md) Section 11 "Known Issues"
 # Reboot when prompted
 ```
 

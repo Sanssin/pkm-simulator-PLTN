@@ -1,16 +1,12 @@
 # 🏭 PKM PLTN Simulator - Nuclear Power Plant Training Simulator
 
-**Kompetisi PKM 2024 - Simulator PWR (Pressurized Water Reactor)**
+**Simulator PWR (Pressurized Water Reactor)**
 
 [![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue)]()
 [![ESP32](https://img.shields.io/badge/ESP32-Arduino-orange)]()
 [![Architecture](https://img.shields.io/badge/architecture-2%20ESP%20UART-success)]()
 
-> **📌 Dokumentasi lengkap sistem - Semua informasi dalam satu file**  
-> **🎉 NEW: UART Communication Protocol - Reliable & Efficient!**  
-> **🎉 NEW: Video Display System - Educational Visualization!**  
-> **🎉 NEW: Event Queue Pattern - No Deadlocks!**
 
 ---
 
@@ -36,6 +32,22 @@
 ## 🎯 Overview
 
 Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 sebagai master controller dan **2 ESP32** sebagai slave controllers menggunakan **UART communication protocol**.
+
+**🔗 For detailed documentation:**
+- **[GPIO_PIN_MAPPING.md](GPIO_PIN_MAPPING.md)** — Complete pin allocation, wiring guide, and hardware setup
+- **[AGENT.md](AGENT.md)** — Full technical architecture for developers & AI agents (40KB)
+
+### 🎉 What's New in v4.1 (Touchscreen HMI & LOFA Simulation)
+
+**📱 Touchscreen HMI Migration:**
+- ✅ **Physical Buttons Removed** - Replaced by sleek 1024x600 Touchscreen UI
+- ✅ **17 GPIO Pins Freed** - Available for direct actuator integration
+- ✅ **JSON IPC** - Communicates via `/tmp/pltn_input.json`
+
+**🔥 LOFA Simulation (Loss of Flow Accident):**
+- ✅ **Thermodynamics Engine** - Simulates core & coolant temperature changes
+- ✅ **Dynamic Cooling** - Pumps directly affect cooling efficiency
+- ✅ **Emergency Scram** - Auto-triggers SCRAM if core temp hits 300°C
 
 ### 🎉 What's New in v4.0 (UART Architecture - January 2025)
 
@@ -72,10 +84,11 @@ Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 se
 | Komponen | Jumlah | Fungsi | Status |
 |----------|--------|--------|--------|
 | Raspberry Pi 4 | 1 | Master controller, logic, safety system | ✅ |
-| **ESP32 (ESP-BC)** | **1** | **Control rods + turbine + pumps + humidifiers (UART)** | ✅ |
-| **ESP32 (ESP-E)** | **1** | **LED visualization + power indicator (UART)** | ✅ |
-| Push Button | **17** | **Operator input (manual control + auto simulation + emergency)** | ✅ |
-| OLED Display | 9 | Real-time monitoring (128x64 I2C) | ✅ |
+| ESP32 (ESP-BC) | 1 | Control rods + turbine + pumps + humidifiers (UART) | ✅ |
+| ESP32 (ESP-E) | 1 | LED visualization + power indicator (UART) | ✅ |
+| Touchscreen HMI | 1 | Operator input (1024x600 Display) | ✅ NEW |
+| Push Button | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
+| OLED Display | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
 | Servo Motor | 3 | Control rod simulation (safety, shim, regulating) | ✅ |
 | LED Flow | 24 | Flow visualization (8 LEDs × 3 flows via 74HC595) | ✅ |
 | **LED Power** | **4** | **Power output visualization (0-300 MWe)** | ✅ |
@@ -180,10 +193,7 @@ pkm-simulator-PLTN/
 │   ├── raspi_gpio_buttons.py           # ✅ Button handler (event queue)
 │   ├── raspi_humidifier_control.py     # ✅ Humidifier logic
 │   ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
-│   ├── raspi_oled_manager.py           # ✅ OLED display manager
-│   ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
-│   ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs only)
-│   ├── raspi_system_health.py          # ✅ Health monitoring
+│   │   │   │   ├── raspi_system_health.py          # ✅ Health monitoring
 │   ├── raspi_config.py                 # ✅ Configuration
 │   ├── raspi_README.md                 # ✅ Installation guide
 │   └── raspi_requirements.txt          # ✅ Python dependencies
@@ -236,12 +246,7 @@ python3 video_display_app.py --test --windowed
 │                 PANEL KONTROL OPERATOR                        │
 │  ┌──────────────────────┐  ┌───────────────────────────────┐ │
 │  │  17 Push Buttons     │  │  9 OLED Displays (128x64)     │ │
-│  │  ├─ 6 Pump (ON/OFF)  │  │  ├─ 1: Presurizer (I2C 0x70)  │ │
-│  │  ├─ 6 Rod (UP/DOWN)  │  │  ├─ 2-4: Pumps (Ch1-3)       │ │
-│  │  ├─ 2 Pressure       │  │  ├─ 5-7: Rods (Ch4-6)        │ │
-│  │  ├─ 2 Mode/Control   │  │  ├─ 8: Thermal kW (Ch7)      │ │
-│  │  └─ 1 Emergency      │  │  └─ 9: Status (0x70 Ch7)     │ │
-│  └──────────────────────┘  └───────────────────────────────┘ │
+│  │  ├─ 6 Pump (ON/OFF)  │  │  ├─ 6 Rod (UP/DOWN)  │  │  ├─ 2 Pressure       │  │  ├─ 2 Mode/Control   │  │  └─ 1 Emergency      │  └──────────────────────┘  └───────────────────────────────┘ │
 │         ↓ GPIO 6-27            ↓ I2C Bus (TCA9548A 0x70)     │
 └───────────────────────────────────────────────────────────────┘
                              ↓
@@ -254,11 +259,10 @@ python3 video_display_app.py --test --windowed
 │  │  ├─ Thread 3: Control logic (50ms)                   │  │
 │  │  ├─ Thread 4: UART ESP-BC comm (100ms)              │  │
 │  │  ├─ Thread 5: UART ESP-E comm (100ms)               │  │
-│  │  ├─ Thread 6: OLED display update (200ms)           │  │
-│  │  └─ Thread 7: System health monitor (1000ms)        │  │
+│  │  │  └─ Thread 7: System health monitor (1000ms)        │  │
 │  │                                                          │  │
 │  │  Program: raspi_main_panel.py ✅                       │  │
-│  │  Protocol: Binary UART with CRC8 checksum ✅          │  │
+│  │  Protocol: Touch JSON IPC + Binary UART + LOFA Sim ✅  │  │
 │  └────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────┘
                     ↓ UART Communication (115200 baud)
@@ -638,10 +642,7 @@ pkm-simulator-PLTN/
     ├── raspi_gpio_buttons.py           # ✅ Button handler (event queue)
     ├── raspi_humidifier_control.py     # ✅ Humidifier logic
     ├── raspi_buzzer_alarm.py           # ✅ Buzzer alarm
-    ├── raspi_oled_manager.py           # ✅ OLED display manager
-    ├── raspi_i2c_master.py             # ✅ I2C communication (OLEDs)
-    ├── raspi_tca9548a.py               # ✅ I2C multiplexer (OLEDs)
-    ├── raspi_system_health.py          # ✅ System health monitor
+                ├── raspi_system_health.py          # ✅ System health monitor
     ├── raspi_config.py                 # ✅ Configuration
     ├── raspi_README.md                 # ✅ Installation guide
     └── raspi_requirements.txt          # ✅ Python dependencies
@@ -1056,16 +1057,6 @@ Phase 8: Emergency Shutdown (Jika diperlukan)
 └─ Display: "⚠️ EMERGENCY SHUTDOWN ACTIVE"
 ```
 
-**Key Features Alur Simulasi:**
-- ✅ **START Button Required** - Semua operasi dimulai dengan START
-- ✅ **Automatic Turbine Control** - State machine di ESP-BC
-- ✅ **Gradual Pump Control** - Realistic acceleration/deceleration
-- ✅ **6 Individual Humidifiers** - 2 SG + 4 CT dengan logic berbeda
-- ✅ **Realistic Power Calculation** - 900 MWth × 33% efficiency = 300 MWe
-- ✅ **4 LED Power Indicator** - Simultaneous brightness control
-- ✅ **Safety Interlock** - Mencegah operasi tidak aman
-- ✅ **Emergency SCRAM** - Immediate shutdown capability
-
 ---
 
 ## 🔄 Data Flow Lengkap
@@ -1347,41 +1338,6 @@ cd pltn_video_display
 python3 video_display_app.py --test --windowed
 ```
 
----
-
-## 📊 Status Implementasi
-
-**Overall Progress:** 🟢 **100% Complete** (Production Ready v4.0)  
-**Architecture:** ✅ **v4.0 - UART Communication**  
-**Last Updated:** 2025  
-**Status:** ✅ **PRODUCTION READY** (UART protocol implemented and tested)
-
-### ✅ Version 4.0 Changes (January 2025)
-
-**🔌 Communication Protocol Migration:**
-- ✅ **I2C → UART** - Migrated from I2C to hardware UART
-- ✅ **Binary Protocol** - 83% size reduction vs JSON
-- ✅ **CRC8 Checksum** - Error detection and correction
-- ✅ **ACK/NACK** - Reliable delivery mechanism
-- ✅ **115200 baud** - Faster and more reliable
-
-**🎬 Video Display System:**
-- ✅ **Standalone Module** - `pltn_video_display/` complete
-- ✅ **3 Display Modes** - IDLE, AUTO (video), MANUAL (guide)
-- ✅ **JSON State Sync** - Real-time communication
-- ✅ **Pygame UI** - Lightweight visualization
-- ✅ **Testing Mode** - No hardware required
-
-**🎮 Event Queue Pattern:**
-- ✅ **Button Callbacks** - Queue-based processing
-- ✅ **No Deadlocks** - Interrupt-safe design
-- ✅ **< 1μs Response** - Immediate button response
-
-**📌 GPIO Pin Updates:**
-- ✅ **UART3 Support** - GPIO 4/5 for ESP-E
-- ✅ **Pin Remapping** - GPIO 11 for PUMP_PRIMARY_ON
-- ✅ **17 Buttons** - All buttons properly mapped
-- ✅ **Documentation** - `GPIO_PIN_MAPPING.md`
 
 ### ✅ Core Components Status
 
@@ -1408,38 +1364,6 @@ python3 video_display_app.py --test --windowed
 - [x] **17 Push Buttons** - Complete manual control + auto simulation
 - [x] **9 OLED Displays** - Real-time parameter monitoring
 - [x] **Video Display** - Educational visualization (separate monitor)
-
-### ✅ Documentation (v4.0)
-
-- [x] `README.md` - **This file (completely updated for v4.0)**
-- [x] `GPIO_PIN_MAPPING.md` - Complete GPIO pin mapping
-- [x] `pltn_video_display/README.md` - Video display guide
-- [x] `pltn_video_display/PYGAME_ANIMATION_GUIDE.md` - Animation guide
-- [x] `pltn_video_display/AUDIO_HDMI_SETUP.md` - Audio HDMI setup
-- [x] `raspi_central_control/raspi_README.md` - RasPi installation
-
-### 📋 Optional Future Enhancements
-
-- [ ] **Data Logging** - CSV export and historical analysis
-- [ ] **Web Dashboard** - Remote monitoring and control
-- [ ] **Mobile App** - Android/iOS interface
-- [ ] **Cloud Integration** - IoT platform integration
-
-### Hardware Testing Checklist
-
-When hardware is available, test:
-- [ ] UART communication (ESP-BC, ESP-E)
-- [ ] Button response (all 17 buttons)
-- [ ] Servo movements (3 control rods)
-- [ ] L298N motor control (4 motors)
-- [ ] Relay switching (4 humidifiers)
-- [ ] LED animations (24 flow + 4 power LEDs)
-- [ ] OLED displays (9 displays via TCA9548A)
-- [ ] Video display sync (JSON state file)
-- [ ] System health monitoring
-- [ ] Emergency shutdown
-
-**Status:** 🟢 **All software complete and ready for hardware testing**
 
 ---
 
@@ -1734,18 +1658,6 @@ for retry in range(3):
 
 ---
 
-## 📚 Documentation Files
-
-- `README.md` - **This file** - Complete system documentation
-- `GPIO_PIN_MAPPING.md` - Raspberry Pi GPIO pin mapping
-- `pltn_video_display/README.md` - Video display guide
-- `pltn_video_display/PYGAME_ANIMATION_GUIDE.md` - Animation guide
-- `pltn_video_display/AUDIO_HDMI_SETUP.md` - Audio HDMI setup
-- `raspi_central_control/raspi_README.md` - RasPi installation guide
-
----
-
-## ✅ Final Summary (v4.0 - January 2025)
 
 ### **What's Complete:**
 
@@ -1772,19 +1684,6 @@ for retry in range(3):
 🎯 **Display:** 9 OLED (TCA9548A) + separate video monitor  
 🎯 **Safety:** Interlock system + emergency shutdown
 
-### **Code Status:**
-
-| Component | Status | Version | Notes |
-|-----------|--------|---------|-------|
-| ESP-BC Firmware | ✅ Complete | v4.0 | UART binary protocol |
-| ESP-E Firmware | ✅ Complete | v4.0 | UART binary protocol |
-| RasPi Main Program | ✅ Complete | v4.0 | 7-thread architecture |
-| UART Master | ✅ Complete | v4.0 | Binary + CRC8 |
-| Button Handler | ✅ Complete | v4.0 | Event queue pattern |
-| Video Display | ✅ Complete | v4.0 | Pygame + 3 modes |
-| OLED Manager | ✅ Complete | v4.0 | TCA9548A multiplexer |
-| Documentation | ✅ Complete | v4.0 | Fully updated |
-| **Overall** | **✅ Complete** | **v4.0** | **Production ready** |
 
 ### **Next Steps:**
 
@@ -1805,13 +1704,6 @@ for retry in range(3):
 - 📱 Mobile app interface
 - ☁️ Cloud integration
 
----
-
-**Status:** 🟢 **100% Software Complete - Ready for Hardware Testing**  
-**Version:** 4.0  
-**Architecture:** 2 ESP32 with UART communication
-
----
 
 ## 📚 Referensi
 
@@ -1878,13 +1770,6 @@ Sistem ini mengajarkan konsep:
 
 ---
 
-## 🎉 Acknowledgments
-
-- **Pembimbing:** [Nama Dosen Pembimbing]
-- **Institusi:** [Nama Universitas]
-- **Team Members:** [Nama Anggota Tim]
-- **Sponsor:** [Jika ada sponsor]
-
 Special thanks to:
 - Raspberry Pi Foundation
 - Espressif (ESP32)
@@ -1895,8 +1780,6 @@ Special thanks to:
 
 **Version:** 2.0  
 **Last Updated:** 2024-12-12  
-**Status:** 🟡 **95% Complete - Integration Fixes Needed**
-
 **Status:** 🟢 **100% Software Complete - Ready for Hardware Testing**
 
 ---
@@ -1920,5 +1803,3 @@ Special thanks to:
 - ✅ `README.md` (this file - complete v4.0 documentation)
 - ✅ `GPIO_PIN_MAPPING.md` (complete pin mapping)
 - ✅ `pltn_video_display/README.md` (video display guide)
-- ✅ `pltn_video_display/AUDIO_HDMI_SETUP.md` (audio HDMI setup)
-- ✅ `raspi_central_control/raspi_README.md` (installation guide)

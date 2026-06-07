@@ -1,3 +1,8 @@
+---
+name: Safety-Systems-SCRAM-Logic
+description: SCRAM, alarms, interlocks, safety thresholds
+---
+
 # Skill: Safety Systems & SCRAM Logic
 
 > ⚠️ Skill ini berhubungan dengan safety-critical code.
@@ -29,6 +34,11 @@ Layer 3: PROTECTION (SCRAM & Emergency)
 ```
 
 **Tidak ada automatic SCRAM** — SCRAM hanya bisa dipicu manual oleh operator via tombol EMERGENCY (GPIO 18). Ini adalah simplifikasi edukasi; PWR nyata memiliki banyak automatic SCRAM triggers.
+
+> 📝 **Planned Update (LOFA-040)**: Automatic SCRAM akan ditambahkan sebagai bagian dari fitur LOFA Simulation. Auto-SCRAM akan trigger saat:
+> - Fuel cladding temp > 900°C
+> - Coolant temp > 380°C
+> - Lihat `docs/development/03-lofa-simulation.md` untuk detail.
 
 **File-file safety-critical** (🚫 jangan ubah tanpa review):
 - `raspi_main_panel.py` lines 438–511 (SCRAM), 560–796 (event processing), 867–1004 (interlock)

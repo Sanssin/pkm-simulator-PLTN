@@ -1,3 +1,8 @@
+---
+name: Nuclear Reactor Simulation Physics
+description: Reactor physics formulas and simulation parameters
+---
+
 # Skill: Nuclear Reactor Simulation Physics
 
 ## Jenis Reaktor & Level Simulasi

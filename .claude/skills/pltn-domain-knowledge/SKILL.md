@@ -1,3 +1,8 @@
+---
+name: PLTN Domain Knowledge
+description: Nuclear terminology, concepts, operating scenarios
+---
+
 # Skill: PLTN Domain Knowledge — Konteks Edukasi
 
 ## Jenis Reaktor yang Disimulasikan
@@ -256,10 +261,13 @@ Di PWR nyata, SCRAM adalah insertion cepat SEMUA batang kendali oleh gravity + s
 
 ### Kejadian yang TIDAK Disimulasikan
 
+> 📝 **Planned Update (LOFA-041)**: LOFA (Loss of Flow Accident) akan ditambahkan. Lihat `docs/development/03-lofa-simulation.md`.
+
 | Kejadian | Alasan Tidak Dimodelkan |
 |----------|------------------------|
 | LOCA (Loss of Coolant) | Terlalu kompleks, butuh model termodinamika |
-| Fuel Meltdown | Tidak ada model temperatur fuel |
+| ~~LOFA (Loss of Flow)~~ | **Akan ditambahkan** — simulasi kegagalan pompa primer/sekunder/tersier |
+| Fuel Meltdown | Tidak ada model temperatur fuel
 | Steam Line Break | Tidak ada model secondary pressure |
 | Reactivity Insertion Accident (RIA) | Reactivity tidak dimodelkan langsung |
 | Boron Dilution | Tidak ada model boron concentration |

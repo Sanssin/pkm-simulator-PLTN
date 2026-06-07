@@ -4,10 +4,10 @@
 
 ## 1. Project Overview
 
-**pkm-simulator-PLTN** adalah simulator Pembangkit Listrik Tenaga Nuklir (PLTN) tipe **PWR (Pressurized Water Reactor)** yang dikembangkan untuk kompetisi **PKM (Program Kreativitas Mahasiswa) 2024**.
+**pkm-simulator-PLTN** adalah simulator Pembangkit Listrik Tenaga Nuklir (PLTN) tipe **PWR (Pressurized Water Reactor)** yang dikembangkan untuk edukasi mengenai cara kerja PLTN dalam menghasilkan energi kepada masyarakat luas.
 
 Tujuan proyek:
-- **Edukasi**: Memberikan pemahaman realistis tentang pengoperasian reaktor nuklir PWR kepada mahasiswa teknik nuklir
+- **Edukasi**: Memberikan pemahaman realistis tentang pengoperasian reaktor nuklir PWR kepada masyarakat luas
 - **Simulasi interaktif**: Panel kontrol fisik dengan tombol, display OLED, buzzer alarm, servo motor (control rod), motor DC (pompa & turbin), dan efek visual (LED Cherenkov, flow animation)
 - **Safety training**: Mengajarkan prosedur keselamatan nuklir (SCRAM, interlock, pump sequence) melalui hands-on experience
 
@@ -126,10 +126,7 @@ pkm-simulator-PLTN/
 │   ├── raspi_gpio_buttons.py       ← Handler 17 tombol (273 baris)
 │   ├── raspi_humidifier_control.py ← Logika humidifier bertahap (389 baris)
 │   ├── raspi_buzzer_alarm.py       ← Sistem alarm PWM (337 baris)
-│   ├── raspi_oled_manager.py       ← Manager 9 OLED display
-│   ├── raspi_i2c_master.py         ← ❌ Legacy I2C (dead code, 417 baris)
-│   ├── raspi_tca9548a.py           ← I2C multiplexer (masih dipakai untuk OLED)
-│   ├── raspi_system_health.py      ← Health check startup
+│   │   │   ├── raspi_system_health.py      ← Health check startup
 │   ├── raspi_README.md             ← ⚠️ Outdated (masih deskripsi I2C 5-ESP)
 │   ├── requirements.txt            ← (tidak ada — dependensi di README utama)
 │   ├── PYGAME_ANIMATION_GUIDE.md   ← Panduan animasi pygame
@@ -486,6 +483,27 @@ Sistem inti: Panel kontrol dengan 17 tombol, 9 OLED, 2 ESP32 via UART binary pro
 - **Dependensi baru**: Tidak ada
 - **Interaksi dengan core**: Standalone — tidak terhubung ke sistem utama
 
+### Pengembangan 11: Touchscreen Panel ⏳ PLANNED
+- **Deskripsi**: Panel kontrol touchscreen 10" sebagai master control menggunakan Raspberry Pi 4 terpisah dengan Kivy UI. Menggantikan fungsi panel fisik GPIO.
+- **File terkait**: `touch_panel/` (akan dibuat), `docs/development/01-touchscreen-panel.md`
+- **Hardware baru**: Raspberry Pi 4 + Touchscreen 10" + USB-to-TTL adapter
+- **Dependensi baru**: Kivy 2.3+, pyserial
+- **Interaksi dengan core**: IPC via JSON file (`/tmp/pltn_state.json`)
+- **Status**: Planning complete. Lihat `docs/development/01-touchscreen-panel.md`
+
+### Pengembangan 12: LOFA Simulation ⏳ PLANNED
+- **Deskripsi**: Simulasi kondisi Loss of Flow Accident (LOFA) untuk edukasi. Mensimulasikan kegagalan pompa primer/sekunder/tersier dengan respons berbeda.
+- **File terkait**: `raspi_main_panel.py`, `raspi_config.py`, `raspi_buzzer_alarm.py`, `docs/development/03-lofa-simulation.md`
+- **Hardware baru**: Tidak ada
+- **Dependensi baru**: Tidak ada
+- **Fitur utama**:
+  - Temperature modeling sederhana (coolant temp, fuel cladding temp)
+  - Pressurizer mitigation (relief valve, spray)
+  - Auto-SCRAM berdasarkan temperature thresholds
+  - Respons berbeda per pompa (primer=kritis, sekunder=tinggi, tersier=sedang)
+- **Interaksi dengan core**: Extend `control_logic_thread()`, tambah alarm tones, UI di touchscreen
+- **Status**: Planning complete. Blocked by Pengembangan 11 (touchscreen). Lihat `docs/development/03-lofa-simulation.md`
+
 ---
 
 ## 8. Dependensi & Setup
@@ -583,6 +601,79 @@ Upload via Arduino IDE:
 
 ## 10. Panduan untuk AI Agent
 
+### 📚 Domain-Specific Skills
+
+Project ini memiliki **specialized knowledge files** di `.claude/skills/` yang berisi pengetahuan mendalam untuk area tertentu.
+
+**⚡ WAJIB**: Baca skill file yang relevan **SEBELUM** melakukan perubahan di area tersebut.
+
+#### Quick Reference: Task → Skill Mapping
+
+| Saya sedang bekerja pada... | Baca skill ini terlebih dahulu |
+|----------------------------|-------------------------------|
+| **GPIO, sensor, button detection, threading** | `.claude/skills/firmware-embedded.md` |
+| **Thermal power, neutron flux, reactivity, physics formula** | `.claude/skills/nuclear-sim-physics.md` |
+| **SCRAM, interlocks, alarm thresholds, safety sequence** | `.claude/skills/safety-logic.md` |
+| **OLED display, UI layout, buzzer patterns, visual feedback** | `.claude/skills/hmi-display.md` |
+| **Tidak paham istilah nuklir (pressurizer, xenon, dll)** | `.claude/skills/pltn-domain-knowledge.md` |
+
+#### Automatic Triggers: File Pattern → Skill
+
+Ketika Anda akan memodifikasi file ini, baca skill yang sesuai:
+
+| File Pattern | Skill to Read |
+|--------------|---------------|
+| `raspi_gpio_*.py`, `raspi_*_buttons.py` | `firmware-embedded.md` |
+| `raspi_config.py` (thresholds, timing, hardware constants) | `nuclear-sim-physics.md` + `safety-logic.md` |
+| `esp_utama_uart.ino` (calculateThermalPower, model fisika) | `nuclear-sim-physics.md` + `firmware-embedded.md` |
+| `raspi_main_panel.py` (interlock, SCRAM, pump sequence) | `safety-logic.md` |
+| `raspi_buzzer_alarm.py`, `raspi_oled_manager.py` | `hmi-display.md` |
+| `pltn_video_display/*.py` | `hmi-display.md` |
+
+#### Keyword-Based Triggers
+
+Jika task/issue/bug mengandung keyword ini, baca skill yang sesuai:
+
+- **GPIO, interrupt, edge detection, level detection, threading, race condition** → `firmware-embedded.md`
+- **thermal power, neutron, reactivity, delayed neutron, xenon, rod worth** → `nuclear-sim-physics.md`
+- **SCRAM, interlock, alarm, threshold, safety limit, trip** → `safety-logic.md`
+- **display, OLED, UI, HMI, buzzer, tone, visual feedback** → `hmi-display.md`
+- **pressurizer, coolant, primary loop, secondary loop, control rod, moderator** → `pltn-domain-knowledge.md`
+- **LOFA, temperature, fuel cladding, relief valve, spray, pump failure, overheat** → `safety-logic.md` + `pltn-domain-knowledge.md`
+
+#### Usage Workflow
+
+```
+1. Terima task atau identifikasi file yang akan dimodifikasi
+2. ✅ Cek tabel/trigger di atas → tentukan skill yang relevan
+3. 📖 Gunakan `view` tool untuk membaca skill file
+4. 💡 Pahami domain context, pattern, dan best practices
+5. 🛠️ Lakukan modifikasi dengan pengetahuan domain yang tepat
+```
+
+#### Contoh Penggunaan
+
+**Scenario 1**: Task = "Tambahkan alarm baru untuk xenon poisoning"
+- ✅ Keyword: "alarm", "xenon" → Baca `safety-logic.md` + `nuclear-sim-physics.md`
+- ✅ File target: `raspi_buzzer_alarm.py` → Baca `hmi-display.md`
+- 📖 View 3 skill files untuk memahami context
+- 🛠️ Implement alarm logic dengan pengetahuan domain
+
+**Scenario 2**: Task = "Fix button debounce issue on SCRAM button"
+- ✅ Keyword: "button", "debounce" → Baca `firmware-embedded.md`
+- ✅ File: `raspi_gpio_buttons.py` → Baca `firmware-embedded.md`
+- ✅ Context: SCRAM → Baca `safety-logic.md` untuk memahami criticality
+- 📖 View 2 skill files
+- 🛠️ Fix dengan mempertimbangkan safety requirements
+
+**Scenario 3**: Task = "Optimize thermal power calculation"
+- ✅ Keyword: "thermal power" → Baca `nuclear-sim-physics.md`
+- ✅ File: `esp_utama_uart.ino` → Baca `firmware-embedded.md` (untuk ESP32 patterns)
+- 📖 View 2 skill files
+- 🛠️ Optimize dengan memahami physics model
+
+---
+
 ### ✅ Boleh dimodifikasi bebas
 - `pltn_video_display/` — UI display, animasi, tata letak visual
 - `speedometer_temp.py` — Gauge visual
@@ -655,36 +746,36 @@ Upload via Arduino IDE:
 
 ## 11. Known Issues & TODO
 
+### ✅ Fixed Issues (v4.0)
+
+1. **`raspi_config.py` duplicate `BTN_PUMP_PRIM_ON`** — **FIXED**
+   - Removed duplicate button pin definitions (lines 54-61)
+   - Button pins now exclusively defined in `raspi_gpio_buttons.py` `ButtonPin` enum
+   - Config.py only contains hardware output pins (buzzer, etc.)
+
+2. **UART3 port path mismatch** — **FIXED**
+   - Was: `/dev/ttyAMA3` (incorrect)
+   - Now: `/dev/ttyAMA1` (correct - matches Raspberry Pi UART3 device tree)
+   - Updated in `raspi_config.py` line 11 and `raspi_uart_master.py` header
+
+3. **`raspi_README.md` outdated** — **FIXED**
+   - Completely rewritten to reflect v4.0 UART architecture
+   - Now includes proper references to main README.md and AGENT.md
+   - Installation guide updated with UART3 setup instructions
+
+4. **`raspi_i2c_master.py` not marked deprecated** — **FIXED**
+   - Added clear deprecation header warning
+   - Notes replacement with `raspi_uart_master.py`
+   - Marked as safe to delete (kept for reference only)
+
 ### Bug Aktif
 
-1. **`raspi_config.py` duplicate `BTN_PUMP_PRIM_ON`** (line 53 & 56)
-   - Line 53: `BTN_PUMP_PRIM_ON = 11` (correct, migrated from GPIO 5)
-   - Line 56: `BTN_PUMP_PRIM_ON = 4` (overwrite! GPIO 4 = UART3 TXD)
-   - **Impact**: Nilai akhir = GPIO 4, yang konflik dengan UART3. Tapi `raspi_config.py` button pins TIDAK digunakan — `raspi_gpio_buttons.py` `ButtonPin` enum adalah source of truth.
-   - **Severity**: Low (config tidak dipakai untuk buttons), tapi membingungkan.
+None currently — all critical bugs addressed in v4.0 documentation cleanup.
 
-2. **GPIO 22 conflict** — `raspi_config.py` line 59: `BTN_PUMP_SEC_OFF = 22` dan line 64: `BUZZER_PIN = 22`
-   - Keduanya menggunakan GPIO 22.
-   - **Impact**: Low — `raspi_gpio_buttons.py` menggunakan `PUMP_SECONDARY_OFF = 19` (bukan 22). Config.py outdated.
-
-3. **`raspi_config.py` pin mapping outdated** — Hampir semua button pin di config.py berbeda dari `raspi_gpio_buttons.py` `ButtonPin` enum.
-   - Config: `BTN_PRES_UP = 5` (GPIO 5 = UART3 RXD!)
-   - Buttons: `PRESSURE_UP = 24`
-   - **Rekomendasi**: Hapus atau sinkronkan button pin definitions di `raspi_config.py`
-
-### Dead Code
-
-4. **`raspi_i2c_master.py`** (417 baris) — Tidak di-import oleh `raspi_main_panel.py`. Legacy dari arsitektur v3.x I2C. Bisa dihapus atau di-archive.
-
-### Dokumentasi Outdated
-
-5. **`raspi_README.md`** — Masih mendeskripsikan arsitektur I2C dengan 5 ESP32. Kode aktual menggunakan 2 ESP32 via UART. Perlu diupdate.
-
-6. **UART3 port path** — `raspi_config.py` says `/dev/ttyAMA3`, `GPIO_PIN_MAPPING.md` says `/dev/ttyAMA1`. Perlu verifikasi device path yang benar di hardware.
 
 ### Duplikasi
 
-7. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
+5. **`tes_visualizer/tes_visualizer.ino`** (714 baris) — Hampir identik dengan `esp_visualizer_uart.ino` (564 baris) tetapi dengan `DEV_MODE true` dan tambahan simulasi lokal. Potensi drift jika salah satu diupdate tanpa yang lain.
 
 ### TODO / Enhancement Ideas
 
@@ -694,9 +785,7 @@ Upload via Arduino IDE:
    - `auto_simulation.py` — Auto simulation sequence
    - `state_export.py` — JSON export
 
-9. **Unit tests** — Tidak ada test apapun di repositori. Model fisika dan interlock logic sebaiknya punya unit test.
-
-10. **Sinkronisasi `raspi_config.py`** — Button pins, I2C addresses, dan beberapa timing constants perlu di-audit ulang terhadap kode aktual.
+8. **Unit tests** — Tidak ada test apapun di repositori. Model fisika dan interlock logic sebaiknya punya unit test.
 
 ---
 
@@ -730,3 +819,8 @@ Upload via Arduino IDE:
 | Edge Detection | Deteksi perubahan state (press/release) — satu aksi per tekan | Tombol pump, start, reset, emergency |
 | Level Detection | Deteksi state aktif (held down) — aksi berulang selama ditahan | Tombol rod up/down, pressure up/down |
 | God Class | Anti-pattern: satu class yang terlalu banyak tanggung jawab | `PLTNPanelController` (1992 baris) |
+| LOFA | Loss of Flow Accident — kecelakaan akibat hilangnya aliran pendingin | Simulasi di Pengembangan 12 |
+| Fuel Cladding | Selubung bahan bakar (Zircaloy) — pembatas antara fuel dan coolant | `fuel_cladding_temp` — threshold melt 1200°C |
+| Relief Valve | Katup pelepas tekanan di pressurizer — membuka saat overpressure | `pressurizer_relief_open` |
+| Spray Nozzle | Nosel semprot di pressurizer — kondensasi uap untuk turunkan tekanan | `pressurizer_spray_active` |
+| Coolant | Air pendingin dalam loop primer/sekunder | `coolant_temp_primary`, `coolant_temp_secondary` |

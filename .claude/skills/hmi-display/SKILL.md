@@ -1,3 +1,8 @@
+---
+name: HMI-Display-Interface
+description: UI updates, display management, visual/audio feedback
+---
+
 # Skill: HMI & Display Interface
 
 ## Komponen Display yang Digunakan
