@@ -77,20 +77,20 @@ class LOFASimulator:
                 self.trigger_scram()
                 
         # 1. Heat Generation from Core
-        # thermal_kw typically reaches up to ~3000 kW in full power simulation.
-        # We use a scaling factor to make the temperature rise visible but not instant.
-        heat_generation_rate = state.thermal_kw * 0.02
+        # thermal_kw typically reaches up to 300,000 kW in full power simulation (not 3000 kW).
+        # We use a scaling factor of 0.00038 so that at 100% power with all 3 pumps running,
+        # the temperature stabilizes around 275°C. If a pump fails, it exceeds 300°C and triggers SCRAM.
+        heat_generation_rate = state.thermal_kw * 0.00038
         
         # 2. Cooling from Pumps
-        # Each pump provides a certain amount of cooling capacity
-        active_pumps = 0
-        if state.pump_primary_status == PUMP_ON: active_pumps += 1
-        if state.pump_secondary_status == PUMP_ON: active_pumps += 1
-        if state.pump_tertiary_status == PUMP_ON: active_pumps += 1
-        
-        # Cooling rate is proportional to temperature difference (Newton's law of cooling)
-        # Heavily influenced by active pumps. If 0 pumps, only passive ambient cooling (very low).
-        cooling_efficiency = 0.005 + (active_pumps * 0.15)
+        # Each pump provides a different amount of cooling capacity based on its physical role:
+        # - Primary: Circulates coolant through core (highest impact, 0.25)
+        # - Secondary: Steam generator heat sink (medium impact, 0.12)
+        # - Tertiary: Condenser heat sink (lowest impact, 0.08)
+        cooling_efficiency = 0.005  # Passive ambient cooling
+        if state.pump_primary_status == PUMP_ON: cooling_efficiency += 0.25
+        if state.pump_secondary_status == PUMP_ON: cooling_efficiency += 0.12
+        if state.pump_tertiary_status == PUMP_ON: cooling_efficiency += 0.08
         cooling_rate = (state.temperature_core - self.ambient_temp) * cooling_efficiency
         
         # 3. Calculate Core Temperature change
