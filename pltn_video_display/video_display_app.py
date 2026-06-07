@@ -650,10 +650,9 @@ class VideoDisplayApp:
                 print("   💡 Create video file or use placeholder")
             return
         
-        # Build mpv command for Wayland with HDMI audio output
+        # Build mpv command
         cmd = [
             'mpv',
-            '--fs',                      # Fullscreen
             '--no-osd-bar',             # No on-screen display
             '--no-input-default-bindings',  # Disable keyboard
             '--really-quiet',           # Minimal output
@@ -661,10 +660,22 @@ class VideoDisplayApp:
             # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
-            '--gpu-context=wayland',    # Use Wayland context
-            f'--fs-screen={self.display_idx}', # Ensure it opens on correct monitor
-            f'--screen={self.display_idx}',    # Redundancy for different mpv versions
             
+            # Use X11 embedding if possible to force it to same screen as PyGame
+        ]
+        
+        try:
+            wm_info = pygame.display.get_wm_info()
+            wid = wm_info.get('window')
+            if wid:
+                cmd.append(f'--wid={wid}')
+                print(f"   Embedding mpv into PyGame Window ID: {wid}")
+            else:
+                cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
+        except Exception:
+            cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
+
+        cmd.extend([
             # === AUDIO OUTPUT (HDMI) ===
             '--ao=pipewire',            # Use PipeWire audio server (modern)
             '--audio-device=pipewire/alsa_output.platform-fef00700.hdmi.hdmi-stereo',  # HDMI audio
@@ -678,10 +689,10 @@ class VideoDisplayApp:
             cmd.insert(1, '--loop=inf')
         
         try:
-            # Set Wayland environment for mpv with audio routing
+            # Set environment for mpv
             env = {
                 'DISPLAY': ':0',
-                'WAYLAND_DISPLAY': 'wayland-0',
+                # 'WAYLAND_DISPLAY': 'wayland-0', # Removed to allow X11 WID embedding to work
                 'XDG_RUNTIME_DIR': '/run/user/1000',
                 'AUDIODEV': 'hw:1,0'    # Force HDMI audio device
             }
