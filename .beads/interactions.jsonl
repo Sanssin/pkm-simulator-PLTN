@@ -27,3 +27,4 @@
 {"id":"int-1bfaaf75","kind":"field_change","created_at":"2026-06-07T11:51:56.1259151Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-mvd","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-ab6a54a2","kind":"field_change","created_at":"2026-06-07T11:52:08.6136576Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-oco","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-9232d495","kind":"field_change","created_at":"2026-06-07T11:52:19.7604693Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-gd0","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-65e2616b","kind":"field_change","created_at":"2026-06-07T12:34:14.2441171Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-c7c","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Implement ServoController using pigpio for hardware PWM"}}

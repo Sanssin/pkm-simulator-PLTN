@@ -12,6 +12,11 @@ it will print debug messages instead of crashing.
 import logging
 import time
 
+try:
+    from .servo_controller import ServoController
+except ImportError:
+    from servo_controller import ServoController
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -23,6 +28,9 @@ except ImportError:
 class ActuatorManager:
     def __init__(self):
         self.hardware_active = GPIO_AVAILABLE
+        
+        # Initialize sub-controllers
+        self.servos = ServoController(safety_pin=23, shim_pin=24, reg_pin=25)
         
         if self.hardware_active:
             try:
@@ -41,20 +49,23 @@ class ActuatorManager:
         Updates all physical actuators based on the current state.
         This is called periodically (e.g., every 10ms) from the control logic thread.
         """
+        # Servos are managed by pigpio independently of RPi.GPIO
+        self.servos.set_rods(state.safety_rod, state.shim_rod, state.regulating_rod)
+        
         if not self.hardware_active:
-            # In mock mode, we don't do anything physical.
-            # The state is already updated in the state_manager, which will be exported to the UI.
+            # In mock mode, we don't do anything physical for standard GPIO.
             return
 
         try:
-            # TODO: Implement physical hardware control here
-            # e.g., rod_servo.set_angle(state.shim_rod)
+            # TODO: Implement physical relay/pump control here
             pass
         except Exception as e:
             logger.error(f"ActuatorManager: Error updating hardware: {e}")
 
     def cleanup(self):
         """Cleanup GPIO pins on exit."""
+        self.servos.cleanup()
+        
         if self.hardware_active:
             try:
                 GPIO.cleanup()
