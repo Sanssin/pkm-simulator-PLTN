@@ -189,8 +189,7 @@ class PLTNPanelController:
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
             buzzer=self.buzzer,
-            esp_trigger=self.esp_send_immediate.set,
-            oled_reset=None
+            esp_trigger=self.esp_send_immediate.set
         )
         logger.info("✓ EventProcessor initialized")
         
