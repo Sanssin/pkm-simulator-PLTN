@@ -19,7 +19,6 @@ from queue import Queue
 
 # Import our modules
 import raspi_config as config
-from raspi_uart_master import UARTMaster
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
@@ -29,8 +28,8 @@ import cpu_manager
 from controllers import StateManager, PanelState, InterlockValidator, EventProcessor
 from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
-from communication import ESPProtocol
 from io_handlers import ButtonIOHandler, ButtonEvent
+from controllers.actuator_manager import ActuatorManager
 
 # Try to import GPIO library
 try:
@@ -100,15 +99,9 @@ class PLTNPanelController:
         """Initialize hardware components with graceful degradation."""
         logger.info("Phase 1: Core hardware initialization...")
         
-        # Initialize UART master
-        try:
-            self.uart_master = UARTMaster()
-            self.uart_lock = threading.Lock()
-            logger.info("✓ UART master initialized")
-        except Exception as e:
-            logger.warning(f"✗ UART master failed: {e}")
-            self.uart_master = None
-            self.uart_lock = threading.Lock()
+        # Initialize Unified Actuator Manager
+        self.actuator_manager = ActuatorManager()
+        logger.info("✓ Actuator Manager initialized")
         
         # Initialize buzzer
         try:
@@ -193,9 +186,7 @@ class PLTNPanelController:
         )
         logger.info("✓ EventProcessor initialized")
         
-        # ESP protocol (uses uart_master directly for now)
-        # Note: Full ESPProtocol integration would replace esp_communication_thread
-        logger.info("✓ ESP communication ready")
+        # (ESP communication removed)
     
     # ============================================
     # Thread Functions
@@ -341,9 +332,8 @@ class PLTNPanelController:
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
 
-                    # Fallback Physics Simulation (runs every 10ms)
-                    # If UART is not connected, simulate reactor physics locally
-                    if not self.uart_master or not getattr(self.uart_master, 'esp_bc_connected', False):
+                    # Primary Physics Simulation (runs every 10ms)
+                    if True:
                         avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
                         if avg_rod > 10.0:
                             reactor_thermal_capacity = (avg_rod**2) * 90.0 + (state.shim_rod * 150.0) + (state.regulating_rod * 200.0)
@@ -358,6 +348,9 @@ class PLTNPanelController:
                                 state.turbine_speed = max(state.turbine_speed - 1.0, 0.0)
                                 
                         state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
+                        
+                    # Update hardware actuators
+                    self.actuator_manager.update_actuators(state)
                 
                 time.sleep(0.01)  # 10ms logic cycle for smoother simulation
                 
@@ -366,70 +359,6 @@ class PLTNPanelController:
                 time.sleep(0.1)
         
         logger.info("Control logic thread stopped")
-    
-    def esp_communication_thread(self):
-        """Thread for ESP communication (50ms cycle)."""
-        logger.info("ESP communication thread started")
-        
-        # CPU-010: Configure Controller/ESP affinity (Core 3 - Highest Priority)
-        if hasattr(os, 'gettid'):
-            tid = os.gettid()
-            cpu_manager.set_cpu_affinity(tid, [3])
-            cpu_manager.set_realtime_priority(tid)
-        
-        if not self.uart_master:
-            logger.warning("UART master not available, exiting ESP thread")
-            return
-        
-        last_esp_e_update = 0
-        ESP_E_INTERVAL = 0.2
-        
-        while self.state_manager.running:
-            try:
-                triggered = self.esp_send_immediate.wait(timeout=0.05)
-                if triggered:
-                    self.esp_send_immediate.clear()
-                
-                with self.uart_lock:
-                    with self.state_manager as state:
-                        if self.uart_master.esp_bc_connected:
-                            success = self.uart_master.update_esp_bc(
-                                state.safety_rod,
-                                state.shim_rod,
-                                state.regulating_rod,
-                                state.pump_primary_status,
-                                state.pump_secondary_status,
-                                state.pump_tertiary_status,
-                                state.humid_ct1_cmd,
-                                state.humid_ct2_cmd,
-                                state.humid_ct3_cmd,
-                                state.humid_ct4_cmd
-                            )
-                            
-                            if success:
-                                esp_bc_data = self.uart_master.get_esp_bc_data()
-                                state.thermal_kw = esp_bc_data.kw_thermal
-                                state.turbine_speed = esp_bc_data.turbine_speed
-                
-                # ESP-E update (throttled)
-                current_time = time.time()
-                if current_time - last_esp_e_update >= ESP_E_INTERVAL:
-                    with self.uart_lock:
-                        with self.state_manager as state:
-                            display_power = state.thermal_kw if state.turbine_speed > 50 else 0.0
-                            self.uart_master.update_esp_e(
-                                thermal_power_kw=display_power,
-                                pump_primary_status=state.pump_primary_status,
-                                pump_secondary_status=state.pump_secondary_status,
-                                pump_tertiary_status=state.pump_tertiary_status
-                            )
-                    last_esp_e_update = current_time
-                
-            except Exception as e:
-                logger.error(f"ESP communication error: {e}")
-                time.sleep(0.1)
-        
-        logger.info("ESP communication thread stopped")
     
     def state_export_thread(self):
         """Export state to JSON for video display."""
@@ -491,7 +420,6 @@ class PLTNPanelController:
         threads = [
             threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
-            threading.Thread(target=self.esp_communication_thread, daemon=True, name="ESPCommThread"),
             threading.Thread(target=self.state_export_thread, daemon=True, name="StateExportThread"),
         ]
         
@@ -530,10 +458,8 @@ class PLTNPanelController:
         if self.buzzer:
             self.buzzer.cleanup()
         
-        if self.uart_master:
-            self.uart_master.update_esp_bc(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-            self.uart_master.update_esp_e(0.0)
-            self.uart_master.close()
+        if hasattr(self, "actuator_manager"):
+            self.actuator_manager.cleanup()
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller shutdown complete")
