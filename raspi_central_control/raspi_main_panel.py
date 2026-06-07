@@ -266,7 +266,14 @@ class PLTNPanelController:
                                     
                                 if button_event is not None:
                                     self.button_event_queue.put(button_event)
-                                    logger.info(f"Touch event received from HMI: {button_event.name}")
+                                    # --- Latency Measurement ---
+                                    latency_ms = (time.time() - evt_ts) * 1000.0
+                                    try:
+                                        with open("/tmp/latency_log.txt", "a") as f:
+                                            f.write(f"{evt_ts:.3f},{time.time():.3f},{latency_ms:.2f},{button_event.name}\n")
+                                    except Exception:
+                                        pass
+                                    logger.info(f"Touch event received from HMI: {button_event.name} (Latency: {latency_ms:.2f}ms)")
                                     
                             last_processed_timestamp = newest_timestamp
                             
@@ -275,7 +282,7 @@ class PLTNPanelController:
             except Exception as e:
                 logger.debug(f"Touch polling error: {e}")
                 
-            time.sleep(0.05)
+            time.sleep(0.01)  # Faster polling for smoother touch response
             
         logger.info("Touch input polling thread stopped")
     
@@ -334,7 +341,7 @@ class PLTNPanelController:
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
 
-                    # Fallback Physics Simulation (runs every 50ms)
+                    # Fallback Physics Simulation (runs every 10ms)
                     # If UART is not connected, simulate reactor physics locally
                     if not self.uart_master or not getattr(self.uart_master, 'esp_bc_connected', False):
                         avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
@@ -346,13 +353,13 @@ class PLTNPanelController:
                             
                         if not state.emergency_active:
                             if reactor_thermal_capacity > 50000.0:
-                                state.turbine_speed = min(state.turbine_speed + 2.5, 100.0)
+                                state.turbine_speed = min(state.turbine_speed + 0.5, 100.0)
                             elif reactor_thermal_capacity < 20000.0:
-                                state.turbine_speed = max(state.turbine_speed - 5.0, 0.0)
+                                state.turbine_speed = max(state.turbine_speed - 1.0, 0.0)
                                 
                         state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
                 
-                time.sleep(0.05)
+                time.sleep(0.01)  # 10ms logic cycle for smoother simulation
                 
             except Exception as e:
                 logger.error(f"Control logic error: {e}")
