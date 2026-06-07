@@ -58,9 +58,9 @@ class PanelState:
     pump_tertiary_transition_start: float = 0.0
     
     # Rod positions (0-100%)
-    safety_rod: int = 0
-    shim_rod: int = 0
-    regulating_rod: int = 0
+    safety_rod: float = 0.0
+    shim_rod: float = 0.0
+    regulating_rod: float = 0.0
     
     # Thermal power from ESP-BC (kW)
     thermal_kw: float = 0.0

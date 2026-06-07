@@ -232,18 +232,18 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.safety_rod = min(state.safety_rod + 1, 100)
+                state.safety_rod = min(state.safety_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.SAFETY_ROD_DOWN:
                 # Safety rod must be >= shim and >= regulating
-                new_pos = state.safety_rod - 1
+                new_pos = state.safety_rod - 2.5
                 if new_pos < state.shim_rod or new_pos < state.regulating_rod:
                     logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
-                    logger.warning(f"   Safety={state.safety_rod}%, Shim={state.shim_rod}%, Reg={state.regulating_rod}%")
+                    logger.warning(f"   Safety={state.safety_rod:.1f}%, Shim={state.shim_rod:.1f}%, Reg={state.regulating_rod:.1f}%")
                     logger.warning(f"   Lower Shim/Regulating first, then Safety can follow")
                     self._sound_warning()
                     return
-                state.safety_rod = max(new_pos, 0)
+                state.safety_rod = max(new_pos, 0.0)
             
             # Shim rod events
             elif event == ButtonEvent.SHIM_ROD_UP:
@@ -263,10 +263,10 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.shim_rod = min(state.shim_rod + 1, 100)
+                state.shim_rod = min(state.shim_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.SHIM_ROD_DOWN:
-                state.shim_rod = max(state.shim_rod - 1, 0)
+                state.shim_rod = max(state.shim_rod - 2.5, 0.0)
             
             # Regulating rod events
             elif event == ButtonEvent.REGULATING_ROD_UP:
@@ -286,10 +286,10 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.regulating_rod = min(state.regulating_rod + 1, 100)
+                state.regulating_rod = min(state.regulating_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.REGULATING_ROD_DOWN:
-                state.regulating_rod = max(state.regulating_rod - 1, 0)
+                state.regulating_rod = max(state.regulating_rod - 2.5, 0.0)
             
             # Emergency SCRAM
             elif event == ButtonEvent.EMERGENCY:
