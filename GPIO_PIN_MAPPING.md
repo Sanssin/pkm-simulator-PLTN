@@ -13,30 +13,6 @@ GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
 ```
 
-### Button Pins (17 buttons)
-```
-GPIO 5  - PUMP_PRIMARY_ON          ⚠️ CONFLICT! (Need for UART3 RXD)
-GPIO 6  - PUMP_PRIMARY_OFF
-GPIO 13 - PUMP_SECONDARY_ON
-GPIO 19 - PUMP_SECONDARY_OFF
-GPIO 26 - PUMP_TERTIARY_ON
-GPIO 21 - PUMP_TERTIARY_OFF
-
-GPIO 20 - SAFETY_ROD_UP
-GPIO 16 - SAFETY_ROD_DOWN
-GPIO 12 - SHIM_ROD_UP
-GPIO 7  - SHIM_ROD_DOWN
-GPIO 8  - REGULATING_ROD_UP
-GPIO 25 - REGULATING_ROD_DOWN
-
-GPIO 24 - PRESSURE_UP
-GPIO 23 - PRESSURE_DOWN
-
-GPIO 17 - REACTOR_START (GREEN)
-GPIO 27 - REACTOR_RESET (YELLOW)
-GPIO 18 - EMERGENCY (RED)
-```
-
 ### Output Pins
 ```
 GPIO 22 - BUZZER (Software PWM)
@@ -60,14 +36,6 @@ GPIO 4, 5    - UART3 (TXD, RXD) - ESP-E Communication  ✅ NEW
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
 ```
 
-### Button Pins - DEPRECATED (Moved to Touchscreen HMI)
-```
-# All 17 pins previously used for buttons are now FREE for Actuators
-# GPIO 11, 6, 13, 19, 26, 21 (Pumps) -> FREE
-# GPIO 20, 16, 12, 7, 8, 25 (Rods) -> FREE
-# GPIO 24, 23 (Pressure) -> FREE
-# GPIO 17, 27, 18 (System) -> FREE
-```
 
 ### Output Pins
 ```

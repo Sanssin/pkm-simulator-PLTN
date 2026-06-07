@@ -333,6 +333,24 @@ class PLTNPanelController:
                     # Update LOFA thermodynamics
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
+
+                    # Fallback Physics Simulation (runs every 50ms)
+                    # If UART is not connected, simulate reactor physics locally
+                    if not self.uart_master or not getattr(self.uart_master, 'esp_bc_connected', False):
+                        avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
+                        if avg_rod > 10.0:
+                            reactor_thermal_capacity = (avg_rod**2) * 90.0 + (state.shim_rod * 150.0) + (state.regulating_rod * 200.0)
+                            reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
+                        else:
+                            reactor_thermal_capacity = 0.0
+                            
+                        if not state.emergency_active:
+                            if reactor_thermal_capacity > 50000.0:
+                                state.turbine_speed = min(state.turbine_speed + 2.5, 100.0)
+                            elif reactor_thermal_capacity < 20000.0:
+                                state.turbine_speed = max(state.turbine_speed - 5.0, 0.0)
+                                
+                        state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
                 
                 time.sleep(0.05)
                 
