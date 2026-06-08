@@ -683,7 +683,7 @@ class VideoDisplayApp:
             '--volume=100',             # Maximum volume
             
             video_path
-        ]
+        ])
         
         if loop:
             cmd.insert(1, '--loop=inf')
