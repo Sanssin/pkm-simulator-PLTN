@@ -92,12 +92,28 @@ class SCRAMSequence:
             logger.critical("SCRAM SEQUENCE INITIATED")
             logger.critical("Emergency rod insertion: ALL RODS DROPPING SIMULTANEOUSLY")
             
-            # Capture initial values
+            # Capture initial values and set snap-to-zero / emergency states
             with self._state_manager as state:
                 initial_turbine_speed = state.turbine_speed
                 start_safety = state.safety_rod
                 start_shim = state.shim_rod
                 start_regulating = state.regulating_rod
+                
+                # Snap to zero immediately
+                state.safety_rod = 0
+                state.shim_rod = 0
+                state.regulating_rod = 0
+                
+                # Motor stop (all pumps OFF)
+                state.pump_primary_status = 0
+                state.pump_secondary_status = 0
+                state.pump_tertiary_status = 0
+                
+                # Alarm trigger
+                state.emergency_active = True
+            
+            if self._esp_trigger:
+                self._esp_trigger()
             
             # Start turbine spin-down in parallel
             if initial_turbine_speed > 0:
@@ -108,10 +124,10 @@ class SCRAMSequence:
                 )
                 turbine_thread.start()
             
-            # Drop all rods simultaneously
-            self._drop_all_rods(start_safety, start_shim, start_regulating)
+            # Since we snapped to zero, we don't need to call _drop_all_rods
+            # self._drop_all_rods(start_safety, start_shim, start_regulating)
             
-            logger.critical("SCRAM SEQUENCE COMPLETE - All rods inserted (3 seconds total)")
+            logger.critical("SCRAM SEQUENCE COMPLETE - All rods inserted")
             logger.critical("Turbine spin-down continues (~12 seconds total)")
             
             if self._on_complete:
@@ -128,6 +144,7 @@ class SCRAMSequence:
                        start_regulating: int) -> None:
         """
         Drop all rods from their starting positions to 0.
+        Deprecated: SCRAM now uses snap-to-zero.
         
         Args:
             start_safety: Initial safety rod position (%)
