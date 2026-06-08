@@ -56,12 +56,30 @@ class ActuatorManager:
         self.servos.set_rods(state.safety_rod, state.shim_rod, state.regulating_rod)
         
         # Motors are also managed by pigpio
-        # Convert pump status (0=OFF, 1=STARTING, 2=ON, 3=SHUTTING_DOWN) to speed
-        # For now, if > 0 (STARTING or ON or SHUTTING_DOWN), we just set speed to 100% or 50%
-        # Actually 0 = 0%, 1 = 50%, 2 = 100%, 3 = 50% could work, but let's do 100% if ON
-        prim_speed = 100.0 if state.pump_primary_status in (1, 2) else 0.0
-        sec_speed = 100.0 if state.pump_secondary_status in (1, 2) else 0.0
-        tert_speed = 100.0 if state.pump_tertiary_status in (1, 2) else 0.0
+        # Calculate smooth speed during transition (3.0 seconds duration, as in raspi_main_panel)
+        def calc_speed(status, transition_start):
+            if status == 0:  # OFF
+                return 0.0
+            elif status == 2:  # ON
+                return 100.0
+            
+            # For STARTING (1) and SHUTTING_DOWN (3)
+            current_time = time.time()
+            if transition_start == 0:
+                return 0.0 if status == 1 else 100.0
+                
+            progress = (current_time - transition_start) / 3.0
+            progress = max(0.0, min(1.0, progress))
+            
+            if status == 1:  # STARTING: 0 to 100%
+                return progress * 100.0
+            elif status == 3:  # SHUTTING_DOWN: 100 to 0%
+                return (1.0 - progress) * 100.0
+            return 0.0
+
+        prim_speed = calc_speed(state.pump_primary_status, state.pump_primary_transition_start)
+        sec_speed = calc_speed(state.pump_secondary_status, state.pump_secondary_transition_start)
+        tert_speed = calc_speed(state.pump_tertiary_status, state.pump_tertiary_transition_start)
         
         self.motors.set_speed('pump_primary', prim_speed)
         self.motors.set_speed('pump_secondary', sec_speed)
