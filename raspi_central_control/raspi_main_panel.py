@@ -61,15 +61,13 @@ class PLTNPanelController:
     - EventProcessor: Button event handling
     - SCRAMSequence: Emergency shutdown
     - AutoSimulator: Automated startup
-    - ESPProtocol: ESP communication
     - ButtonIOHandler: Button input handling
     """
     
     def __init__(self):
         """Initialize PLTN Panel Controller"""
         logger.info("=" * 60)
-        logger.info("PLTN Simulator v5.0 - Refactored Architecture")
-        logger.info("ESP-BC (Rods+Turbine+Humid) | ESP-E (LED Visualizer)")
+        logger.info("PLTN Simulator v5.0 - Refactored Architecture (ESP Removed)")
         logger.info("=" * 60)
         
         # Core state management
@@ -78,9 +76,6 @@ class PLTNPanelController:
         
         # Event queue for button presses
         self.button_event_queue = Queue(maxsize=100)
-        
-        # ESP communication trigger
-        self.esp_send_immediate = threading.Event()
         
         # State export file for video display
         self.state_export_file = Path("/tmp/pltn_state.json")
@@ -154,8 +149,7 @@ class PLTNPanelController:
         
         # SCRAM sequence
         self.scram_sequence = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_send_immediate.set
+            state_manager=self.state_manager
         )
         logger.info("✓ SCRAMSequence initialized")
         
@@ -169,8 +163,7 @@ class PLTNPanelController:
         
         # Auto simulator
         self.auto_simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_send_immediate.set
+            state_manager=self.state_manager
         )
         logger.info("✓ AutoSimulator initialized")
         
@@ -181,8 +174,7 @@ class PLTNPanelController:
             interlock_validator=self.interlock_validator,
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
-            buzzer=self.buzzer,
-            esp_trigger=self.esp_send_immediate.set
+            buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")
         

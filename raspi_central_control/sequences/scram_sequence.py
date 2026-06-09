@@ -31,8 +31,7 @@ class SCRAMSequence:
     
     Usage:
         scram = SCRAMSequence(
-            state_manager=state_manager,
-            esp_trigger=esp_send_immediate.set
+            state_manager=state_manager
         )
         scram.execute()  # Non-blocking, runs in separate thread
         
@@ -50,18 +49,15 @@ class SCRAMSequence:
     
     def __init__(self, 
                  state_manager: 'StateManager',
-                 esp_trigger: Optional[Callable[[], None]] = None,
                  on_complete: Optional[Callable[[], None]] = None):
         """
         Initialize SCRAM sequence.
         
         Args:
             state_manager: StateManager instance for state access
-            esp_trigger: Callback to trigger immediate ESP communication
             on_complete: Callback when SCRAM sequence completes
         """
         self._state_manager = state_manager
-        self._esp_trigger = esp_trigger
         self._on_complete = on_complete
         self._running = False
     
@@ -95,9 +91,6 @@ class SCRAMSequence:
             # Capture initial values and set snap-to-zero / emergency states
             with self._state_manager as state:
                 initial_turbine_speed = state.turbine_speed
-                start_safety = state.safety_rod
-                start_shim = state.shim_rod
-                start_regulating = state.regulating_rod
                 
                 # Snap to zero immediately
                 state.safety_rod = 0
@@ -111,9 +104,6 @@ class SCRAMSequence:
                 
                 # Alarm trigger
                 state.emergency_active = True
-            
-            if self._esp_trigger:
-                self._esp_trigger()
             
             # Start turbine spin-down in parallel
             if initial_turbine_speed > 0:
@@ -169,10 +159,6 @@ class SCRAMSequence:
                 state.shim_rod = max(0, current_shim)
                 state.regulating_rod = max(0, current_regulating)
             
-            # Trigger ESP update
-            if self._esp_trigger:
-                self._esp_trigger()
-            
             time.sleep(self.UPDATE_INTERVAL)
         
         # Ensure all rods are at exactly 0%
@@ -180,9 +166,6 @@ class SCRAMSequence:
             state.safety_rod = 0
             state.shim_rod = 0
             state.regulating_rod = 0
-        
-        if self._esp_trigger:
-            self._esp_trigger()
         
         logger.critical("Safety rod inserted (0%)")
         logger.critical("Shim rod inserted (0%)")
@@ -215,17 +198,11 @@ class SCRAMSequence:
                 with self._state_manager as state:
                     state.turbine_speed = max(0.0, current_speed)
                 
-                if self._esp_trigger:
-                    self._esp_trigger()
-                
-                time.sleep(0.1)  # 100ms update rate
+                time.sleep(0.05)  # 100ms update rate
             
             # Ensure final speed is exactly 0
             with self._state_manager as state:
                 state.turbine_speed = 0.0
-            
-            if self._esp_trigger:
-                self._esp_trigger()
             
             logger.info("Turbine spin-down complete (0%)")
             

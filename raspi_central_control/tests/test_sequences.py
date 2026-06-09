@@ -34,7 +34,6 @@ class TestSCRAMSequence(unittest.TestCase):
         """Test SCRAM sequence can be created."""
         scram = SCRAMSequence(
             state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger,
             on_complete=self.on_complete
         )
         
@@ -52,7 +51,6 @@ class TestSCRAMSequence(unittest.TestCase):
         
         scram = SCRAMSequence(
             state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger,
             on_complete=self.on_complete
         )
         
@@ -75,8 +73,7 @@ class TestSCRAMSequence(unittest.TestCase):
         self.state_manager.update(safety_rod=50, shim_rod=50, regulating_rod=50)
         
         scram = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         # Execute async with fast timing
@@ -96,8 +93,7 @@ class TestSCRAMSequence(unittest.TestCase):
         self.state_manager.update(safety_rod=50)
         
         scram = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         with patch.object(scram, 'ROD_DROP_DURATION', 0.05):
@@ -119,8 +115,7 @@ class TestAutoSimulator(unittest.TestCase):
     def test_simulator_creation(self):
         """Test AutoSimulator can be created."""
         simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         self.assertIsNotNone(simulator)
@@ -131,8 +126,7 @@ class TestAutoSimulator(unittest.TestCase):
     def test_simulator_start(self):
         """Test simulator starts correctly."""
         simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         # Start and immediately cancel to test start/cancel flow
@@ -153,8 +147,7 @@ class TestAutoSimulator(unittest.TestCase):
     def test_simulator_cancel(self):
         """Test simulator can be cancelled."""
         simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         thread = simulator.start()
@@ -176,8 +169,7 @@ class TestAutoSimulator(unittest.TestCase):
     def test_simulator_phase_progression(self):
         """Test phases progress correctly."""
         simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         # Mock the _check_cancelled to always return False
@@ -195,8 +187,7 @@ class TestAutoSimulator(unittest.TestCase):
     def test_ramp_value_int(self):
         """Test ramp_value with integer values."""
         simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         # Mock the _check_cancelled to always return False

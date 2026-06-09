@@ -123,8 +123,7 @@ class TestSCRAMIntegration(unittest.TestCase):
         
         # Execute SCRAM
         scram = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         with patch.object(scram, 'ROD_DROP_DURATION', 0.1):
@@ -152,12 +151,10 @@ class TestEventProcessorIntegration(unittest.TestCase):
         self.event_queue = Queue()
         self.interlock_validator = InterlockValidator()
         self.scram_sequence = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=Mock()
+            state_manager=self.state_manager
         )
         self.auto_simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=Mock()
+            state_manager=self.state_manager
         )
         
         self.processor = EventProcessor(

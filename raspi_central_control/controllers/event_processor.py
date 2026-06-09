@@ -56,8 +56,7 @@ class EventProcessor:
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
-                 buzzer = None,
-                 esp_trigger: Optional[Callable[[], None]] = None):
+                 buzzer = None):
         """
         Initialize EventProcessor.
         
@@ -68,7 +67,6 @@ class EventProcessor:
             scram_sequence: SCRAMSequence for emergency shutdown
             auto_simulator: AutoSimulator for auto startup
             buzzer: BuzzerAlarm instance for audio feedback
-            esp_trigger: Callback to trigger immediate ESP update
         """
         self._state_manager = state_manager
         self._event_queue = event_queue
@@ -76,7 +74,6 @@ class EventProcessor:
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
         self._buzzer = buzzer
-        self._esp_trigger = esp_trigger
         
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -107,11 +104,6 @@ class EventProcessor:
         self._running = False
         if self._thread:
             self._thread.join(timeout=2.0)
-    
-    def _trigger_esp(self) -> None:
-        """Trigger ESP communication if callback is set."""
-        if self._esp_trigger:
-            self._esp_trigger()
     
     def _sound_warning(self, duration: float = 1.5) -> None:
         """Play interlock warning buzzer."""
@@ -152,9 +144,6 @@ class EventProcessor:
                     
                     # Process event
                     self._process_event(event)
-                    
-                    # Trigger ESP update
-                    self._trigger_esp()
                     
                     # Mark task done
                     self._event_queue.task_done()

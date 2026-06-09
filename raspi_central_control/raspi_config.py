@@ -4,25 +4,6 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 """
 
 # ============================================
-# UART Configuration (NEW - Replaces I2C for ESP)
-# ============================================
-# UART Ports for ESP Communication
-UART_ESP_BC_PORT = '/dev/ttyAMA0'    # GPIO 14/15 (Built-in UART0)
-UART_ESP_E_PORT = '/dev/ttyAMA1'     # GPIO 4/5 (UART3) - Fixed: was ttyAMA3
-UART_BAUDRATE = 115200               # Standard baudrate
-UART_TIMEOUT = 0.5                   # Read timeout in seconds
-UART_UPDATE_INTERVAL = 0.1           # Update interval (100ms)
-# ESP32 Slave Addresses (2-ESP Architecture MERGED)
-ESP_BC_ADDRESS = 0x08  # ESP-BC: Control Rods + Turbine + Humidifier + Pumps (MERGED B+C)
-ESP_E_ADDRESS = 0x0A   # ESP-E: 3-Flow Visualizer (Primer, Sekunder, Tersier)
-
-# TCA9548A Channel Mapping for ESP
-# ESP-BC is on TCA9548A #1 (0x70), Channel 0
-# ESP-E is on TCA9548A #2 (0x71), Channel 0
-ESP_BC_CHANNEL = 0     # ESP-BC on multiplexer #1 (0x70)
-ESP_E_CHANNEL = 0      # ESP-E on multiplexer #2 (0x71)
-
-# ============================================
 # GPIO Pin Configuration
 # ============================================
 # NOTE: Button pins are now defined in raspi_gpio_buttons.py ButtonPin enum
