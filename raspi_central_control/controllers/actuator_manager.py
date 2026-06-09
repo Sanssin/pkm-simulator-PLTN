@@ -28,6 +28,13 @@ except ImportError:
     GPIO_AVAILABLE = False
 
 class ActuatorManager:
+    HUMIDIFIER_PINS = {
+        'ct1': 2,
+        'ct2': 3,
+        'ct3': 9,
+        'ct4': 10
+    }
+
     def __init__(self):
         self.hardware_active = GPIO_AVAILABLE
         
@@ -39,8 +46,14 @@ class ActuatorManager:
             try:
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(False)
-                # Initialize pins here later
-                logger.info("ActuatorManager: Hardware mode active.")
+                
+                # Initialize humidifier pins
+                for pin in self.HUMIDIFIER_PINS.values():
+                    GPIO.setup(pin, GPIO.OUT)
+                    # Relay modules are typically Active-LOW. Default to HIGH (OFF).
+                    GPIO.output(pin, GPIO.HIGH)
+                
+                logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
             except Exception as e:
                 logger.warning(f"ActuatorManager: Failed to initialize GPIO: {e}. Falling back to Mock mode.")
                 self.hardware_active = False
@@ -91,8 +104,11 @@ class ActuatorManager:
             return
 
         try:
-            # TODO: Implement physical relay control here
-            pass
+            # Physical relay control for Humidifiers (Active-Low)
+            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.LOW if getattr(state, 'humid_ct1_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
         except Exception as e:
             logger.error(f"ActuatorManager: Error updating hardware: {e}")
 
