@@ -50,8 +50,8 @@ class ActuatorManager:
                 # Initialize humidifier pins
                 for pin in self.HUMIDIFIER_PINS.values():
                     GPIO.setup(pin, GPIO.OUT)
-                    # Relay modules are typically Active-LOW. Default to HIGH (OFF).
-                    GPIO.output(pin, GPIO.HIGH)
+                    # Relay modules are Active-HIGH in this setup. Default to LOW (OFF).
+                    GPIO.output(pin, GPIO.LOW)
                 
                 logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
             except Exception as e:
@@ -104,11 +104,11 @@ class ActuatorManager:
             return
 
         try:
-            # Physical relay control for Humidifiers (Active-Low)
-            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.LOW if getattr(state, 'humid_ct1_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
+            # Physical relay control for Humidifiers (Active-High)
+            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.HIGH if getattr(state, 'humid_ct1_cmd', 0) else GPIO.LOW)
+            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.HIGH if getattr(state, 'humid_ct2_cmd', 0) else GPIO.LOW)
+            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.HIGH if getattr(state, 'humid_ct3_cmd', 0) else GPIO.LOW)
+            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.HIGH if getattr(state, 'humid_ct4_cmd', 0) else GPIO.LOW)
         except Exception as e:
             logger.error(f"ActuatorManager: Error updating hardware: {e}")
 
