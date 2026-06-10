@@ -333,11 +333,25 @@ class PLTNPanelController:
                         else:
                             reactor_thermal_capacity = 0.0
                             
+                        # Turbine starts spinning when thermal power exceeds threshold (e.g. 50000 kW)
+                        # Speed is proportional to the power generated
                         if not state.emergency_active:
                             if reactor_thermal_capacity > 50000.0:
-                                state.turbine_speed = min(state.turbine_speed + 0.5, 100.0)
-                            elif reactor_thermal_capacity < 20000.0:
-                                state.turbine_speed = max(state.turbine_speed - 1.0, 0.0)
+                                # Map thermal capacity (50000 - 900000) to target speed (10 - 100%)
+                                # We start at 10% minimum so it visually spins when just crossing threshold
+                                target_speed = 10.0 + ((reactor_thermal_capacity - 50000.0) / 850000.0) * 90.0
+                                target_speed = min(max(target_speed, 10.0), 100.0)
+                                
+                                # Smooth acceleration / deceleration
+                                if state.turbine_speed < target_speed:
+                                    state.turbine_speed = min(state.turbine_speed + 0.2, target_speed)
+                                else:
+                                    state.turbine_speed = max(state.turbine_speed - 0.5, target_speed)
+                            else:
+                                state.turbine_speed = max(state.turbine_speed - 0.5, 0.0)
+                        else:
+                            # Emergency: stop turbine quickly
+                            state.turbine_speed = max(state.turbine_speed - 2.0, 0.0)
                                 
                         state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
                         
