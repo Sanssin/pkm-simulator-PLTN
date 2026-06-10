@@ -11,6 +11,7 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 
 # Output Pins
 BUZZER_PIN = 22          # GPIO 22 for passive buzzer alarm (software PWM)
+LED_POWER_PIN = 18       # GPIO 18 for Power Output LED indicator (PWM)
 
 # ❌ DEPRECATED - Motor control via ESP32, NOT Raspberry Pi!
 # These pins are NOT used - motor control is done by ESP32 Utama via L298N

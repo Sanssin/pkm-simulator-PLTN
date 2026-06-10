@@ -11,6 +11,7 @@ it will print debug messages instead of crashing.
 
 import logging
 import time
+import raspi_config as config
 
 try:
     from .servo_controller import ServoController
@@ -52,6 +53,25 @@ class ActuatorManager:
                     GPIO.setup(pin, GPIO.OUT)
                     # Relay modules are Active-HIGH in this setup. Default to LOW (OFF).
                     GPIO.output(pin, GPIO.LOW)
+                
+                # Initialize Power LED
+                if hasattr(config, 'LED_POWER_PIN'):
+                    if not self.motors.mock_mode and hasattr(self.motors, 'pi') and self.motors.pi.connected:
+                        import pigpio
+                        self.motors.pi.set_mode(config.LED_POWER_PIN, pigpio.OUTPUT)
+                        self.motors.pi.set_PWM_frequency(config.LED_POWER_PIN, 1000)
+                        self.motors.pi.set_PWM_range(config.LED_POWER_PIN, 100) # 0-100% duty cycle
+                        self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
+                        self.use_pigpio_for_led = True
+                        logger.info(f"ActuatorManager: Power LED initialized on GPIO {config.LED_POWER_PIN} (via pigpio)")
+                    else:
+                        GPIO.setup(config.LED_POWER_PIN, GPIO.OUT)
+                        self.led_pwm = GPIO.PWM(config.LED_POWER_PIN, 1000)  # 1kHz
+                        self.led_pwm.start(0)
+                        self.use_pigpio_for_led = False
+                        logger.info(f"ActuatorManager: Power LED initialized on GPIO {config.LED_POWER_PIN} (via RPi.GPIO fallback)")
+                else:
+                    self.use_pigpio_for_led = None
                 
                 logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
             except Exception as e:
@@ -104,6 +124,17 @@ class ActuatorManager:
             return
 
         try:
+            # Update Power LED based on thermal_kw (0-300000 kW)
+            if hasattr(self, 'use_pigpio_for_led') and self.use_pigpio_for_led is not None:
+                power_ratio = getattr(state, 'thermal_kw', 0.0) / 300000.0
+                power_ratio = max(0.0, min(1.0, power_ratio))
+                duty_cycle = power_ratio * 100.0
+                
+                if self.use_pigpio_for_led:
+                    self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, int(duty_cycle))
+                elif hasattr(self, 'led_pwm') and self.led_pwm is not None:
+                    self.led_pwm.ChangeDutyCycle(duty_cycle)
+
             # Physical relay control for Humidifiers (Active-High)
             GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.HIGH if getattr(state, 'humid_ct1_cmd', 0) else GPIO.LOW)
             GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.HIGH if getattr(state, 'humid_ct2_cmd', 0) else GPIO.LOW)
@@ -119,6 +150,11 @@ class ActuatorManager:
         
         if self.hardware_active:
             try:
+                if hasattr(self, 'use_pigpio_for_led'):
+                    if self.use_pigpio_for_led and hasattr(self.motors, 'pi') and self.motors.pi is not None:
+                        self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
+                    elif not self.use_pigpio_for_led and hasattr(self, 'led_pwm') and self.led_pwm is not None:
+                        self.led_pwm.stop()
                 GPIO.cleanup()
                 logger.info("ActuatorManager: Cleaned up GPIO.")
             except Exception as e:
