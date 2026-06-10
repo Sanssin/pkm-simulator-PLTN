@@ -51,8 +51,8 @@ class ActuatorManager:
                 # Initialize humidifier pins
                 for pin in self.HUMIDIFIER_PINS.values():
                     GPIO.setup(pin, GPIO.OUT)
-                    # Relay modules are Active-HIGH in this setup. Default to LOW (OFF).
-                    GPIO.output(pin, GPIO.LOW)
+                    # Relay modules are Active-LOW in this setup. Default to HIGH (OFF).
+                    GPIO.output(pin, GPIO.HIGH)
                 
                 # Initialize Power LED
                 if hasattr(config, 'LED_POWER_PIN'):
@@ -135,11 +135,11 @@ class ActuatorManager:
                 elif hasattr(self, 'led_pwm') and self.led_pwm is not None:
                     self.led_pwm.ChangeDutyCycle(duty_cycle)
 
-            # Physical relay control for Humidifiers (Active-High)
-            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.HIGH if getattr(state, 'humid_ct1_cmd', 0) else GPIO.LOW)
-            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.HIGH if getattr(state, 'humid_ct2_cmd', 0) else GPIO.LOW)
-            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.HIGH if getattr(state, 'humid_ct3_cmd', 0) else GPIO.LOW)
-            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.HIGH if getattr(state, 'humid_ct4_cmd', 0) else GPIO.LOW)
+            # Physical relay control for Humidifiers (Active-LOW trigger)
+            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.LOW if getattr(state, 'humid_ct1_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
         except Exception as e:
             logger.error(f"ActuatorManager: Error updating hardware: {e}")
 
