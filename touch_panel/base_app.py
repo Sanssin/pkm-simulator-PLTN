@@ -664,6 +664,18 @@ class TouchPanelBaseWindow(QMainWindow):
         if self._footer_label is not None:
             self._footer_label.setText(f"Triggered action command: {action}")
         self._on_action(action)
+        
+        if action == "REACTOR_RESET":
+            import sys
+            from pathlib import Path
+            flag_path = Path("C:/temp/pltn_manual_started") if sys.platform == "win32" else Path("/tmp/pltn_manual_started")
+            try:
+                if flag_path.exists():
+                    flag_path.unlink()
+            except Exception:
+                pass
+            if hasattr(self, 'stacked_widget'):
+                self.stacked_widget.setCurrentIndex(0)
 
         # Update local simulation variables
         self._update_local_simulation(action)
