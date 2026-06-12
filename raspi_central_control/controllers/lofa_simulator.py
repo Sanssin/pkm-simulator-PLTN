@@ -101,7 +101,21 @@ class LOFASimulator:
         state.temperature_core = new_core_temp
         
         # Coolant temperature follows core temperature but with some lag and lower max
-        state.temperature_coolant = self.ambient_temp + (state.temperature_core - self.ambient_temp) * 0.8
+        state.temperature_fuel_cladding = state.temperature_core * 0.95 + self.ambient_temp * 0.05
+        
+        # Primary coolant takes heat from cladding
+        if state.pump_primary_status == PUMP_ON:
+            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.85
+        else:
+            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.4
+            
+        # Secondary coolant takes heat from primary
+        if state.pump_secondary_status == PUMP_ON:
+            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.7
+        else:
+            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.2
+            
+        state.temperature_coolant = state.temperature_coolant_primary
         
         # 4. Check for LOFA condition (SCRAM Trigger)
         if state.temperature_core >= self.max_core_temp:
