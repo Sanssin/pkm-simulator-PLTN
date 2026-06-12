@@ -11,13 +11,25 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 
 # Output Pins
 BUZZER_PIN = 22          # GPIO 22 for passive buzzer alarm (software PWM)
-LED_POWER_PIN = 18       # GPIO 18 for Power Output LED indicator (PWM)
+LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
 
 # ❌ DEPRECATED - Motor control via ESP32, NOT Raspberry Pi!
 # These pins are NOT used - motor control is done by ESP32 Utama via L298N
 # MOTOR_PRIM_PWM = 12      # NOT USED
 # MOTOR_SEC_PWM = 13       # NOT USED
 # MOTOR_TER_PWM = 19       # NOT USED
+
+# ============================================
+# LED Strip Configuration (WS2812)
+# ============================================
+LED_STRIP_PIN = 18       # Pin for WS2812 (Must be 18, 12, 10 or 21 for PWM)
+LED_STRIP_COUNT = 571    # Total number of LEDs
+
+# Segments: (start_index, length)
+# Adjust these values based on actual physical placement of the LEDs
+LED_SEGMENT_PRIMER = (0, 190)
+LED_SEGMENT_SEKUNDER = (190, 190)
+LED_SEGMENT_TERSIER = (380, 191)
 
 # ============================================
 # System Parameters
