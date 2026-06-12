@@ -837,13 +837,11 @@ class VideoDisplayApp:
         
         # 2. Pressurizer (Below Thermal Power)
         press_val = state.get("pressure", 0)
-        press_y = start_y + int(245 * self.scale)
+        press_y = start_y + int(220 * self.scale)
         
-        # Label for Pressurizer
         lbl_press = self.font_medium.render(f"Tekanan Pressurizer: {press_val:.2f} bar", True, self.COLOR_TEXT)
         self.screen.blit(lbl_press, lbl_press.get_rect(center=(start_x + width // 2, press_y)))
         
-        # Horizontal progress bar for Pressurizer
         bar_w = width - int(80 * self.scale)
         bar_x = start_x + (width - bar_w) // 2
         bar_y = press_y + int(25 * self.scale)
@@ -853,16 +851,50 @@ class VideoDisplayApp:
         pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(6 * self.scale))
         pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(2 * self.scale), 1), border_radius=int(6 * self.scale))
         
-        # Fill (max 200 bar)
         fill_ratio = min(max(press_val / 200.0, 0.0), 1.0)
         fill_w = int((bar_w - 4) * fill_ratio)
         if fill_w > 0:
             fill_rect = pygame.Rect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4)
             pygame.draw.rect(self.screen, self.COLOR_PRIMARY, fill_rect, border_radius=int(4 * self.scale))
             
-        # 3. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
-        bottom_y = start_y + int(310 * self.scale)
-        bottom_h = height - int(320 * self.scale)
+        # 3. Control Rods (Batang Kendali)
+        rods_y = press_y + int(70 * self.scale)
+        lbl_rods = self.font_medium.render("Posisi Batang Kendali", True, self.COLOR_TEXT)
+        self.screen.blit(lbl_rods, lbl_rods.get_rect(center=(start_x + width // 2, rods_y)))
+        
+        rods = [
+            ("Safety", state.get("safety_rod", 0)),
+            ("Shim", state.get("shim_rod", 0)),
+            ("Regulating", state.get("regulating_rod", 0))
+        ]
+        
+        rod_bar_w = width - int(120 * self.scale)
+        rod_bar_x = start_x + (width - rod_bar_w) // 2 + int(30*self.scale)
+        
+        for i, (name, val) in enumerate(rods):
+            ry = rods_y + int(25 * self.scale) + i * int(30 * self.scale)
+            
+            # Label
+            lbl = self.font_body.render(f"{name}", True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(right=rod_bar_x - int(10*self.scale), centery=ry + bar_h//2))
+            
+            # Value text
+            val_lbl = self.font_body.render(f"{val:.0f}%", True, self.COLOR_TEXT)
+            self.screen.blit(val_lbl, val_lbl.get_rect(left=rod_bar_x + rod_bar_w + int(10*self.scale), centery=ry + bar_h//2))
+            
+            # Bar
+            bg_rect = pygame.Rect(rod_bar_x, ry, rod_bar_w, bar_h)
+            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
+            
+            f_ratio = min(max(val / 100.0, 0.0), 1.0)
+            f_w = int((rod_bar_w - 4) * f_ratio)
+            if f_w > 0:
+                f_rect = pygame.Rect(rod_bar_x + 2, ry + 2, f_w, bar_h - 4)
+                pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
+            
+        # 4. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
+        bottom_y = rods_y + int(130 * self.scale)
+        bottom_h = height - (bottom_y - start_y)
         box_w = (width - int(30 * self.scale)) // 2
         
         # Sub-panel 3.1: Pump Status (Left)
