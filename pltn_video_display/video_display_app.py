@@ -1744,6 +1744,14 @@ class VideoDisplayApp:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                 
+                # Handle touch/mouse click to switch from IDLE to MANUAL
+                elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
+                    if not self.user_has_interacted:
+                        print("👉 Layar disentuh - beralih ke mode MANUAL")
+                        self.user_has_interacted = True
+                        if self.test_mode:
+                            self.mock_mode = "manual"
+                
                 # Test mode keyboard handling
                 self.handle_test_mode_keys(event)
             
