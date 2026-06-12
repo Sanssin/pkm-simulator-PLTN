@@ -298,13 +298,14 @@ class VideoDisplayApp:
         self.logo_poltek = None
         self.icon_pump_on = None
         self.icon_pump_off = None
+        
+        # Load Logos
         try:
             logo_path_brin = Path(__file__).parent / "assets" / "logo-brin.png"
             logo_path_poltek = Path(__file__).parent / "assets" / "logo-poltek.png"
             
             if logo_path_brin.exists():
                 logo_img = pygame.image.load(str(logo_path_brin))
-                # Scale for IDLE mode (large)
                 self.logo_brin = pygame.transform.smoothscale(logo_img, self.logo_size_large)
                 print(f"   ✅ Loaded BRIN logo")
             else:
@@ -312,16 +313,18 @@ class VideoDisplayApp:
             
             if logo_path_poltek.exists():
                 logo_img = pygame.image.load(str(logo_path_poltek))
-                # Scale for IDLE mode (large)
                 self.logo_poltek = pygame.transform.smoothscale(logo_img, self.logo_size_large)
                 print(f"   ✅ Loaded Poltek logo")
             else:
                 print(f"   ⚠️  Poltek logo not found: {logo_path_poltek}")
+        except Exception as e:
+            print(f"   ❌ Error loading logos: {e}")
+            self.logo_brin = None
+            self.logo_poltek = None
 
-            # --- TAMBAHAN UNTUK LOAD IKON POMPA PNG ---
-            # Ukuran ikon pompa bisa diatur di sini (misal 100x100)
+        # Load Pump Icons
+        try:
             self.pump_icon_size = (int(100 * self.scale), int(143.84 * self.scale))
-            
             pump_on_path = Path(__file__).parent / "assets" / "pompa_on.png"
             pump_off_path = Path(__file__).parent / "assets" / "pompa_off.png"
             
@@ -329,19 +332,17 @@ class VideoDisplayApp:
                 img_on = pygame.image.load(str(pump_on_path)).convert_alpha()
                 img_off = pygame.image.load(str(pump_off_path)).convert_alpha()
                 
-                # Resize agar tajam dan ukurannya pas di layar 4K
                 self.icon_pump_on = pygame.transform.smoothscale(img_on, self.pump_icon_size)
                 self.icon_pump_off = pygame.transform.smoothscale(img_off, self.pump_icon_size)
-                print(f"   ✅ Loaded Pump Icons")
+                print(f"   ✅ Loaded Pump Icons from: {pump_on_path}")
             else:
-                print(f"   ⚠️  Pump icons not found in assets folder")
+                print(f"   ⚠️  Pump icons not found. Looked at: {pump_on_path}")
                 self.icon_pump_on = None
                 self.icon_pump_off = None
-        
         except Exception as e:
-            print(f"   ❌ Error loading logos: {e}")
-            self.logo_brin = None
-            self.logo_poltek = None
+            print(f"   ❌ Error loading pump icons: {e}")
+            self.icon_pump_on = None
+            self.icon_pump_off = None
     
     def create_mock_state(self) -> Dict:
         """Create mock state for testing - recalculates thermal_kw from current rod positions
