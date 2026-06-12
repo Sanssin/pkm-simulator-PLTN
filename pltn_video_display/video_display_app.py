@@ -453,9 +453,8 @@ class VideoDisplayApp:
                                state.get("pump_tertiary", 0))
                 
                 # Detect user interaction (significant state change)
-                if (abs(current_pressure - self.last_pressure) > 5 or
-                    abs(current_rods - self.last_rods_sum) > 10 or
-                    abs(current_pumps - self.last_pumps_sum) > 0):
+                if (abs(current_pressure - self.last_pressure) > 0.1 or
+                    abs(current_rods - self.last_rods_sum) > 10):
                     
                     # Only consider as interaction if not during auto simulation
                     auto_running = state.get("auto_running", False)
