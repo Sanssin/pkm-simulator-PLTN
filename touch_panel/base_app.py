@@ -37,6 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover
         QWidget,
         QProgressBar,
         QGraphicsDropShadowEffect,
+        QStackedWidget,
     )
     from PyQt5.QtGui import QColor, QPixmap
 
@@ -59,6 +60,7 @@ try:  # pragma: no cover - optional dependency
         QWidget,
         QProgressBar,
         QGraphicsDropShadowEffect,
+        QStackedWidget,
     )
     from PyQt5.QtGui import QColor, QPixmap
     _PYQT_AVAILABLE = True
@@ -270,6 +272,10 @@ class TouchPanelBaseWindow(QMainWindow):
             self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)
             self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
+        self.stacked_widget = QStackedWidget()
+
+        hud_widget = self._build_hud()
+
         root = QWidget()
         root.setObjectName("centralWidget")
         root_layout = QVBoxLayout(root)
@@ -280,7 +286,10 @@ class TouchPanelBaseWindow(QMainWindow):
         root_layout.addLayout(self._build_body())
         root_layout.addWidget(self._build_footer())
 
-        self.setCentralWidget(root)
+        self.stacked_widget.addWidget(hud_widget)
+        self.stacked_widget.addWidget(root)
+
+        self.setCentralWidget(self.stacked_widget)
         self.setStyleSheet(self._stylesheet())
 
         if self.windowed:
@@ -313,6 +322,53 @@ class TouchPanelBaseWindow(QMainWindow):
                     self.move(target_screen.geometry().topLeft())
                     
             self.showFullScreen()
+
+    def _build_hud(self) -> QWidget:
+        hud = QWidget()
+        hud.setObjectName("hudWidget")
+        layout = QVBoxLayout(hud)
+        layout.setAlignment(Qt.AlignCenter)
+        
+        title = QLabel("PLTN Simulator")
+        title.setObjectName("hudTitle")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
+        
+        subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
+        
+        start_btn = QPushButton("Mulai Mode Manual")
+        start_btn.setObjectName("hudStartBtn")
+        start_btn.setFixedSize(320, 80)
+        start_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3B82F6;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #2563EB;
+            }
+            QPushButton:pressed {
+                background-color: #1D4ED8;
+            }
+        """)
+        start_btn.clicked.connect(self._start_manual_mode)
+        
+        layout.addStretch()
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addWidget(start_btn, alignment=Qt.AlignCenter)
+        layout.addStretch()
+        
+        hud.setStyleSheet("background-color: #0F172A;")
+        return hud
+
+    def _start_manual_mode(self) -> None:
+        self.stacked_widget.setCurrentIndex(1)
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
