@@ -1735,7 +1735,9 @@ class VideoDisplayApp:
         if not is_zero and getattr(self, 'just_woke_up', False):
             self.just_woke_up = False
 
-        if is_zero and not getattr(self, 'just_woke_up', False):
+        is_manual_started = hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists()
+
+        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started:
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
