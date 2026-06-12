@@ -369,6 +369,14 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _start_manual_mode(self) -> None:
         self.stacked_widget.setCurrentIndex(1)
+        import sys
+        from pathlib import Path
+        flag_path = Path("C:/temp/pltn_manual_started") if sys.platform == "win32" else Path("/tmp/pltn_manual_started")
+        try:
+            flag_path.parent.mkdir(parents=True, exist_ok=True)
+            flag_path.touch()
+        except Exception as e:
+            logger.error("Failed to write manual started flag: %s", e)
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:

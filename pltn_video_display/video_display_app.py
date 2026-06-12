@@ -174,6 +174,16 @@ class VideoDisplayApp:
         
         self.last_state = {}
         
+        self.manual_flag_file = Path("C:/temp/pltn_manual_started") if sys.platform == 'win32' else Path("/tmp/pltn_manual_started")
+        self._clear_manual_flag()
+        
+    def _clear_manual_flag(self):
+        try:
+            if hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
+                self.manual_flag_file.unlink()
+        except Exception:
+            pass
+        
         # Video player (mpv subprocess)
         self.video_process = None
         self.current_video = None
@@ -461,6 +471,11 @@ class VideoDisplayApp:
                     if not auto_running:
                         self.user_has_interacted = True
                         print("👤 User interaction detected - enabling MANUAL mode")
+                
+            # Also check if HUD manual mode was started via file flag
+            if not self.user_has_interacted and hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
+                self.user_has_interacted = True
+                print("👤 Touch panel HUD started - enabling MANUAL mode")
                 
                 # Update last known values
                 self.last_pressure = current_pressure
@@ -1727,6 +1742,7 @@ class VideoDisplayApp:
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False
                 self.auto_complete_time = None
+                self._clear_manual_flag()
             self.draw_idle_screen()
             return
         
@@ -1749,6 +1765,7 @@ class VideoDisplayApp:
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False
                 self.auto_complete_time = None
+                self._clear_manual_flag()
             self.draw_idle_screen()
             return
         
