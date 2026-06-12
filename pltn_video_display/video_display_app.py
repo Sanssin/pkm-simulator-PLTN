@@ -978,22 +978,41 @@ class VideoDisplayApp:
         diag_content_h = diag_h - int(100 * self.scale)
         self.draw_reactor_diagnostic_displays(state, margin_x, diag_content_y, left_col_w, diag_content_h)
 
-        # === KANAN 1: SUHU INTI (dengan thermometer) ===
+        # === KANAN 1: MONITOR SUHU (LOFA) ===
         temp_y = content_y
-        temp_h = int(240 * self.scale)
-        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "SUHU INTI")
+        temp_h = int(320 * self.scale)
+        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
         
-        core_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
+        # Read temperatures from state (fallback to calculated if not available)
+        default_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
+        core_temp = state.get("temperature_core", default_temp)
+        clad_temp = state.get("temperature_fuel_cladding", core_temp * 0.95)
+        prim_temp = state.get("temperature_coolant_primary", clad_temp * 0.85)
+        sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
+        
+        temps = [
+            ("Core", core_temp, 350.0),
+            ("Clad", clad_temp, 350.0),
+            ("Prim", prim_temp, 300.0),
+            ("Sec", sec_temp, 250.0)
+        ]
         
         temp_content_y = temp_y + int(80*self.scale)
-        temp_content_h = temp_h - int(100*self.scale)
-        bar_x = right_col_x + int(300 * self.scale)
-        bar_w = int(45 * self.scale)
-        self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, core_temp, 300.0)
-        temp_val_x = bar_x + bar_w + int(25 * self.scale)
-        temp_val_y = temp_content_y + temp_content_h // 2 - int(35*self.scale)
-        temp_val = self.font_display.render(f"{core_temp:.0f}°C", True, self.COLOR_TEXT)
-        self.screen.blit(temp_val, (temp_val_x, temp_val_y))
+        temp_content_h = temp_h - int(140*self.scale)
+        bar_w = int(40 * self.scale)
+        spacing = int((right_col_w - (4 * bar_w)) / 5)
+        
+        for i, (name, val, max_val) in enumerate(temps):
+            bar_x = right_col_x + spacing + i * (bar_w + spacing)
+            self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, val, max_val)
+            
+            # Label
+            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+            
+            # Value
+            val_txt = self.font_small.render(f"{val:.0f}°C", True, self.COLOR_TEXT)
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(40*self.scale))))
 
         # === KANAN 2: PANDUAN OPERASI ===
         inst_y = temp_y + temp_h + panel_gap
