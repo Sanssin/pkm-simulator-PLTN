@@ -1663,7 +1663,13 @@ class VideoDisplayApp:
                         state.get("pump_tertiary", 0))
         
         # Detect RESET: all values near zero
-        if (current_pressure < 5 and current_rods < 10 and current_pumps == 0):
+        is_zero = (current_pressure < 5 and current_rods < 10 and current_pumps == 0)
+        
+        # Clear the just_woke_up flag if we've started doing something
+        if not is_zero and getattr(self, 'just_woke_up', False):
+            self.just_woke_up = False
+
+        if is_zero and not getattr(self, 'just_woke_up', False):
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
@@ -1749,6 +1755,7 @@ class VideoDisplayApp:
                     if not self.user_has_interacted:
                         print("👉 Layar disentuh - beralih ke mode MANUAL")
                         self.user_has_interacted = True
+                        self.just_woke_up = True
                         if self.test_mode:
                             self.mock_mode = "manual"
                 
