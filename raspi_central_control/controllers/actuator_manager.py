@@ -16,9 +16,11 @@ import raspi_config as config
 try:
     from .servo_controller import ServoController
     from .motor_controller import MotorController
+    from .led_strip_controller import LedStripController
 except ImportError:
     from servo_controller import ServoController
     from motor_controller import MotorController
+    from led_strip_controller import LedStripController
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,28 @@ class ActuatorManager:
         # Initialize sub-controllers
         self.servos = ServoController(safety_pin=23, shim_pin=24, reg_pin=25)
         self.motors = MotorController()
+        
+        # Initialize LED Strip
+        try:
+            self.led_strip = LedStripController(
+                pin=getattr(config, 'LED_STRIP_PIN', 18),
+                count=getattr(config, 'LED_STRIP_COUNT', 571)
+            )
+            
+            # Add segments
+            seg_prim = getattr(config, 'LED_SEGMENT_PRIMER', (0, 190))
+            seg_sec = getattr(config, 'LED_SEGMENT_SEKUNDER', (190, 190))
+            seg_ter = getattr(config, 'LED_SEGMENT_TERSIER', (380, 191))
+            
+            self.led_strip.add_segment('primer', seg_prim[0], seg_prim[1], flow_direction=1)
+            self.led_strip.add_segment('sekunder', seg_sec[0], seg_sec[1], flow_direction=1)
+            self.led_strip.add_segment('tersier', seg_ter[0], seg_ter[1], flow_direction=1)
+            
+            if self.hardware_active:
+                self.led_strip.start()
+        except Exception as e:
+            logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
+            self.led_strip = None
         
         if self.hardware_active:
             try:
@@ -119,6 +143,12 @@ class ActuatorManager:
         self.motors.set_speed('pump_tertiary', tert_speed)
         self.motors.set_speed('turbine', state.turbine_speed)
         
+        # Update LED Strip speeds (0.0 to 1.0 multiplier)
+        if self.led_strip is not None:
+            self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
+            self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
+            self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
+        
         if not self.hardware_active:
             # In mock mode, we don't do anything physical for standard GPIO.
             return
@@ -147,6 +177,9 @@ class ActuatorManager:
         """Cleanup GPIO pins on exit."""
         self.servos.cleanup()
         self.motors.cleanup()
+        
+        if self.led_strip is not None:
+            self.led_strip.stop()
         
         if self.hardware_active:
             try:
