@@ -24,7 +24,7 @@ class MotorController:
     MOTOR_PINS = {
         'pump_primary': 17,
         'pump_secondary': 20,
-        'pump_tertiary': 21,
+        'pump_tertiary': 27,  # Pindah dari 21 ke 27 agar 21 bisa dipakai LED PCM
         'turbine': 26
     }
     
