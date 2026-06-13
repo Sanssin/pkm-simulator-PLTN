@@ -27,7 +27,7 @@ LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red) - Changed from 21
 LED_STRIP_PIN = 18       # Pin for WS2812 Pipa (PWM0)
 LED_STRIP_COUNT = 571    # Total number of LEDs Pipa
 
-LED_PRESS_PIN = 21       # Pin for WS2812 Pressurizer (PCM_DOUT) - Bebas dari PWM dan Bebas dari Humidifier
+LED_PRESS_PIN = 10       # Pin for WS2812 Pressurizer (SPI0 MOSI) - Memakai SPI
 LED_PRESS_COUNT = 22     # Total LEDs Pressurizer
 
 # Segments: (start_index, length)
