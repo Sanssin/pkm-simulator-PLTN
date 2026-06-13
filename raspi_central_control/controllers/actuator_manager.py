@@ -34,7 +34,7 @@ class ActuatorManager:
         'ct1': 2,
         'ct2': 3,
         'ct3': 9,
-        'ct4': 20  # Pindah dari 10 ke 20 agar pin 10 bisa dipakai SPI Pressurizer
+        'ct4': 22  # Pindah ke 22 sesuai permintaan
     }
 
     def __init__(self):
