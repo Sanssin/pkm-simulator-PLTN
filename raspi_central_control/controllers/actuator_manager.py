@@ -163,14 +163,14 @@ class ActuatorManager:
                 # Normal: Putih Terang (agar tembus filamen biru menjadi Biru Terang)
                 r, g, b = 255, 255, 255
             elif pressure_val <= 165.0:
-                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Kuning Terang (255,255,0)
+                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Biru Terang / Cyan (0,255,255)
                 ratio = (pressure_val - 155.0) / 10.0
-                r = 255
+                r = int(255 - (255 * ratio))
                 g = 255
-                b = int(255 - (255 * ratio))
+                b = 255
             else:
-                # Critical: > 165. Kuning Terang (Cahaya kuning yang menembus biru akan terlihat Hijau Terang menyala, sangat menembus dan mencolok)
-                r, g, b = 255, 255, 0
+                # Critical: > 165. Biru Terang / Cyan (0, 255, 255)
+                r, g, b = 0, 255, 255
 
             self.led_strip.set_fill_level('pressurizer', pressure_ratio, r, g, b)
             # Berikan animasi ombak naik (kecepatan proporsional dengan rasio tekanan)
