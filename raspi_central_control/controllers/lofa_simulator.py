@@ -145,13 +145,16 @@ class LOFASimulator:
             state.lofa_secondary = False
 
         # Tertiary Pump Failure -> Prolonged effect check
-        if state.pump_tertiary_status != PUMP_ON:
-            if not state.lofa_tertiary:
-                state.lofa_tertiary = True
-                logger.warning("⚠️ LOFA TERTIARY DETECTED! Tertiary pump failed.")
-            
-            if state.condenser_pressure > 0.5:
-                scram_reason = f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+            if state.pump_tertiary_status != PUMP_ON:
+                if not state.lofa_tertiary:
+                    state.lofa_tertiary = True
+                    logger.warning("⚠️ LOFA TERTIARY DETECTED! Tertiary pump failed.")
+                
+                if state.condenser_pressure > 0.5:
+                    scram_reason = f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+            else:
+                state.lofa_tertiary = False
         else:
             state.lofa_tertiary = False
 
