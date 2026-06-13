@@ -1,6 +1,11 @@
 import time
 import logging
 import threading
+import math
+
+# Global lock to prevent concurrent DMA hardware access from multiple LedStripController threads
+ws281x_lock = threading.Lock()
+
 from rpi_ws281x import PixelStrip, Color
 
 # Fallback for environments without rpi_ws281x (like Windows/Mac development)
@@ -168,10 +173,8 @@ class LedStripController:
                         if i < lit_count:
                             # Jika animasi berjalan, buat efek gelembung/pola
                             if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
-                                # Buat sedikit lebih redup untuk pola "mati" agar efeknya seperti gelombang
-                                r, g, b = getattr(seg, 'fill_rgb', (255, 255, 255))
-                                dim_color = Color(int(r*0.2), int(g*0.2), int(b*0.2))
-                                self.strip.setPixelColor(seg.start_idx + i, dim_color)
+                                # Matikan lampu untuk pola "mati" agar efek gelembung/ombak sangat kontras terlihat
+                                self.strip.setPixelColor(seg.start_idx + i, self.color_black)
                             else:
                                 self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
                         else:
@@ -187,6 +190,9 @@ class LedStripController:
                             # Pixel nyala, gunakan warna gradien segmen
                             self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
             
-            self.strip.show()
+            # Use lock to prevent hardware conflict between two PWM channels
+            with ws281x_lock:
+                self.strip.show()
+                
             time.sleep(self.update_interval)
 
