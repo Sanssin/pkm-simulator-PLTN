@@ -51,37 +51,20 @@ class ActuatorManager:
                 pin=getattr(config, 'LED_STRIP_PIN', 18),
                 count=getattr(config, 'LED_STRIP_COUNT', 571),
                 channel=0, dma=10
+                count=getattr(config, 'LED_STRIP_COUNT', 593)
             )
+            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (0, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (0, 190))[1])
+            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (190, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (190, 190))[1])
+            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (380, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (380, 191))[1])
             
-            # Add segments
-            seg_prim = getattr(config, 'LED_SEGMENT_PRIMER', (0, 190))
-            seg_sec = getattr(config, 'LED_SEGMENT_SEKUNDER', (190, 190))
-            seg_ter = getattr(config, 'LED_SEGMENT_TERSIER', (380, 191))
-            
-            self.led_strip.add_segment('primer', seg_prim[0], seg_prim[1], flow_direction=1)
-            self.led_strip.add_segment('sekunder', seg_sec[0], seg_sec[1], flow_direction=1)
-            self.led_strip.add_segment('tersier', seg_ter[0], seg_ter[1], flow_direction=1)
+            # Tambahkan segment pressurizer di strip yang sama
+            self.led_strip.add_segment('pressurizer', getattr(config, 'LED_SEGMENT_PRESSURIZER', (571, 22))[0], getattr(config, 'LED_SEGMENT_PRESSURIZER', (571, 22))[1], flow_direction=1)
             
             if self.hardware_active:
                 self.led_strip.start()
         except Exception as e:
             logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
             self.led_strip = None
-            
-        # Initialize Pressurizer LED Strip
-        try:
-            self.led_pressurizer = LedStripController(
-                pin=getattr(config, 'LED_PRESS_PIN', 19),
-                count=getattr(config, 'LED_PRESS_COUNT', 22),
-                channel=1, dma=11 # Must use different channel/DMA for GPIO 19
-            )
-            self.led_pressurizer.add_segment('main', 0, getattr(config, 'LED_PRESS_COUNT', 22), flow_direction=1)
-            
-            if self.hardware_active:
-                self.led_pressurizer.start()
-        except Exception as e:
-            logger.warning(f"ActuatorManager: Failed to initialize Pressurizer LedStripController: {e}")
-            self.led_pressurizer = None
         
         if self.hardware_active:
             try:
@@ -174,30 +157,28 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             
         # Update Pressurizer WS2812 Fill Level based on Pressure
-        if hasattr(self, 'led_pressurizer') and self.led_pressurizer is not None:
+        if hasattr(self, 'led_strip') and self.led_strip is not None:
             pressure_val = getattr(state, 'pressure', 0.0)
+            # Batasi nilai ratio dari 0.0 hingga 1.0 (0 hingga 200 bar)
             pressure_ratio = max(0.0, min(1.0, pressure_val / 200.0))
             
-            # Gradasi warna halus:
+            # Gradasi warna:
             if pressure_val <= 155.0:
-                # Normal: Putih
+                # Normal: Putih Terang (agar tembus filamen biru menjadi Biru Terang)
                 r, g, b = 255, 255, 255
             elif pressure_val <= 165.0:
-                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Ungu(150,0,255)
+                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Merah/Magenta agar warna berubah jadi gelap/ungu di filamen biru
                 ratio = (pressure_val - 155.0) / 10.0
-                r = int(255 - (105 * ratio))
+                r = 255
                 g = int(255 - (255 * ratio))
-                b = 255
+                b = int(255 - (105 * ratio))
             else:
-                # Critical: 165 - 200. Transisi Ungu(150,0,255) ke Magenta(255,0,255)
-                ratio = min(1.0, (pressure_val - 165.0) / 35.0)
-                r = int(150 + (105 * ratio))
-                g = 0
-                b = 255
+                # Critical: > 165. Merah pekat (di balik filamen biru akan terlihat sangat gelap/ungu pekat)
+                r, g, b = 255, 0, 0
 
-            self.led_pressurizer.set_fill_level('main', pressure_ratio, r, g, b)
+            self.led_strip.set_fill_level('pressurizer', pressure_ratio, r, g, b)
             # Berikan animasi ombak naik (kecepatan proporsional dengan rasio tekanan)
-            self.led_pressurizer.set_flow_speed('main', 0.5 + (pressure_ratio * 1.5))
+            self.led_strip.set_flow_speed('pressurizer', 0.5 + (pressure_ratio * 2.0))
         
         if not self.hardware_active:
             # In mock mode, we don't do anything physical for standard GPIO.

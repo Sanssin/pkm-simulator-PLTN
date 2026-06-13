@@ -24,17 +24,16 @@ LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red) - Changed from 21
 # ============================================
 # LED Strip Configuration (WS2812)
 # ============================================
-LED_STRIP_PIN = 18       # Pin for WS2812 Pipa (PWM0)
-LED_STRIP_COUNT = 571    # Total number of LEDs Pipa
-
-LED_PRESS_PIN = 19       # Pin for WS2812 Pressurizer (PWM1)
-LED_PRESS_COUNT = 22     # Total LEDs Pressurizer
+# Kita gabungkan dalam SATU PIN (Daisy Chained) untuk menghindari konflik hardware DMA
+LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0)
+LED_STRIP_COUNT = 593    # Total number of LEDs (571 Pipa + 22 Pressurizer)
 
 # Segments: (start_index, length)
 # Adjust these values based on actual physical placement of the LEDs
 LED_SEGMENT_PRIMER = (0, 190)
 LED_SEGMENT_SEKUNDER = (190, 190)
 LED_SEGMENT_TERSIER = (380, 191)
+LED_SEGMENT_PRESSURIZER = (571, 22) # Disambung di ujung lampu pipa tersier
 
 # ============================================
 # System Parameters
