@@ -14,6 +14,10 @@ import os
 import threading
 import json
 from pathlib import Path
+
+# Add current directory to sys.path to ensure absolute imports work regardless of working directory
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from typing import Optional
 from queue import Queue
 
@@ -100,7 +104,7 @@ class PLTNPanelController:
         
         # Initialize buzzer
         try:
-            self.buzzer = BuzzerAlarm(pin=config.BUZZER_PIN if hasattr(config, 'BUZZER_PIN') else 22)
+            self.buzzer = BuzzerAlarm(buzzer_pin=config.BUZZER_PIN if hasattr(config, 'BUZZER_PIN') else 22)
             logger.info("✓ Buzzer alarm initialized")
         except Exception as e:
             logger.warning(f"✗ Buzzer failed: {e}")
@@ -461,10 +465,10 @@ class PLTNPanelController:
         self.event_processor.stop()
         
         # Cleanup hardware
-        if self.buzzer:
+        if hasattr(self, 'buzzer') and self.buzzer:
             self.buzzer.cleanup()
         
-        if hasattr(self, "actuator_manager"):
+        if hasattr(self, "actuator_manager") and self.actuator_manager:
             self.actuator_manager.cleanup()
         
         logger.info("=" * 60)

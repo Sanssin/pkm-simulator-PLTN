@@ -11,16 +11,15 @@ it will print debug messages instead of crashing.
 
 import logging
 import time
+import sys
+import os
 import raspi_config as config
 
-try:
-    from .servo_controller import ServoController
-    from .motor_controller import MotorController
-    from .led_strip_controller import LedStripController
-except ImportError:
-    from servo_controller import ServoController
-    from motor_controller import MotorController
-    from led_strip_controller import LedStripController
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from controllers.servo_controller import ServoController
+from controllers.motor_controller import MotorController
+from controllers.led_strip_controller import LedStripController
 
 logger = logging.getLogger(__name__)
 
@@ -228,10 +227,12 @@ class ActuatorManager:
 
     def cleanup(self):
         """Cleanup GPIO pins on exit."""
-        self.servos.cleanup()
-        self.motors.cleanup()
+        if hasattr(self, 'servos') and self.servos:
+            self.servos.cleanup()
+        if hasattr(self, 'motors') and self.motors:
+            self.motors.cleanup()
         
-        if self.led_strip is not None:
+        if hasattr(self, 'led_strip') and self.led_strip is not None:
             self.led_strip.stop()
             
         if hasattr(self, 'led_pressurizer') and self.led_pressurizer is not None:
