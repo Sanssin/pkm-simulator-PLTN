@@ -37,6 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover
         QWidget,
         QProgressBar,
         QGraphicsDropShadowEffect,
+        QStackedWidget,
     )
     from PyQt5.QtGui import QColor, QPixmap
 
@@ -59,6 +60,7 @@ try:  # pragma: no cover - optional dependency
         QWidget,
         QProgressBar,
         QGraphicsDropShadowEffect,
+        QStackedWidget,
     )
     from PyQt5.QtGui import QColor, QPixmap
     _PYQT_AVAILABLE = True
@@ -270,6 +272,10 @@ class TouchPanelBaseWindow(QMainWindow):
             self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)
             self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
+        self.stacked_widget = QStackedWidget()
+
+        hud_widget = self._build_hud()
+
         root = QWidget()
         root.setObjectName("centralWidget")
         root_layout = QVBoxLayout(root)
@@ -280,7 +286,10 @@ class TouchPanelBaseWindow(QMainWindow):
         root_layout.addLayout(self._build_body())
         root_layout.addWidget(self._build_footer())
 
-        self.setCentralWidget(root)
+        self.stacked_widget.addWidget(hud_widget)
+        self.stacked_widget.addWidget(root)
+
+        self.setCentralWidget(self.stacked_widget)
         self.setStyleSheet(self._stylesheet())
 
         if self.windowed:
@@ -313,6 +322,61 @@ class TouchPanelBaseWindow(QMainWindow):
                     self.move(target_screen.geometry().topLeft())
                     
             self.showFullScreen()
+
+    def _build_hud(self) -> QWidget:
+        hud = QWidget()
+        hud.setObjectName("hudWidget")
+        layout = QVBoxLayout(hud)
+        layout.setAlignment(Qt.AlignCenter)
+        
+        title = QLabel("PLTN Simulator")
+        title.setObjectName("hudTitle")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
+        
+        subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
+        
+        start_btn = QPushButton("Mulai Mode Manual")
+        start_btn.setObjectName("hudStartBtn")
+        start_btn.setFixedSize(320, 80)
+        start_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3B82F6;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #2563EB;
+            }
+            QPushButton:pressed {
+                background-color: #1D4ED8;
+            }
+        """)
+        start_btn.clicked.connect(self._start_manual_mode)
+        
+        layout.addStretch()
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addWidget(start_btn, alignment=Qt.AlignCenter)
+        layout.addStretch()
+        
+        hud.setStyleSheet("background-color: #0F172A;")
+        return hud
+
+    def _start_manual_mode(self) -> None:
+        self.stacked_widget.setCurrentIndex(1)
+        import sys
+        from pathlib import Path
+        flag_path = Path("C:/temp/pltn_manual_started") if sys.platform == "win32" else Path("/tmp/pltn_manual_started")
+        try:
+            flag_path.parent.mkdir(parents=True, exist_ok=True)
+            flag_path.touch()
+        except Exception as e:
+            logger.error("Failed to write manual started flag: %s", e)
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
@@ -374,8 +438,7 @@ class TouchPanelBaseWindow(QMainWindow):
     def _build_body(self) -> QHBoxLayout:
         body = QHBoxLayout()
         body.setSpacing(16)
-        body.addLayout(self._build_control_column(), 70)
-        body.addLayout(self._build_status_column(), 30)
+        body.addLayout(self._build_control_column(), 100)
         return body
 
     def _build_control_column(self) -> QVBoxLayout:
@@ -575,190 +638,6 @@ class TouchPanelBaseWindow(QMainWindow):
 
         return column
 
-    def _build_status_column(self) -> QVBoxLayout:
-        column = QVBoxLayout()
-        column.setSpacing(12)
-
-        # 1. Main Telemetry Cards (Hierarchical Grid Layout)
-        grid_group = QGroupBox("Reactor Diagnostic Displays")
-        grid = QGridLayout(grid_group)
-        grid.setContentsMargins(12, 16, 12, 12)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(10)
-
-        self.card_val_pressurizer = QLabel("0.0 bar")
-        self.card_val_pumps = QLabel("P1/P2/P3 OFF")
-        self.card_val_rods = QLabel("0 / 0 / 0")
-        self.card_val_power = QLabel("0 kW")
-        self.card_val_status = QLabel("Ready")
-        self.card_val_alarm = QLabel("None")
-
-        # Row 0: Thermal Power Output (Most Prominent - Spanned over 2 columns)
-        grid.addWidget(self._make_card("⚡ Thermal Power Output", self.card_val_power, "amber"), 0, 0, 1, 2)
-
-        # Row 1: Pressurizer (Next Prominent - Spanned over 2 columns)
-        grid.addWidget(self._make_card("🌡️ Pressurizer", self.card_val_pressurizer, "cyan"), 1, 0, 1, 2)
-
-        # Row 2: Pump Status and Active System Alarm (Side-by-side)
-        grid.addWidget(self._make_card("⚙️ Pump Status", self.card_val_pumps, "blue"), 2, 0)
-        grid.addWidget(self._make_card("🚨 Active System Alarms", self.card_val_alarm, "danger"), 2, 1)
-
-        # Row 3: Control Rod Positions and System Status (Side-by-side)
-        grid.addWidget(self._make_card("🎛️ Rod Positions (S/Sh/R)", self.card_val_rods, "purple"), 3, 0)
-        grid.addWidget(self._make_card("📊 System Status", self.card_val_status, "green"), 3, 1)
-
-        column.addWidget(grid_group, 3)
-
-        # 2. Control Rod Positions progress bars (Visual indicators)
-        rods_progress_group = QGroupBox("Control Rod Height Indicators")
-        rods_progress_layout = QVBoxLayout(rods_progress_group)
-        rods_progress_layout.setContentsMargins(12, 16, 12, 12)
-        rods_progress_layout.setSpacing(8)
-
-        # Safety rod progress bar
-        saf_layout = QHBoxLayout()
-        saf_label = QLabel("Safety:")
-        saf_label.setFixedWidth(70)
-        self.progress_safety_rod = QProgressBar()
-        self.progress_safety_rod.setValue(100)
-        self.progress_safety_rod.setStyleSheet(self._progress_bar_style("#059669")) # Green
-        saf_layout.addWidget(saf_label)
-        saf_layout.addWidget(self.progress_safety_rod)
-        rods_progress_layout.addLayout(saf_layout)
-
-        # Shim rod progress bar
-        shim_layout = QHBoxLayout()
-        shim_label = QLabel("Shim:")
-        shim_label.setFixedWidth(70)
-        self.progress_shim_rod = QProgressBar()
-        self.progress_shim_rod.setValue(75)
-        self.progress_shim_rod.setStyleSheet(self._progress_bar_style("#2563eb")) # Blue
-        shim_layout.addWidget(shim_label)
-        shim_layout.addWidget(self.progress_shim_rod)
-        rods_progress_layout.addLayout(shim_layout)
-
-        # Regulating rod progress bar
-        reg_layout = QHBoxLayout()
-        reg_label = QLabel("Regulating:")
-        reg_label.setFixedWidth(70)
-        self.progress_regulating_rod = QProgressBar()
-        self.progress_regulating_rod.setValue(60)
-        self.progress_regulating_rod.setStyleSheet(self._progress_bar_style("#7c3aed")) # Purple
-        reg_layout.addWidget(reg_label)
-        reg_layout.addWidget(self.progress_regulating_rod)
-        rods_progress_layout.addLayout(reg_layout)
-
-        column.addWidget(rods_progress_group, 2)
-
-        # 3. Active LOFA Monitoring workspace (Temperatures grid & alarms)
-        lofa_group = QGroupBox("Coolant Temperature & LOFA Safety Monitors")
-        lofa_layout = QGridLayout(lofa_group)
-        lofa_layout.setContentsMargins(12, 10, 12, 10)
-        lofa_layout.setHorizontalSpacing(16)
-        lofa_layout.setVerticalSpacing(8)
-
-        self.temp_val_primary = QLabel("295.5 °C")
-        self.temp_val_secondary = QLabel("252.0 °C")
-        self.temp_val_fuel = QLabel("420.0 °C")
-        self.temp_val_condenser = QLabel("0.05 bar")
-
-        self.temp_val_primary.setObjectName("diagValue")
-        self.temp_val_secondary.setObjectName("diagValue")
-        self.temp_val_fuel.setObjectName("diagValue")
-        self.temp_val_condenser.setObjectName("diagValue")
-
-        # Layout temperature sensors with styled labels & stretches
-        lbl_p_temp = QLabel("Primary Coolant Temp:")
-        lbl_p_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
-        lbl_s_temp = QLabel("Secondary Coolant Temp:")
-        lbl_s_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
-        lbl_f_temp = QLabel("Fuel Cladding Temp:")
-        lbl_f_temp.setStyleSheet("color: #94a3b8; font-weight: 500;")
-        lbl_c_vac = QLabel("Condenser Vacuum Pressure:")
-        lbl_c_vac.setStyleSheet("color: #94a3b8; font-weight: 500;")
-
-        lofa_layout.addWidget(lbl_p_temp, 0, 0, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(self.temp_val_primary, 0, 1, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(lbl_s_temp, 0, 2, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(self.temp_val_secondary, 0, 3, Qt.AlignLeft | Qt.AlignVCenter)
-
-        lofa_layout.addWidget(lbl_f_temp, 1, 0, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(self.temp_val_fuel, 1, 1, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(lbl_c_vac, 1, 2, Qt.AlignLeft | Qt.AlignVCenter)
-        lofa_layout.addWidget(self.temp_val_condenser, 1, 3, Qt.AlignLeft | Qt.AlignVCenter)
-
-        lofa_layout.setColumnStretch(0, 3)
-        lofa_layout.setColumnStretch(1, 2)
-        lofa_layout.setColumnStretch(2, 3)
-        lofa_layout.setColumnStretch(3, 2)
-
-        # Status lights indicators
-        self.indicator_relief = QLabel("RELIEF VALVE: CLOSED")
-        self.indicator_relief.setObjectName("statusIndicatorLabel")
-        self.indicator_relief.setAlignment(Qt.AlignCenter)
-        self.indicator_relief.setStyleSheet(
-            "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
-        )
-        
-        self.indicator_spray = QLabel("SPRAY VALVE: INACTIVE")
-        self.indicator_spray.setObjectName("statusIndicatorLabel")
-        self.indicator_spray.setAlignment(Qt.AlignCenter)
-        self.indicator_spray.setStyleSheet(
-            "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
-        )
-        
-        self.indicator_lofa = QLabel("SAFE OPERATIONAL ZONE")
-        self.indicator_lofa.setObjectName("statusIndicatorLabel")
-        self.indicator_lofa.setAlignment(Qt.AlignCenter)
-        self.indicator_lofa.setStyleSheet(
-            "color: #34d399; background-color: #064e3b; border: 1px solid #059669; border-radius: 6px; padding: 6px 8px;"
-        )
-        
-        indicator_layout = QHBoxLayout()
-        indicator_layout.setSpacing(10)
-        indicator_layout.addWidget(self.indicator_relief)
-        indicator_layout.addWidget(self.indicator_spray)
-        indicator_layout.addWidget(self.indicator_lofa)
-        
-        lofa_layout.addLayout(indicator_layout, 2, 0, 1, 4)
-
-        column.addWidget(lofa_group, 2)
-        return column
-
-    def _make_card(self, title_text: str, value_widget: QLabel, accent_color: str) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("statusCard")
-        frame.setProperty("accent", accent_color)
-        
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(4)
-
-        title = QLabel(title_text)
-        title.setObjectName("cardTitle")
-        value_widget.setObjectName("cardValue")
-        
-        # Apply larger font size to more prominent elements
-        if "Thermal Power" in title_text:
-            value_widget.setStyleSheet("font-size: 28px; font-weight: bold; color: #fbbf24;")
-            title.setStyleSheet("font-size: 13px; font-weight: bold; color: #ffffff;")
-        elif "Pressurizer" in title_text:
-            value_widget.setStyleSheet("font-size: 22px; font-weight: bold; color: #22d3ee;")
-            title.setStyleSheet("font-size: 12px; font-weight: bold; color: #ffffff;")
-        
-        layout.addWidget(title)
-        layout.addWidget(value_widget)
-
-        # Apply drop shadow effect
-        if _PYQT_AVAILABLE:
-            shadow = QGraphicsDropShadowEffect(self)
-            shadow.setBlurRadius(8)
-            shadow.setColor(QColor(0, 0, 0, 120))
-            shadow.setOffset(0, 2)
-            frame.setGraphicsEffect(shadow)
-
-        return frame
-
     def _build_footer(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("footerFrame")
@@ -785,6 +664,18 @@ class TouchPanelBaseWindow(QMainWindow):
         if self._footer_label is not None:
             self._footer_label.setText(f"Triggered action command: {action}")
         self._on_action(action)
+        
+        if action == "REACTOR_RESET":
+            import sys
+            from pathlib import Path
+            flag_path = Path("C:/temp/pltn_manual_started") if sys.platform == "win32" else Path("/tmp/pltn_manual_started")
+            try:
+                if flag_path.exists():
+                    flag_path.unlink()
+            except Exception:
+                pass
+            if hasattr(self, 'stacked_widget'):
+                self.stacked_widget.setCurrentIndex(0)
 
         # Update local simulation variables
         self._update_local_simulation(action)
@@ -1054,26 +945,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._update_ui_displays()
 
     def _update_ui_displays(self) -> None:
-        # 1. Update Diagnostics Cards values
-        self.card_val_pressurizer.setText(f"{self.sim_pressure:.2f} bar")
-        
-        self.card_val_pumps.setText(
-            f"P1: {'ON' if self.sim_pump_primary else 'OFF'} | "
-            f"P2: {'ON' if self.sim_pump_secondary else 'OFF'} | "
-            f"P3: {'ON' if self.sim_pump_tertiary else 'OFF'}"
-        )
-        
-        self.card_val_rods.setText(f"{self.sim_safety_rod} / {self.sim_shim_rod} / {self.sim_regulating_rod}")
-        self.card_val_power.setText(f"{self.sim_thermal_kw:,.0f} kW")
-        self.card_val_status.setText(self.sim_mode.upper())
-        self.card_val_alarm.setText(self.sim_alarm)
-
-        # 2. Update Rod Height Progress bars
-        self.progress_safety_rod.setValue(int(self.sim_safety_rod))
-        self.progress_shim_rod.setValue(int(self.sim_shim_rod))
-        self.progress_regulating_rod.setValue(int(self.sim_regulating_rod))
-
-        # 3. Update Pumps Control buttons active styles
+        # 1. Update Pumps Control buttons active styles
         self._set_button_active(self.btn_pump_p1_on, self.sim_pump_primary == 1)
         self._set_button_active_off(self.btn_pump_p1_off, self.sim_pump_primary == 0)
         self._set_button_active(self.btn_pump_p2_on, self.sim_pump_secondary == 1)
@@ -1081,86 +953,26 @@ class TouchPanelBaseWindow(QMainWindow):
         self._set_button_active(self.btn_pump_p3_on, self.sim_pump_tertiary == 1)
         self._set_button_active_off(self.btn_pump_p3_off, self.sim_pump_tertiary == 0)
 
-        # 4. Update Header Badges
+        # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")
+        self.badge_mode.setStyleSheet("background-color: #ffffff; border: 1px solid #c8cdd2; color: #2c3e50;")
         
         if self.local_mode:
             self.badge_connection.setText("LOCAL DEMO")
-            self.badge_connection.setStyleSheet("background-color: #d97706; border: 1px solid #fb923c;") # Amber
+            self.badge_connection.setStyleSheet("background-color: #ffb400; border: 1px solid #d99100; color: #ffffff;")
         else:
             self.badge_connection.setText("SYNCED")
-            self.badge_connection.setStyleSheet("background-color: #059669; border: 1px solid #34d399;") # Emerald Green
+            self.badge_connection.setStyleSheet("background-color: #3cd21e; border: 1px solid #28a745; color: #ffffff;")
 
         if self.sim_emergency:
             self.badge_status.setText("SCRAMMED")
-            self.badge_status.setStyleSheet("background-color: #b91c1c; border: 1px solid #f87171;") # Red
+            self.badge_status.setStyleSheet("background-color: #ff3b30; border: 1px solid #dc3545; color: #ffffff;")
         elif self.sim_alarm != "None":
             self.badge_status.setText("WARNING")
-            self.badge_status.setStyleSheet("background-color: #c2410c; border: 1px solid #fb923c;") # Orange
+            self.badge_status.setStyleSheet("background-color: #ffb400; border: 1px solid #d99100; color: #ffffff;")
         else:
             self.badge_status.setText("SYSTEM OK")
-            self.badge_status.setStyleSheet("background-color: #0d9488; border: 1px solid #2dd4bf;") # Teal
-
-        # 5. Update Coolant details
-        self.temp_val_primary.setText(f"{self.sim_coolant_temp_primary:.1f} °C")
-        self.temp_val_secondary.setText(f"{self.sim_coolant_temp_secondary:.1f} °C")
-        self.temp_val_fuel.setText(f"{self.sim_fuel_cladding_temp:.1f} °C")
-        self.temp_val_condenser.setText(f"{self.sim_condenser_pressure:.3f} bar")
-
-        # Set Valve labels with badge styling
-        if self.sim_pressure > 175:
-            self.indicator_relief.setText("RELIEF VALVE: OPEN")
-            self.indicator_relief.setStyleSheet(
-                "color: #ffffff; background-color: #7c2d12; border: 1px solid #fb923c; border-radius: 6px; padding: 6px 8px;"
-            )
-        else:
-            self.indicator_relief.setText("RELIEF VALVE: CLOSED")
-            self.indicator_relief.setStyleSheet(
-                "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
-            )
-
-        if self.sim_pressure > 162:
-            self.indicator_spray.setText("SPRAY VALVE: ACTIVE")
-            self.indicator_spray.setStyleSheet(
-                "color: #ffffff; background-color: #0c4a6e; border: 1px solid #38bdf8; border-radius: 6px; padding: 6px 8px;"
-            )
-        else:
-            self.indicator_spray.setText("SPRAY VALVE: INACTIVE")
-            self.indicator_spray.setStyleSheet(
-                "color: #94a3b8; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 8px;"
-            )
-
-        # Alarm indicator styling
-        if self.sim_emergency:
-            self.indicator_lofa.setText("⚠️ EMERGENCY SCRAM ACTIVE")
-            self.indicator_lofa.setStyleSheet(
-                "color: #ffffff; background-color: #991b1b; border: 1px solid #ef4444; border-radius: 6px; padding: 6px 8px;"
-                if self.flash_toggle else
-                "color: #ef4444; background-color: #450a0a; border: 1px solid #991b1b; border-radius: 6px; padding: 6px 8px;"
-            )
-        elif self.sim_alarm != "None":
-            self.indicator_lofa.setText(f"🚨 {self.sim_alarm.upper()}")
-            self.indicator_lofa.setStyleSheet(
-                "color: #ffffff; background-color: #9a3412; border: 1px solid #f97316; border-radius: 6px; padding: 6px 8px;"
-                if self.flash_toggle else
-                "color: #f97316; background-color: #431407; border: 1px solid #9a3412; border-radius: 6px; padding: 6px 8px;"
-            )
-        else:
-            self.indicator_lofa.setText("✅ MONITORING LOOPS SECURE")
-            self.indicator_lofa.setStyleSheet(
-                "color: #34d399; background-color: #064e3b; border: 1px solid #059669; border-radius: 6px; padding: 6px 8px;"
-            )
-
-        # Active alarm display card flashing style
-        if self.sim_alarm != "None" or self.sim_emergency:
-            bg_color = "#991b1b" if self.flash_toggle else "#1e1b4b"
-            self.card_val_alarm.parentWidget().setStyleSheet(
-                f"background-color: {bg_color}; border: 1px solid #ef4444; border-radius: 10px;"
-            )
-        else:
-            self.card_val_alarm.parentWidget().setStyleSheet(
-                "background-color: #0f172a; border: 1px solid #1e293b; border-radius: 10px;"
-            )
+            self.badge_status.setStyleSheet("background-color: #298ed8; border: 1px solid #1a73e8; color: #ffffff;")
 
     def _set_button_active(self, btn: QPushButton, is_active: bool) -> None:
         if not _PYQT_AVAILABLE:
@@ -1184,7 +996,7 @@ class TouchPanelBaseWindow(QMainWindow):
             border-radius: 4px;
             text-align: center;
             color: #ffffff;
-            font-size: 10px;
+            font-size: 13px;
             font-weight: bold;
             height: 14px;
         }}
@@ -1197,20 +1009,20 @@ class TouchPanelBaseWindow(QMainWindow):
     def _stylesheet(self) -> str:
         return """
         QWidget#centralWidget {
-            background-color: #070a13;
-            color: #e2e8f0;
+            background-color: #f5f8fa;
+            color: #2c3e50;
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
         }
         
         /* Groups container styles */
         QGroupBox {
-            font-size: 13px;
+            font-size: 16px;
             font-weight: bold;
-            color: #38bdf8;
-            border: 1px solid #1e293b;
+            color: #298ed8;
+            border: 1px solid #c8cdd2;
             border-radius: 12px;
             margin-top: 14px;
-            background-color: #0b0f19;
+            background-color: #ffffff;
             padding: 6px 10px 10px 10px;
         }
         QGroupBox::title {
@@ -1218,131 +1030,111 @@ class TouchPanelBaseWindow(QMainWindow):
             subcontrol-position: top left;
             left: 15px;
             padding: 0 8px;
-            background-color: #070a13;
+            background-color: #f5f8fa;
         }
 
         QLabel {
-            font-size: 13px;
-            color: #ffffff;
+            font-size: 16px;
+            color: #2c3e50;
         }
         QLabel#diagValue {
-            font-size: 14px;
+            font-size: 17px;
             font-weight: bold;
-            color: #f1f5f9;
+            color: #2c3e50;
         }
         
         /* Button default styles */
         QPushButton {
-            background-color: #1e293b;
-            border: 1px solid #334155;
+            background-color: #ffffff;
+            border: 1px solid #c8cdd2;
             border-radius: 8px;
             padding: 10px;
-            color: #e2e8f0;
-            font-size: 13px;
+            color: #2c3e50;
+            font-size: 16px;
             font-weight: 600;
         }
         QPushButton:hover {
-            background-color: #334155;
-            border-color: #475569;
+            background-color: #f1f5f9;
+            border-color: #969696;
         }
         QPushButton:pressed {
-            background-color: #0f172a;
-            border-color: #38bdf8;
+            background-color: #e2e8f0;
+            border-color: #298ed8;
+        }
+        
+        /* Hold buttons (Reactor adjustment up/down) pressed styles */
+        HoldButton:pressed {
+            background-color: #00b4d8;
+            border-color: #0077b6;
+            color: #ffffff;
         }
 
         /* Active pump control button custom states */
         QPushButton[active="true"] {
-            background-color: #065f46;
-            border: 1px solid #34d399;
-            color: #a7f3d0;
+            background-color: #3cd21e;
+            border: 1px solid #28a745;
+            color: #ffffff;
         }
         QPushButton[active_off="true"] {
-            background-color: #7f1d1d;
-            border: 1px solid #f87171;
-            color: #fca5a5;
+            background-color: #ff3b30;
+            border: 1px solid #dc3545;
+            color: #ffffff;
         }
 
         /* Accent classes */
         QPushButton[emphasis="primary"] {
-            background-color: #065f46;
-            border: 1px solid #34d399;
-            color: #a7f3d0;
+            background-color: #298ed8;
+            border: 1px solid #1a73e8;
+            color: #ffffff;
         }
         QPushButton[emphasis="primary"]:hover {
-            background-color: #047857;
+            background-color: #1a73e8;
         }
 
         QPushButton[emphasis="secondary"] {
-            background-color: #1e3a8a;
-            border: 1px solid #60a5fa;
-            color: #dbeafe;
+            background-color: #7f8c8d;
+            border: 1px solid #5f6c6d;
+            color: #ffffff;
         }
         QPushButton[emphasis="secondary"]:hover {
-            background-color: #1d4ed8;
+            background-color: #5f6c6d;
         }
 
         QPushButton[emphasis="warning"] {
-            background-color: #7c2d12;
-            border: 1px solid #fb923c;
-            color: #ffedd5;
+            background-color: #ffb400;
+            border: 1px solid #d99100;
+            color: #ffffff;
         }
         QPushButton[emphasis="warning"]:hover {
-            background-color: #9a3412;
+            background-color: #d99100;
         }
 
         QPushButton[emphasis="danger"] {
-            background-color: #991b1b;
-            border: 2px solid #ef4444;
+            background-color: #ff3b30;
+            border: 2px solid #b91c1c;
             color: #ffffff;
-            font-size: 15px;
-            font-weight: bold;
-        }
-        QPushButton[emphasis="danger"]:hover {
-            background-color: #b91c1c;
-        }
-
-        /* Status Cards */
-        QFrame#statusCard {
-            background-color: #0f172a;
-            border: 1px solid #1e293b;
-            border-radius: 10px;
-        }
-        
-        QLabel#cardTitle {
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        QLabel#cardValue {
-            color: #38bdf8;
             font-size: 18px;
             font-weight: bold;
         }
-
-        /* Border highlights based on accent value */
-        QFrame#statusCard[accent="cyan"] { border-left: 4px solid #00e5ff; }
-        QFrame#statusCard[accent="blue"] { border-left: 4px solid #3b82f6; }
-        QFrame#statusCard[accent="purple"] { border-left: 4px solid #7c3aed; }
-        QFrame#statusCard[accent="amber"] { border-left: 4px solid #f59e0b; }
-        QFrame#statusCard[accent="green"] { border-left: 4px solid #10b981; }
-        QFrame#statusCard[accent="danger"] { border-left: 4px solid #ef4444; }
+        QPushButton[emphasis="danger"]:hover {
+            background-color: #d32f2f;
+        }
 
         /* Header frame & title typography */
         QFrame#headerFrame {
-            background-color: #0b0f19;
-            border: 1px solid #1e293b;
+            background-color: #ffffff;
+            border: 1px solid #c8cdd2;
             border-radius: 10px;
         }
         QLabel#titleLabel {
-            color: #00e5ff;
-            font-size: 20px;
+            color: #298ed8;
+            font-size: 23px;
             font-weight: bold;
             letter-spacing: 0.5px;
         }
         QLabel#subtitleLabel {
-            color: #ffffff;
-            font-size: 10px;
+            color: #7f8c8d;
+            font-size: 13px;
             font-weight: bold;
         }
         
@@ -1350,31 +1142,23 @@ class TouchPanelBaseWindow(QMainWindow):
         QLabel#badgeMode, QLabel#badgeStatus, QLabel#badgeConnection {
             padding: 6px 12px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: bold;
             color: #ffffff;
-            border: 1px solid #334155;
-            background-color: #1e293b;
-        }
-        QLabel#badgeStatus {
-            background-color: #0d9488;
-            border-color: #2dd4bf;
+            border: 1px solid #c8cdd2;
+            background-color: #ffffff;
+            color: #2c3e50;
         }
 
         /* Footer frame styling */
         QFrame#footerFrame {
-            background-color: #0b0f19;
-            border: 1px solid #1e293b;
+            background-color: #ffffff;
+            border: 1px solid #c8cdd2;
             border-radius: 8px;
         }
         QLabel#footerLabel {
-            color: #ffffff;
-            font-size: 11px;
-        }
-        QLabel#statusIndicatorLabel {
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
+            color: #2c3e50;
+            font-size: 14px;
         }
         """
 

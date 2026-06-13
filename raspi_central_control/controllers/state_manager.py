@@ -68,6 +68,9 @@ class PanelState:
     # Temperatures
     temperature_core: float = 25.0
     temperature_coolant: float = 25.0
+    temperature_fuel_cladding: float = 25.0
+    temperature_coolant_primary: float = 25.0
+    temperature_coolant_secondary: float = 25.0
     
     # Turbine speed from ESP-BC (%)
     turbine_speed: float = 0.0
@@ -115,6 +118,9 @@ class PanelState:
         self.thermal_kw = 0.0
         self.temperature_core = 25.0
         self.temperature_coolant = 25.0
+        self.temperature_fuel_cladding = 25.0
+        self.temperature_coolant_primary = 25.0
+        self.temperature_coolant_secondary = 25.0
         self.turbine_speed = 0.0
         self.humid_ct1_cmd = 0
         self.humid_ct2_cmd = 0

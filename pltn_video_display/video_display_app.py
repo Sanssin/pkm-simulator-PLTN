@@ -174,6 +174,16 @@ class VideoDisplayApp:
         
         self.last_state = {}
         
+        self.manual_flag_file = Path("C:/temp/pltn_manual_started") if sys.platform == 'win32' else Path("/tmp/pltn_manual_started")
+        self._clear_manual_flag()
+        
+    def _clear_manual_flag(self):
+        try:
+            if hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
+                self.manual_flag_file.unlink()
+        except Exception:
+            pass
+        
         # Video player (mpv subprocess)
         self.video_process = None
         self.current_video = None
@@ -298,13 +308,14 @@ class VideoDisplayApp:
         self.logo_poltek = None
         self.icon_pump_on = None
         self.icon_pump_off = None
+        
+        # Load Logos
         try:
             logo_path_brin = Path(__file__).parent / "assets" / "logo-brin.png"
             logo_path_poltek = Path(__file__).parent / "assets" / "logo-poltek.png"
             
             if logo_path_brin.exists():
                 logo_img = pygame.image.load(str(logo_path_brin))
-                # Scale for IDLE mode (large)
                 self.logo_brin = pygame.transform.smoothscale(logo_img, self.logo_size_large)
                 print(f"   ✅ Loaded BRIN logo")
             else:
@@ -312,16 +323,18 @@ class VideoDisplayApp:
             
             if logo_path_poltek.exists():
                 logo_img = pygame.image.load(str(logo_path_poltek))
-                # Scale for IDLE mode (large)
                 self.logo_poltek = pygame.transform.smoothscale(logo_img, self.logo_size_large)
                 print(f"   ✅ Loaded Poltek logo")
             else:
                 print(f"   ⚠️  Poltek logo not found: {logo_path_poltek}")
+        except Exception as e:
+            print(f"   ❌ Error loading logos: {e}")
+            self.logo_brin = None
+            self.logo_poltek = None
 
-            # --- TAMBAHAN UNTUK LOAD IKON POMPA PNG ---
-            # Ukuran ikon pompa bisa diatur di sini (misal 100x100)
+        # Load Pump Icons
+        try:
             self.pump_icon_size = (int(100 * self.scale), int(143.84 * self.scale))
-            
             pump_on_path = Path(__file__).parent / "assets" / "pompa_on.png"
             pump_off_path = Path(__file__).parent / "assets" / "pompa_off.png"
             
@@ -329,19 +342,17 @@ class VideoDisplayApp:
                 img_on = pygame.image.load(str(pump_on_path)).convert_alpha()
                 img_off = pygame.image.load(str(pump_off_path)).convert_alpha()
                 
-                # Resize agar tajam dan ukurannya pas di layar 4K
                 self.icon_pump_on = pygame.transform.smoothscale(img_on, self.pump_icon_size)
                 self.icon_pump_off = pygame.transform.smoothscale(img_off, self.pump_icon_size)
-                print(f"   ✅ Loaded Pump Icons")
+                print(f"   ✅ Loaded Pump Icons from: {pump_on_path}")
             else:
-                print(f"   ⚠️  Pump icons not found in assets folder")
+                print(f"   ⚠️  Pump icons not found. Looked at: {pump_on_path}")
                 self.icon_pump_on = None
                 self.icon_pump_off = None
-        
         except Exception as e:
-            print(f"   ❌ Error loading logos: {e}")
-            self.logo_brin = None
-            self.logo_poltek = None
+            print(f"   ❌ Error loading pump icons: {e}")
+            self.icon_pump_on = None
+            self.icon_pump_off = None
     
     def create_mock_state(self) -> Dict:
         """Create mock state for testing - recalculates thermal_kw from current rod positions
@@ -452,15 +463,19 @@ class VideoDisplayApp:
                                state.get("pump_tertiary", 0))
                 
                 # Detect user interaction (significant state change)
-                if (abs(current_pressure - self.last_pressure) > 5 or
-                    abs(current_rods - self.last_rods_sum) > 10 or
-                    abs(current_pumps - self.last_pumps_sum) > 0):
+                if (abs(current_pressure - self.last_pressure) > 0.1 or
+                    abs(current_rods - self.last_rods_sum) > 10):
                     
                     # Only consider as interaction if not during auto simulation
                     auto_running = state.get("auto_running", False)
                     if not auto_running:
                         self.user_has_interacted = True
                         print("👤 User interaction detected - enabling MANUAL mode")
+                
+            # Also check if HUD manual mode was started via file flag
+            if not self.user_has_interacted and hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
+                self.user_has_interacted = True
+                print("👤 Touch panel HUD started - enabling MANUAL mode")
                 
                 # Update last known values
                 self.last_pressure = current_pressure
@@ -836,13 +851,11 @@ class VideoDisplayApp:
         
         # 2. Pressurizer (Below Thermal Power)
         press_val = state.get("pressure", 0)
-        press_y = start_y + int(245 * self.scale)
+        press_y = start_y + int(220 * self.scale)
         
-        # Label for Pressurizer
         lbl_press = self.font_medium.render(f"Tekanan Pressurizer: {press_val:.2f} bar", True, self.COLOR_TEXT)
         self.screen.blit(lbl_press, lbl_press.get_rect(center=(start_x + width // 2, press_y)))
         
-        # Horizontal progress bar for Pressurizer
         bar_w = width - int(80 * self.scale)
         bar_x = start_x + (width - bar_w) // 2
         bar_y = press_y + int(25 * self.scale)
@@ -852,16 +865,50 @@ class VideoDisplayApp:
         pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(6 * self.scale))
         pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(2 * self.scale), 1), border_radius=int(6 * self.scale))
         
-        # Fill (max 200 bar)
         fill_ratio = min(max(press_val / 200.0, 0.0), 1.0)
         fill_w = int((bar_w - 4) * fill_ratio)
         if fill_w > 0:
             fill_rect = pygame.Rect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4)
             pygame.draw.rect(self.screen, self.COLOR_PRIMARY, fill_rect, border_radius=int(4 * self.scale))
             
-        # 3. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
-        bottom_y = start_y + int(310 * self.scale)
-        bottom_h = height - int(320 * self.scale)
+        # 3. Control Rods (Batang Kendali)
+        rods_y = press_y + int(70 * self.scale)
+        lbl_rods = self.font_medium.render("Posisi Batang Kendali", True, self.COLOR_TEXT)
+        self.screen.blit(lbl_rods, lbl_rods.get_rect(center=(start_x + width // 2, rods_y)))
+        
+        rods = [
+            ("Safety", state.get("safety_rod", 0)),
+            ("Shim", state.get("shim_rod", 0)),
+            ("Regulating", state.get("regulating_rod", 0))
+        ]
+        
+        rod_bar_w = width - int(120 * self.scale)
+        rod_bar_x = start_x + (width - rod_bar_w) // 2 + int(30*self.scale)
+        
+        for i, (name, val) in enumerate(rods):
+            ry = rods_y + int(25 * self.scale) + i * int(30 * self.scale)
+            
+            # Label
+            lbl = self.font_body.render(f"{name}", True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(right=rod_bar_x - int(10*self.scale), centery=ry + bar_h//2))
+            
+            # Value text
+            val_lbl = self.font_body.render(f"{val:.0f}%", True, self.COLOR_TEXT)
+            self.screen.blit(val_lbl, val_lbl.get_rect(left=rod_bar_x + rod_bar_w + int(10*self.scale), centery=ry + bar_h//2))
+            
+            # Bar
+            bg_rect = pygame.Rect(rod_bar_x, ry, rod_bar_w, bar_h)
+            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
+            
+            f_ratio = min(max(val / 100.0, 0.0), 1.0)
+            f_w = int((rod_bar_w - 4) * f_ratio)
+            if f_w > 0:
+                f_rect = pygame.Rect(rod_bar_x + 2, ry + 2, f_w, bar_h - 4)
+                pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
+            
+        # 4. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
+        bottom_y = rods_y + int(130 * self.scale)
+        bottom_h = height - (bottom_y - start_y)
         box_w = (width - int(30 * self.scale)) // 2
         
         # Sub-panel 3.1: Pump Status (Left)
@@ -978,22 +1025,41 @@ class VideoDisplayApp:
         diag_content_h = diag_h - int(100 * self.scale)
         self.draw_reactor_diagnostic_displays(state, margin_x, diag_content_y, left_col_w, diag_content_h)
 
-        # === KANAN 1: SUHU INTI (dengan thermometer) ===
+        # === KANAN 1: MONITOR SUHU (LOFA) ===
         temp_y = content_y
-        temp_h = int(240 * self.scale)
-        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "SUHU INTI")
+        temp_h = int(320 * self.scale)
+        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
         
-        core_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
+        # Read temperatures from state (fallback to calculated if not available)
+        default_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
+        core_temp = state.get("temperature_core", default_temp)
+        clad_temp = state.get("temperature_fuel_cladding", core_temp * 0.95)
+        prim_temp = state.get("temperature_coolant_primary", clad_temp * 0.85)
+        sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
+        
+        temps = [
+            ("Core", core_temp, 350.0),
+            ("Clad", clad_temp, 350.0),
+            ("Prim", prim_temp, 300.0),
+            ("Sec", sec_temp, 250.0)
+        ]
         
         temp_content_y = temp_y + int(80*self.scale)
-        temp_content_h = temp_h - int(100*self.scale)
-        bar_x = right_col_x + int(300 * self.scale)
-        bar_w = int(45 * self.scale)
-        self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, core_temp, 300.0)
-        temp_val_x = bar_x + bar_w + int(25 * self.scale)
-        temp_val_y = temp_content_y + temp_content_h // 2 - int(35*self.scale)
-        temp_val = self.font_display.render(f"{core_temp:.0f}°C", True, self.COLOR_TEXT)
-        self.screen.blit(temp_val, (temp_val_x, temp_val_y))
+        temp_content_h = temp_h - int(140*self.scale)
+        bar_w = int(40 * self.scale)
+        spacing = int((right_col_w - (4 * bar_w)) / 5)
+        
+        for i, (name, val, max_val) in enumerate(temps):
+            bar_x = right_col_x + spacing + i * (bar_w + spacing)
+            self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, val, max_val)
+            
+            # Label
+            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+            
+            # Value
+            val_txt = self.font_small.render(f"{val:.0f}°C", True, self.COLOR_TEXT)
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(40*self.scale))))
 
         # === KANAN 2: PANDUAN OPERASI ===
         inst_y = temp_y + temp_h + panel_gap
@@ -1663,13 +1729,22 @@ class VideoDisplayApp:
                         state.get("pump_tertiary", 0))
         
         # Detect RESET: all values near zero
-        if (current_pressure < 5 and current_rods < 10 and current_pumps == 0):
+        is_zero = (current_pressure < 5 and current_rods < 10 and current_pumps == 0)
+        
+        # Clear the just_woke_up flag if we've started doing something
+        if not is_zero and getattr(self, 'just_woke_up', False):
+            self.just_woke_up = False
+
+        is_manual_started = hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists()
+
+        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started:
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False
                 self.auto_complete_time = None
+                self._clear_manual_flag()
             self.draw_idle_screen()
             return
         
@@ -1692,6 +1767,7 @@ class VideoDisplayApp:
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False
                 self.auto_complete_time = None
+                self._clear_manual_flag()
             self.draw_idle_screen()
             return
         
@@ -1743,6 +1819,15 @@ class VideoDisplayApp:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
+                
+                # Handle touch/mouse click to switch from IDLE to MANUAL
+                elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
+                    if not self.user_has_interacted:
+                        print("👉 Layar disentuh - beralih ke mode MANUAL")
+                        self.user_has_interacted = True
+                        self.just_woke_up = True
+                        if self.test_mode:
+                            self.mock_mode = "manual"
                 
                 # Test mode keyboard handling
                 self.handle_test_mode_keys(event)
