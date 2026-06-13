@@ -113,29 +113,35 @@ class LOFASimulator:
         # 6. Check for LOFA condition & Auto-SCRAM Triggers (per pump logic)
         scram_reason = None
         
-        # Primary Pump Failure -> Overheat check
-        if state.pump_primary_status != PUMP_ON:
-            if not state.lofa_primary:
-                state.lofa_primary = True
-                logger.warning("⚠️ LOFA PRIMARY DETECTED! Primary pump failed.")
-            
-            if state.temperature_fuel_cladding > 900.0:
-                scram_reason = f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
-            elif state.temperature_coolant_primary > 380.0:
-                scram_reason = f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+        # Only evaluate pump failures if the reactor is actually operating (has some heat)
+        # Otherwise, starting up with pumps off would immediately trigger LOFA
+        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+            # Primary Pump Failure -> Overheat check
+            if state.pump_primary_status != PUMP_ON:
+                if not state.lofa_primary:
+                    state.lofa_primary = True
+                    logger.warning("⚠️ LOFA PRIMARY DETECTED! Primary pump failed.")
+                
+                if state.temperature_fuel_cladding > 900.0:
+                    scram_reason = f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
+                elif state.temperature_coolant_primary > 380.0:
+                    scram_reason = f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+            else:
+                state.lofa_primary = False
+
+            # Secondary Pump Failure -> Overheat check
+            if state.pump_secondary_status != PUMP_ON:
+                if not state.lofa_secondary:
+                    state.lofa_secondary = True
+                    logger.warning("⚠️ LOFA SECONDARY DETECTED! Secondary pump failed.")
+                
+                # SCRAM naturally triggers when primary overheats due to lack of secondary cooling
+                if state.temperature_fuel_cladding > 900.0 or state.temperature_coolant_primary > 380.0:
+                    scram_reason = "Secondary LOFA: Induced Primary Overheat"
+            else:
+                state.lofa_secondary = False
         else:
             state.lofa_primary = False
-
-        # Secondary Pump Failure -> Overheat check
-        if state.pump_secondary_status != PUMP_ON:
-            if not state.lofa_secondary:
-                state.lofa_secondary = True
-                logger.warning("⚠️ LOFA SECONDARY DETECTED! Secondary pump failed.")
-            
-            # SCRAM naturally triggers when primary overheats due to lack of secondary cooling
-            if state.temperature_fuel_cladding > 900.0 or state.temperature_coolant_primary > 380.0:
-                scram_reason = "Secondary LOFA: Induced Primary Overheat"
-        else:
             state.lofa_secondary = False
 
         # Tertiary Pump Failure -> Prolonged effect check

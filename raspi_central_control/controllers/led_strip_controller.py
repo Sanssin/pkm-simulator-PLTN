@@ -84,11 +84,18 @@ class LedStripController:
         self.invert = False
         self.channel = channel
         
-        self.strip = PixelStrip(
-            self.count, self.pin, self.freq_hz, self.dma, 
-            self.invert, self.brightness, self.channel
-        )
-        self.strip.begin()
+        try:
+            self.strip = PixelStrip(
+                self.count, self.pin, self.freq_hz, self.dma, 
+                self.invert, self.brightness, self.channel
+            )
+            self.strip.begin()
+        except RuntimeError as e:
+            logger.error(f"WS281x C library failed: {e}. (Run as sudo for /dev/mem access). Running in mock mode.")
+            self.strip = None
+        except Exception as e:
+            logger.error(f"Failed to initialize WS281x: {e}. Running in mock mode.")
+            self.strip = None
         
         self.segments = {}
         self.running = False
