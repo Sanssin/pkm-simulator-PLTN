@@ -30,18 +30,22 @@ except ImportError:
     GPIO_AVAILABLE = False
 
 class ActuatorManager:
-    HUMIDIFIER_PINS = {
+    HUMIDIFIER_PINS = getattr(config, 'HUMIDIFIER_PINS', {
         'ct1': 2,
         'ct2': 3,
         'ct3': 9,
-        'ct4': 22  # Pindah ke 22 sesuai permintaan
-    }
+        'ct4': 22
+    })
 
     def __init__(self):
         self.hardware_active = GPIO_AVAILABLE
         
         # Initialize sub-controllers
-        self.servos = ServoController(safety_pin=23, shim_pin=24, reg_pin=25)
+        self.servos = ServoController(
+            safety_pin=getattr(config, 'SERVO_PIN_SAFETY', 23),
+            shim_pin=getattr(config, 'SERVO_PIN_SHIM', 24),
+            reg_pin=getattr(config, 'SERVO_PIN_REG', 25)
+        )
         self.motors = MotorController()
         
         # Initialize WS2812 LED Strip (Pipa & Pressurizer Daisy-Chained)
