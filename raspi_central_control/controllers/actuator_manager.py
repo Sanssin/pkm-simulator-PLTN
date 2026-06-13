@@ -61,12 +61,12 @@ class ActuatorManager:
             logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
             self.led_strip = None
 
-        # Initialize Pressurizer LED Strip (Terpisah)
+        # Initialize Pressurizer LED Strip (Terpisah via SPI / Pin 10)
         try:
             self.led_pressurizer = LedStripController(
-                pin=getattr(config, 'LED_PRESS_PIN', 19),
+                pin=getattr(config, 'LED_PRESS_PIN', 10),
                 count=getattr(config, 'LED_PRESS_COUNT', 22),
-                channel=1, dma=11 # Must use different channel/DMA for GPIO 19
+                channel=0, dma=11 # Gunakan DMA 11 agar tidak bentrok dengan DMA 10 milik PWM Pipa
             )
             self.led_pressurizer.add_segment('pressurizer', 0, getattr(config, 'LED_PRESS_COUNT', 22), flow_direction=1)
             
