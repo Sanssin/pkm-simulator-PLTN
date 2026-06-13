@@ -177,12 +177,27 @@ class ActuatorManager:
         if hasattr(self, 'led_pressurizer') and self.led_pressurizer is not None:
             pressure_val = getattr(state, 'pressure', 0.0)
             pressure_ratio = max(0.0, min(1.0, pressure_val / 200.0))
-            if pressure_val > 165.0:
-                self.led_pressurizer.set_fill_level('main', pressure_ratio, 255, 0, 255) # Magenta (menjadi Ungu Terang di filamen biru)
-            elif pressure_val > 150.0:
-                self.led_pressurizer.set_fill_level('main', pressure_ratio, 150, 0, 255) # Ungu (menjadi Violet gelap di filamen biru)
+            
+            # Gradasi warna halus:
+            if pressure_val <= 155.0:
+                # Normal: Putih
+                r, g, b = 255, 255, 255
+            elif pressure_val <= 165.0:
+                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Ungu(150,0,255)
+                ratio = (pressure_val - 155.0) / 10.0
+                r = int(255 - (105 * ratio))
+                g = int(255 - (255 * ratio))
+                b = 255
             else:
-                self.led_pressurizer.set_fill_level('main', pressure_ratio, 255, 255, 255) # Putih (menjadi Biru Neon sangat terang di filamen biru)
+                # Critical: 165 - 200. Transisi Ungu(150,0,255) ke Magenta(255,0,255)
+                ratio = min(1.0, (pressure_val - 165.0) / 35.0)
+                r = int(150 + (105 * ratio))
+                g = 0
+                b = 255
+
+            self.led_pressurizer.set_fill_level('main', pressure_ratio, r, g, b)
+            # Berikan animasi ombak naik (kecepatan proporsional dengan rasio tekanan)
+            self.led_pressurizer.set_flow_speed('main', 0.5 + (pressure_ratio * 1.5))
         
         if not self.hardware_active:
             # In mock mode, we don't do anything physical for standard GPIO.

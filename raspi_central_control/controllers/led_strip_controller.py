@@ -114,6 +114,7 @@ class LedStripController:
         if name in self.segments:
             self.segments[name].fill_level = max(0.0, min(1.0, level))
             self.segments[name].fill_color = Color(r, g, b)
+            self.segments[name].fill_rgb = (r, g, b)
 
     def clear(self):
         """Mematikan seluruh LED."""
@@ -157,9 +158,22 @@ class LedStripController:
                 if seg.fill_level >= 0.0:
                     # Mode fill: nyalakan lampu sejumlah fill_level
                     lit_count = int(seg.fill_level * seg.length)
+                    
+                    # Tambahkan animasi jika speed > 0
+                    if seg.speed > 0.0:
+                        seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0)
+                    int_offset = int(seg.offset)
+
                     for i in range(seg.length):
                         if i < lit_count:
-                            self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
+                            # Jika animasi berjalan, buat efek gelembung/pola
+                            if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
+                                # Buat sedikit lebih redup untuk pola "mati" agar efeknya seperti gelombang
+                                r, g, b = getattr(seg, 'fill_rgb', (255, 255, 255))
+                                dim_color = Color(int(r*0.2), int(g*0.2), int(b*0.2))
+                                self.strip.setPixelColor(seg.start_idx + i, dim_color)
+                            else:
+                                self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
                         else:
                             self.strip.setPixelColor(seg.start_idx + i, self.color_black)
                 else:

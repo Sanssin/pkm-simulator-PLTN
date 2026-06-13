@@ -100,7 +100,7 @@ class LOFASimulator:
         # 4. Pressure Dynamics
         pressure_generation = (delta_temp * 0.5) if delta_temp > 0 else (delta_temp * 0.2)
         if state.relief_valve_open:
-            pressure_generation -= 10.0 * dt  # Relieve pressure quickly
+            pressure_generation -= 1.5 * dt  # Relieve pressure more slowly (1.5 bar/sec)
             
         state.pressure = max(0.0, state.pressure + pressure_generation)
 
