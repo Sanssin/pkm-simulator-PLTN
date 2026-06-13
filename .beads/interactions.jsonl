@@ -41,3 +41,4 @@
 {"id":"int-c730923a","kind":"field_change","created_at":"2026-06-12T12:04:15.5781157Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-sk1","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-90e25ac4","kind":"field_change","created_at":"2026-06-12T12:15:10.9678984Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-1mj","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-9279a35b","kind":"field_change","created_at":"2026-06-12T12:15:54.1456724Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-r0p","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
+{"id":"int-e9549a83","kind":"field_change","created_at":"2026-06-13T07:11:26.7149784Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-hhe","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
