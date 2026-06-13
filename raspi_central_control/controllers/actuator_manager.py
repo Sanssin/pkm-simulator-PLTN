@@ -49,7 +49,8 @@ class ActuatorManager:
         try:
             self.led_strip = LedStripController(
                 pin=getattr(config, 'LED_STRIP_PIN', 18),
-                count=getattr(config, 'LED_STRIP_COUNT', 571)
+                count=getattr(config, 'LED_STRIP_COUNT', 571),
+                channel=0, dma=10
             )
             
             # Add segments
@@ -66,6 +67,21 @@ class ActuatorManager:
         except Exception as e:
             logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
             self.led_strip = None
+            
+        # Initialize Pressurizer LED Strip
+        try:
+            self.led_pressurizer = LedStripController(
+                pin=getattr(config, 'LED_PRESS_PIN', 19),
+                count=getattr(config, 'LED_PRESS_COUNT', 22),
+                channel=1, dma=11 # Must use different channel/DMA for GPIO 19
+            )
+            self.led_pressurizer.add_segment('main', 0, getattr(config, 'LED_PRESS_COUNT', 22), flow_direction=1)
+            
+            if self.hardware_active:
+                self.led_pressurizer.start()
+        except Exception as e:
+            logger.warning(f"ActuatorManager: Failed to initialize Pressurizer LedStripController: {e}")
+            self.led_pressurizer = None
         
         if self.hardware_active:
             try:
@@ -97,6 +113,14 @@ class ActuatorManager:
                 else:
                     self.use_pigpio_for_led = None
                 
+                # Initialize Relief Valve LEDs
+                if hasattr(config, 'LED_RELIEF_GREEN_PIN'):
+                    GPIO.setup(config.LED_RELIEF_GREEN_PIN, GPIO.OUT)
+                    GPIO.output(config.LED_RELIEF_GREEN_PIN, GPIO.HIGH) # Default Green ON
+                if hasattr(config, 'LED_RELIEF_RED_PIN'):
+                    GPIO.setup(config.LED_RELIEF_RED_PIN, GPIO.OUT)
+                    GPIO.output(config.LED_RELIEF_RED_PIN, GPIO.LOW)  # Default Red OFF
+
                 logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
             except Exception as e:
                 logger.warning(f"ActuatorManager: Failed to initialize GPIO: {e}. Falling back to Mock mode.")
@@ -148,6 +172,17 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
+            
+        # Update Pressurizer WS2812 Fill Level based on Pressure
+        if hasattr(self, 'led_pressurizer') and self.led_pressurizer is not None:
+            pressure_val = getattr(state, 'pressure', 0.0)
+            pressure_ratio = max(0.0, min(1.0, pressure_val / 200.0))
+            if pressure_val > 165.0:
+                self.led_pressurizer.set_fill_level('main', pressure_ratio, 255, 0, 255) # Magenta (menjadi Ungu Terang di filamen biru)
+            elif pressure_val > 150.0:
+                self.led_pressurizer.set_fill_level('main', pressure_ratio, 150, 0, 255) # Ungu (menjadi Violet gelap di filamen biru)
+            else:
+                self.led_pressurizer.set_fill_level('main', pressure_ratio, 255, 255, 255) # Putih (menjadi Biru Neon sangat terang di filamen biru)
         
         if not self.hardware_active:
             # In mock mode, we don't do anything physical for standard GPIO.
@@ -170,6 +205,17 @@ class ActuatorManager:
             GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
             GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
             GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
+
+            # Relief Valve LEDs
+            if hasattr(config, 'LED_RELIEF_GREEN_PIN') and hasattr(config, 'LED_RELIEF_RED_PIN'):
+                if getattr(state, 'relief_valve_open', False):
+                    # Relief Valve Open -> Red ON, Green OFF
+                    GPIO.output(config.LED_RELIEF_RED_PIN, GPIO.HIGH)
+                    GPIO.output(config.LED_RELIEF_GREEN_PIN, GPIO.LOW)
+                else:
+                    # Safe -> Green ON, Red OFF
+                    GPIO.output(config.LED_RELIEF_RED_PIN, GPIO.LOW)
+                    GPIO.output(config.LED_RELIEF_GREEN_PIN, GPIO.HIGH)
         except Exception as e:
             logger.error(f"ActuatorManager: Error updating hardware: {e}")
 
@@ -180,6 +226,9 @@ class ActuatorManager:
         
         if self.led_strip is not None:
             self.led_strip.stop()
+            
+        if hasattr(self, 'led_pressurizer') and self.led_pressurizer is not None:
+            self.led_pressurizer.stop()
         
         if self.hardware_active:
             try:
