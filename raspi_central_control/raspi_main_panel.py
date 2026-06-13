@@ -22,9 +22,9 @@ import raspi_config as config
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
-import cpu_manager
 
 # Import refactored modules
+from controllers.cpu_manager import CpuManager
 from controllers import StateManager, PanelState, InterlockValidator, EventProcessor
 from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
@@ -486,6 +486,9 @@ def main():
     """Main entry point."""
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Optimize CPU for this hardware node (Core 0,1 + High Priority)
+    CpuManager.setup_hardware_node()
     
     try:
         controller = PLTNPanelController()

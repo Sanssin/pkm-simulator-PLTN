@@ -44,3 +44,5 @@
 {"id":"int-e9549a83","kind":"field_change","created_at":"2026-06-13T07:11:26.7149784Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-hhe","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-c25448cd","kind":"field_change","created_at":"2026-06-13T09:05:44.2283164Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-mse","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-c2c89d31","kind":"field_change","created_at":"2026-06-13T09:26:27.2693511Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-tyc","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
+{"id":"int-12e69c51","kind":"field_change","created_at":"2026-06-13T11:00:09.2374929Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-dta","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-e628b671","kind":"field_change","created_at":"2026-06-13T11:00:50.0428092Z","actor":"Sanssin","issue_id":"pkm-simulator-PLTN-su6","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
