@@ -21,12 +21,21 @@ class MotorController:
     # Frekuensi PWM untuk VNH2SP30 bisa diatur (5kHz is typical for these motors to avoid whining noise)
     PWM_FREQUENCY = 5000 
     
-    MOTOR_PINS = {
-        'pump_primary': 17,
-        'pump_secondary': 20,
-        'pump_tertiary': 27,  # Pindah dari 21 ke 27 agar 21 bisa dipakai LED PCM
-        'turbine': 26
-    }
+    try:
+        import raspi_config as config
+        MOTOR_PINS = getattr(config, 'MOTOR_PINS', {
+            'pump_primary': 17,
+            'pump_secondary': 20,
+            'pump_tertiary': 27,
+            'turbine': 26
+        })
+    except ImportError:
+        MOTOR_PINS = {
+            'pump_primary': 17,
+            'pump_secondary': 20,
+            'pump_tertiary': 27,
+            'turbine': 26
+        }
     
     def __init__(self, pi_instance=None):
         self.mock_mode = not PIGPIO_AVAILABLE
