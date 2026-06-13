@@ -10,7 +10,7 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 # Only hardware output pins are defined here (buzzer, etc.)
 
 # Output Pins
-BUZZER_PIN = 22          # GPIO 22 for passive buzzer alarm (software PWM)
+BUZZER_PIN = 4           # GPIO 4 for passive buzzer alarm (software PWM) - dipindah dari 22
 LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
 LED_RELIEF_GREEN_PIN = 5  # GPIO 5 for Relief Valve Safe (Green) - Changed from 20 to avoid conflict
 LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red) - Changed from 21
