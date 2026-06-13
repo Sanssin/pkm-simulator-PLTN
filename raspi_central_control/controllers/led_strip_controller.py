@@ -199,7 +199,11 @@ class LedStripController:
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:
-                self.strip.show()
+                try:
+                    self.strip.show()
+                except RuntimeError as e:
+                    logger.error(f"WS281x render failed (DMA Error): {e}")
+                    self.running = False
+                    break
                 
             time.sleep(self.update_interval)
-
