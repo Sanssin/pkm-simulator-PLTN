@@ -48,13 +48,13 @@ class ActuatorManager:
         try:
             self.led_strip = LedStripController(
                 pin=getattr(config, 'LED_STRIP_PIN', 18),
-                count=getattr(config, 'LED_STRIP_COUNT', 593),
+                count=getattr(config, 'LED_STRIP_COUNT', 592),
                 channel=0, dma=10
             )
-            self.led_strip.add_segment('pressurizer', getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 22))[0], getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 22))[1], flow_direction=1)
-            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (22, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (22, 190))[1])
-            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (212, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (212, 190))[1])
-            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (402, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (402, 191))[1])
+            self.led_strip.add_segment('pressurizer', getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[0], getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[1], flow_direction=1)
+            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (21, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (21, 190))[1])
+            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (211, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (211, 190))[1])
+            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (401, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (401, 191))[1])
             
             if self.hardware_active:
                 self.led_strip.start()
@@ -163,14 +163,14 @@ class ActuatorManager:
                 # Normal: Putih Terang (agar tembus filamen biru menjadi Biru Terang)
                 r, g, b = 255, 255, 255
             elif pressure_val <= 165.0:
-                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Merah/Magenta agar warna berubah jadi gelap/ungu di filamen biru
+                # Warning: 155 - 165. Transisi Putih(255,255,255) ke Kuning Terang (255,255,0)
                 ratio = (pressure_val - 155.0) / 10.0
                 r = 255
-                g = int(255 - (255 * ratio))
-                b = int(255 - (105 * ratio))
+                g = 255
+                b = int(255 - (255 * ratio))
             else:
-                # Critical: > 165. Merah pekat (di balik filamen biru akan terlihat sangat gelap/ungu pekat)
-                r, g, b = 255, 0, 0
+                # Critical: > 165. Kuning Terang (Cahaya kuning yang menembus biru akan terlihat Hijau Terang menyala, sangat menembus dan mencolok)
+                r, g, b = 255, 255, 0
 
             self.led_strip.set_fill_level('pressurizer', pressure_ratio, r, g, b)
             # Berikan animasi ombak naik (kecepatan proporsional dengan rasio tekanan)
