@@ -213,6 +213,22 @@ class EventProcessor:
             elif event == ButtonEvent.PUMP_TERTIARY_OFF:
                 if state.pump_tertiary_status == PUMP_ON:
                     state.pump_tertiary_status = PUMP_SHUTTING_DOWN
+                    
+            # LOFA Simulation events
+            elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
+                if state.pump_primary_status == PUMP_ON:
+                    state.pump_primary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Primary LOFA: Pump shutting down")
+            
+            elif event == ButtonEvent.LOFA_SIMULATE_SECONDARY:
+                if state.pump_secondary_status == PUMP_ON:
+                    state.pump_secondary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Secondary LOFA: Pump shutting down")
+                    
+            elif event == ButtonEvent.LOFA_SIMULATE_TERTIARY:
+                if state.pump_tertiary_status == PUMP_ON:
+                    state.pump_tertiary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Tertiary LOFA: Pump shutting down")
             
             # Rod events are handled by RodController
             elif event in [ButtonEvent.SAFETY_ROD_UP, ButtonEvent.SAFETY_ROD_DOWN,
