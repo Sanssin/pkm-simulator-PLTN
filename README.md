@@ -4,8 +4,7 @@
 
 [![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue)]()
-[![ESP32](https://img.shields.io/badge/ESP32-Arduino-orange)]()
-[![Architecture](https://img.shields.io/badge/architecture-2%20ESP%20UART-success)]()
+[![Architecture](https://img.shields.io/badge/architecture-Single%20Controller%20(RPi)-success)]()
 
 
 ---
@@ -31,11 +30,18 @@
 
 ## 🎯 Overview
 
-Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 sebagai master controller dan **2 ESP32** sebagai slave controllers menggunakan **UART communication protocol**.
+Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan **Raspberry Pi 4** sebagai master controller tunggal yang langsung mengontrol antarmuka layar sentuh, video, serta hardware IO.
 
 **🔗 For detailed documentation:**
 - **[GPIO_PIN_MAPPING.md](GPIO_PIN_MAPPING.md)** — Complete pin allocation, wiring guide, and hardware setup
 - **[AGENT.md](AGENT.md)** — Full technical architecture for developers & AI agents (40KB)
+
+### 🎉 What's New in v5.0 (Single Controller Architecture - June 2026)
+
+**🔌 Direct Hardware Control:**
+- ✅ **No More ESP32** - All physical inputs and outputs are managed directly by the Raspberry Pi.
+- ✅ **ActuatorManager** - Unified Python controller for servos, PWM motors, and relays.
+- ✅ **Zero Latency** - Eliminates UART bottleneck. State variables are purely in-memory.
 
 ### 🎉 What's New in v4.1 (Touchscreen HMI & LOFA Simulation)
 
@@ -83,19 +89,17 @@ Simulator PLTN tipe **PWR (Pressurized Water Reactor)** dengan Raspberry Pi 4 se
 
 | Komponen | Jumlah | Fungsi | Status |
 |----------|--------|--------|--------|
-| Raspberry Pi 4 | 1 | Master controller, logic, safety system | ✅ |
-| ESP32 (ESP-BC) | 1 | Control rods + turbine + pumps + humidifiers (UART) | ✅ |
-| ESP32 (ESP-E) | 1 | LED visualization + power indicator (UART) | ✅ |
+| Raspberry Pi 4 | 1 | Master controller, logic, UI rendering, direct IO | ✅ |
+| ESP32 | 0 | DEPRECATED (Replaced by direct RPi GPIO) | ✅ |
 | Touchscreen HMI | 1 | Operator input (1024x600 Display) | ✅ NEW |
 | Push Button | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
 | OLED Display | 0 | DEPRECATED (Replaced by Touchscreen) | ✅ |
 | Servo Motor | 3 | Control rod simulation (safety, shim, regulating) | ✅ |
-| LED Flow | 24 | Flow visualization (8 LEDs × 3 flows via 74HC595) | ✅ |
-| **LED Power** | **4** | **Power output visualization (0-300 MWe)** | ✅ |
+| LED Strip (DMA) | 592| Flow visualization (Pipes, Pressurizer, Core) | ✅ NEW |
+| Motor Driver (L298N)| 4 | **3 pumps + 1 turbine (Hardware PWM via pigpio)** | ✅ |
 | Relay | 4 | **Cooling Tower humidifiers (CT1-4)** | ✅ |
-| Motor Driver (L298N) | 4 | **3 pumps + 1 turbine (PWM + direction control)** | ✅ |
 | Humidifier | 4 | Cooling tower visual effect | ✅ |
-| **Video Display** | **1** | **Educational visualization (separate monitor)** | ✅ **NEW** |
+| **Video Display** | **1** | **Educational visualization (separate HDMI monitor)** | ✅ |
 
 ### Target Pengguna
 - 🎓 Mahasiswa teknik nuklir
