@@ -57,18 +57,18 @@ class ServoController:
         if not self.hardware_active:
             return
             
-        # Update Safety Rod (Threshold 0.5% to prevent micro-jitters)
-        if abs(safety_pct - self._last_safety) >= 0.5:
+        # Update Safety Rod (Threshold 0.1% to prevent micro-jitters but allow smooth tracking)
+        if abs(safety_pct - self._last_safety) >= 0.1:
             self.pi.set_servo_pulsewidth(self.safety_pin, self._percent_to_pw(safety_pct))
             self._last_safety = safety_pct
             
         # Update Shim Rod
-        if abs(shim_pct - self._last_shim) >= 0.5:
+        if abs(shim_pct - self._last_shim) >= 0.1:
             self.pi.set_servo_pulsewidth(self.shim_pin, self._percent_to_pw(shim_pct))
             self._last_shim = shim_pct
             
         # Update Regulating Rod
-        if abs(reg_pct - self._last_reg) >= 0.5:
+        if abs(reg_pct - self._last_reg) >= 0.1:
             self.pi.set_servo_pulsewidth(self.reg_pin, self._percent_to_pw(reg_pct))
             self._last_reg = reg_pct
 
