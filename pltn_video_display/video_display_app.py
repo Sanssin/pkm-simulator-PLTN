@@ -655,6 +655,15 @@ class VideoDisplayApp:
         if self.video_process:
             self.stop_video()
         
+        import pwd
+        import os
+        try:
+            target_user = pwd.getpwuid(1000).pw_name
+            target_home = pwd.getpwuid(1000).pw_dir
+        except Exception:
+            target_user = "pi"
+            target_home = "/home/pi"
+
         # Check if video file exists
         if not Path(video_path).exists():
             print(f"❌ Video not found: {video_path}")
@@ -690,6 +699,12 @@ class VideoDisplayApp:
         
         if loop:
             cmd.insert(1, '--loop=inf')
+            
+        # If running as root (e.g. systemd service), run mpv as the normal user
+        # to avoid XDG_RUNTIME_DIR ownership errors
+        if os.geteuid() == 0:
+            print(f"   Running as root. Dropping privileges to user: {target_user} for mpv")
+            cmd = ['sudo', '-u', target_user] + cmd
         
         try:
             # Set environment for mpv
@@ -700,9 +715,13 @@ class VideoDisplayApp:
                 'AUDIODEV': 'hw:1,0'    # Force HDMI audio device
             }
             
+            # Combine current os.environ with our custom env variables
+            process_env = os.environ.copy()
+            process_env.update(env)
+            
             self.video_process = subprocess.Popen(
                 cmd,
-                env=env,
+                env=process_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -1673,7 +1692,12 @@ class VideoDisplayApp:
                 # Force AUTO mode
                 if self.display_mode != DisplayMode.AUTO_VIDEO:
                     print("🎬 Switching to AUTO VIDEO mode")
-                    video_path = str(Path.home() / "video_pltn" / "pwr_tutorial_ver.mp4")
+                    import pwd
+                    try:
+                        target_home = pwd.getpwuid(1000).pw_dir
+                    except Exception:
+                        target_home = "/home/pi"
+                    video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
                     self.play_video(video_path, loop=True)
                     self.display_mode = DisplayMode.AUTO_VIDEO
                 
@@ -1764,7 +1788,12 @@ class VideoDisplayApp:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
                 # Use video from assets folder (production ready)
-                video_path = str(Path.home() / "video_pltn" / "pwr_tutorial_ver.mp4")
+                import pwd
+                try:
+                    target_home = pwd.getpwuid(1000).pw_dir
+                except Exception:
+                    target_home = "/home/pi"
+                video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
                 self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
