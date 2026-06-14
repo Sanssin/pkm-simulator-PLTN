@@ -81,9 +81,7 @@ class PLTNPanelController:
         # Event queue for button presses
         self.button_event_queue = Queue(maxsize=100)
         
-        from controllers.rod_controller import RodController
-        self.rod_controller = RodController(self.interlock_validator)
-        
+
         from io_handlers.state_exporter import StateExporter
         self.state_exporter = StateExporter(self.state_manager)
         
