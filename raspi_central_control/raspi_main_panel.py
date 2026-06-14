@@ -81,8 +81,11 @@ class PLTNPanelController:
         # Event queue for button presses
         self.button_event_queue = Queue(maxsize=100)
         
-        # State export file for video display
-        self.state_export_file = Path("/tmp/pltn_state.json")
+        from controllers.rod_controller import RodController
+        self.rod_controller = RodController(self.interlock_validator)
+        
+        from io_handlers.state_exporter import StateExporter
+        self.state_exporter = StateExporter(self.state_manager)
         
         # Initialize hardware components
         self._init_hardware()
@@ -355,50 +358,9 @@ class PLTNPanelController:
         
         logger.info("Control logic thread stopped")
     
-    def state_export_thread(self):
-        """Export state to JSON for video display."""
-        logger.info("State export thread started")
-        
-        # CPU-013: Configure System IO affinity (Core 0)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [0])
-        
-        while self.state_manager.running:
-            try:
-                with self.state_manager as state:
-                    state_dict = {
-                        "timestamp": time.time(),
-                        "mode": state.simulation_mode,
-                        "auto_running": state.auto_sim_running,
-                        "auto_phase": state.auto_sim_phase,
-                        "pressure": float(state.pressure),
-                        "safety_rod": int(state.safety_rod),
-                        "shim_rod": int(state.shim_rod),
-                        "regulating_rod": int(state.regulating_rod),
-                        "pump_primary": int(state.pump_primary_status),
-                        "pump_secondary": int(state.pump_secondary_status),
-                        "pump_tertiary": int(state.pump_tertiary_status),
-                        "thermal_kw": float(state.thermal_kw),
-                        "temperature_core": float(state.temperature_core),
-                        "temperature_coolant": float(state.temperature_coolant),
-                        "turbine_speed": float(state.turbine_speed),
-                        "emergency": bool(state.emergency_active),
-                        "lofa_primary": bool(state.lofa_primary),
-                        "lofa_secondary": bool(state.lofa_secondary),
-                        "lofa_tertiary": bool(state.lofa_tertiary)
-                    }
-                
-                temp_file = self.state_export_file.with_suffix('.tmp')
-                with open(temp_file, 'w') as f:
-                    json.dump(state_dict, f, indent=2)
-                temp_file.replace(self.state_export_file)
-                
-            except Exception as e:
-                logger.error(f"State export error: {e}")
-            
-            time.sleep(0.1)
-        
-        logger.info("State export thread stopped")
+    # ============================================
+    # Background Threads (Moved to modules)
+    # ============================================
     
     # ============================================
     # Main Loop
@@ -414,9 +376,11 @@ class PLTNPanelController:
         # Start all threads
         threads = [
             threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
-            threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
-            threading.Thread(target=self.state_export_thread, daemon=True, name="StateExportThread"),
+            threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread")
         ]
+        
+        # Start state exporter natively
+        self.state_exporter.start()
         
         for t in threads:
             t.start()
