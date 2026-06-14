@@ -313,9 +313,11 @@ class PLTNPanelController:
 
                     # Primary Physics Simulation (runs every 10ms)
                     if True:
-                        avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
-                        if avg_rod > 10.0:
-                            reactor_thermal_capacity = (avg_rod**2) * 90.0 + (state.shim_rod * 150.0) + (state.regulating_rod * 200.0)
+                        # Shim rod has 80% worth, Regulating rod has 20% worth
+                        effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
+                        
+                        if effective_rod > 10.0:
+                            reactor_thermal_capacity = (effective_rod**2) * 90.0
                             reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
                         else:
                             reactor_thermal_capacity = 0.0
