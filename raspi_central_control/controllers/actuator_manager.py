@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from controllers.servo_controller import ServoController
 from controllers.motor_controller import MotorController
 from controllers.led_strip_controller import LedStripController
+from controllers.raspi_relay_controller import RelayController
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,6 @@ except ImportError:
     GPIO_AVAILABLE = False
 
 class ActuatorManager:
-    HUMIDIFIER_PINS = getattr(config, 'HUMIDIFIER_PINS', {
-        'ct1': 2,
-        'ct2': 3,
-        'ct3': 9,
-        'ct4': 22
-    })
-
     def __init__(self):
         self.hardware_active = GPIO_AVAILABLE
         
@@ -71,12 +65,6 @@ class ActuatorManager:
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(False)
                 
-                # Initialize humidifier pins
-                for pin in self.HUMIDIFIER_PINS.values():
-                    GPIO.setup(pin, GPIO.OUT)
-                    # Relay modules are Active-LOW in this setup. Default to HIGH (OFF).
-                    GPIO.output(pin, GPIO.HIGH)
-                
                 # Initialize Power LED
                 if hasattr(config, 'LED_POWER_PIN'):
                     if not self.motors.mock_mode and hasattr(self.motors, 'pi') and self.motors.pi.connected:
@@ -104,12 +92,15 @@ class ActuatorManager:
                     GPIO.setup(config.LED_RELIEF_RED_PIN, GPIO.OUT)
                     GPIO.output(config.LED_RELIEF_RED_PIN, GPIO.LOW)  # Default Red OFF
 
-                logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
+                logger.info(f"ActuatorManager: Hardware mode active.")
             except Exception as e:
-                logger.warning(f"ActuatorManager: Failed to initialize GPIO: {e}. Falling back to Mock mode.")
+                logger.warning(f"ActuatorManager: Failed to initialize hardware GPIO: {e}")
                 self.hardware_active = False
         else:
-            logger.info("ActuatorManager: Running in Mock mode (No RPi.GPIO available).")
+            logger.info("ActuatorManager: Running in MOCK mode (No RPi.GPIO)")
+            
+        # Initialize relays
+        self.relays = RelayController()
 
     def update_actuators(self, state):
         """
@@ -196,11 +187,13 @@ class ActuatorManager:
                 elif hasattr(self, 'led_pwm') and self.led_pwm is not None:
                     self.led_pwm.ChangeDutyCycle(duty_cycle)
 
-            # Physical relay control for Humidifiers (Active-LOW trigger)
-            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.LOW if getattr(state, 'humid_ct1_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
-            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
+            # Physical relay control for Humidifiers
+            self.relays.set_relays(
+                getattr(state, 'humid_ct1_cmd', 0),
+                getattr(state, 'humid_ct2_cmd', 0),
+                getattr(state, 'humid_ct3_cmd', 0),
+                getattr(state, 'humid_ct4_cmd', 0)
+            )
 
             # Relief Valve LEDs
             if hasattr(config, 'LED_RELIEF_GREEN_PIN') and hasattr(config, 'LED_RELIEF_RED_PIN'):
@@ -221,6 +214,8 @@ class ActuatorManager:
             self.servos.cleanup()
         if hasattr(self, 'motors') and self.motors:
             self.motors.cleanup()
+        if hasattr(self, 'relays') and self.relays:
+            self.relays.cleanup()
         
         if hasattr(self, 'led_strip') and self.led_strip is not None:
             self.led_strip.stop()
