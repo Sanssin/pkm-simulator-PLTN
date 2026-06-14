@@ -801,25 +801,20 @@ class VideoDisplayApp:
         title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(150 * self.scale)))
         self.screen.blit(title3, title3_rect)
         
-        # === 3. BAGIAN TOMBOL PILIHAN ===
-        button_y = center_y_start + int(310 * self.scale)
-        button_width = int(400 * self.scale)
-        button_height = int(90 * self.scale)
-        spacing = int(50 * self.scale)
+        # === 3. BAGIAN TOMBOL / BADGE "SIMULASI SIAP" ===
+        badge_y = center_y_start + int(310 * self.scale)
+        badge_width = int(450 * self.scale)
+        badge_height = int(90 * self.scale)
+        badge_rect = pygame.Rect(0, 0, badge_width, badge_height)
+        badge_rect.center = (self.width//2, badge_y)
         
-        # Tombol Manual (Kiri)
-        self.btn_rect_manual = pygame.Rect(0, 0, button_width, button_height)
-        self.btn_rect_manual.center = (self.width//2 - button_width//2 - spacing//2, button_y)
-        pygame.draw.rect(self.screen, self.COLOR_PRIMARY, self.btn_rect_manual, border_radius=int(10 * self.scale))
-        manual_text = self.font_subtitle.render("SIMULASI MANUAL", True, self.COLOR_BG)
-        self.screen.blit(manual_text, manual_text.get_rect(center=self.btn_rect_manual.center))
+        # Latar belakang tombol (Warna Emas/Orange dengan sudut melengkung)
+        pygame.draw.rect(self.screen, self.COLOR_WARNING, badge_rect, border_radius=int(10 * self.scale))
         
-        # Tombol Otomatis (Kanan)
-        self.btn_rect_auto = pygame.Rect(0, 0, button_width, button_height)
-        self.btn_rect_auto.center = (self.width//2 + button_width//2 + spacing//2, button_y)
-        pygame.draw.rect(self.screen, self.COLOR_SUCCESS, self.btn_rect_auto, border_radius=int(10 * self.scale))
-        auto_text = self.font_subtitle.render("SIMULASI OTOMATIS", True, self.COLOR_BG)
-        self.screen.blit(auto_text, auto_text.get_rect(center=self.btn_rect_auto.center))
+        # Teks dalam tombol (Warna Gelap/Background agar kontras)
+        badge_text = self.font_subtitle.render("SIMULASI SIAP", True, self.COLOR_DARK_NAVY)
+        badge_text_rect = badge_text.get_rect(center=badge_rect.center)
+        self.screen.blit(badge_text, badge_text_rect)
         
         # === 4. INSTRUKSI & MODE TEST ===
         inst_y = badge_y + int(80 * self.scale)
@@ -1843,35 +1838,14 @@ class VideoDisplayApp:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                 
-                # Handle touch/mouse click to switch from IDLE to MANUAL or AUTO
+                # Handle touch/mouse click to switch from IDLE to MANUAL
                 elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
                     if not self.user_has_interacted:
-                        if self.display_mode == DisplayMode.IDLE:
-                            # Tentukan posisi sentuhan
-                            pos = event.pos if event.type == pygame.MOUSEBUTTONDOWN else (int(event.x * self.width), int(event.y * self.height))
-                            
-                            if hasattr(self, 'btn_rect_auto') and self.btn_rect_auto.collidepoint(pos):
-                                print("👉 Tombol OTOMATIS disentuh")
-                                if self.test_mode:
-                                    self.mock_mode = "auto"
-                                    self.mock_state["auto_running"] = True
-                                else:
-                                    self.send_start_auto_command()
-                                continue
-                            
-                            # Jika klik Manual atau di luar area tombol, masuk mode Manual
-                            print("👉 Tombol MANUAL disentuh - beralih ke mode MANUAL")
-                            self.user_has_interacted = True
-                            self.just_woke_up = True
-                            if self.test_mode:
-                                self.mock_mode = "manual"
-                        else:
-                            # Override sentuhan saat layar aktif (otomatis masuk MANUAL)
-                            print("👉 Layar disentuh - override ke mode MANUAL")
-                            self.user_has_interacted = True
-                            self.just_woke_up = True
-                            if self.test_mode:
-                                self.mock_mode = "manual"
+                        print("👉 Layar disentuh - beralih ke mode MANUAL")
+                        self.user_has_interacted = True
+                        self.just_woke_up = True
+                        if self.test_mode:
+                            self.mock_mode = "manual"
                 
                 # Test mode keyboard handling
                 self.handle_test_mode_keys(event)
@@ -1889,30 +1863,6 @@ class VideoDisplayApp:
         self.stop_video()
         pygame.quit()
         print("👋 Video Display App stopped")
-
-    def send_start_auto_command(self):
-        """Send START_AUTO event to backend via pltn_input.json"""
-        import json
-        import time
-        from pathlib import Path
-        
-        input_file = Path("/tmp/pltn_input.json")
-        try:
-            # Create the START_AUTO event
-            event_data = {
-                "timestamp": time.time(),
-                "events": [
-                    {
-                        "timestamp": time.time(),
-                        "type": "START_AUTO"
-                    }
-                ]
-            }
-            with open(input_file, "w") as f:
-                json.dump(event_data, f)
-            print("✅ Perintah Simulasi Otomatis terkirim ke backend")
-        except Exception as e:
-            print(f"❌ Gagal mengirim perintah otomatis: {e}")
 
 
 
