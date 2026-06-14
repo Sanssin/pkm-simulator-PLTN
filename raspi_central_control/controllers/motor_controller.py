@@ -82,6 +82,10 @@ class MotorController:
         # Constrain speed between 0 and 100
         speed_percent = max(0.0, min(100.0, float(speed_percent)))
         
+        # Hardware safety limit: Cap turbine motor to 50% maximum
+        if motor_name == 'turbine':
+            speed_percent = speed_percent * 0.5  # Scale 0-100% input to 0-50% hardware output
+        
         self.current_speeds[motor_name] = speed_percent
         
         if not self.mock_mode:
