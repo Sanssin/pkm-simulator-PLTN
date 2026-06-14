@@ -1699,7 +1699,8 @@ class VideoDisplayApp:
                     except Exception:
                         target_home = "/home/pi"
                     video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
-                    self.play_video(video_path, loop=True)
+                    # Video is now handled by raspi_main_panel.py subprocess!
+                    # self.play_video(video_path, loop=True)
                     self.display_mode = DisplayMode.AUTO_VIDEO
                 
                 # Show overlay in test mode
@@ -1795,7 +1796,8 @@ class VideoDisplayApp:
                 except Exception:
                     target_home = "/home/pi"
                 video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
-                self.play_video(video_path, loop=True)
+                # Video is now handled by raspi_main_panel.py subprocess!
+                # self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
