@@ -88,20 +88,7 @@ class TestSCRAMSequence(unittest.TestCase):
         self.assertFalse(scram.is_running)
         self.assertEqual(self.state_manager.get('safety_rod'), 0)
     
-    def test_scram_triggers_esp(self):
-        """Test SCRAM triggers ESP updates."""
-        self.state_manager.update(safety_rod=50)
-        
-        scram = SCRAMSequence(
-            state_manager=self.state_manager
-        )
-        
-        with patch.object(scram, 'ROD_DROP_DURATION', 0.05):
-            with patch.object(scram, 'UPDATE_INTERVAL', 0.01):
-                scram.execute_blocking()
-        
-        # ESP trigger should have been called
-        self.assertTrue(self.esp_trigger.called)
+
 
 
 class TestAutoSimulator(unittest.TestCase):

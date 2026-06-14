@@ -6,8 +6,6 @@ import math
 # Global lock to prevent concurrent DMA hardware access from multiple LedStripController threads
 ws281x_lock = threading.Lock()
 
-from rpi_ws281x import PixelStrip, Color
-
 # Fallback for environments without rpi_ws281x (like Windows/Mac development)
 try:
     from rpi_ws281x import PixelStrip, Color
