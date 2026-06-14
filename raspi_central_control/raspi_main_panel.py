@@ -172,6 +172,11 @@ class PLTNPanelController:
         )
         logger.info("✓ AutoSimulator initialized")
         
+        # LOFA Sequence
+        from sequences.lofa_sequence import LOFASequence
+        self.lofa_sequence = LOFASequence(self.state_manager)
+        logger.info("✓ LOFASequence initialized")
+        
         # Pump controller
         self.pump_controller = PumpController(transition_time=3.0)
         logger.info("✓ PumpController initialized")
@@ -183,6 +188,7 @@ class PLTNPanelController:
             interlock_validator=self.interlock_validator,
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
+            lofa_sequence=self.lofa_sequence,
             buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")

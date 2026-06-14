@@ -56,6 +56,7 @@ class EventProcessor:
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
+                 lofa_sequence = None,
                  buzzer = None):
         """
         Initialize EventProcessor.
@@ -76,6 +77,7 @@ class EventProcessor:
         self._rod_controller = RodController(self._interlock_validator)
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
+        self._lofa_sequence = lofa_sequence
         self._buzzer = buzzer
         
         self._running = False
@@ -216,9 +218,16 @@ class EventProcessor:
                     
             # LOFA Simulation events
             elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
-                if state.pump_primary_status == PUMP_ON:
+                if self._lofa_sequence and not self._lofa_sequence.is_running:
+                    # Reset state first
+                    state.reset()
+                    # Start LOFA auto simulation
+                    self._lofa_sequence.start()
+                    logger.info("Automated LOFA simulation sequence started")
+                elif state.pump_primary_status == PUMP_ON:
+                    # If already in manual run, just shut down the pump directly
                     state.pump_primary_status = PUMP_SHUTTING_DOWN
-                    logger.warning("Simulating Primary LOFA: Pump shutting down")
+                    logger.warning("Simulating Primary LOFA: Pump shutting down manually")
             
             elif event == ButtonEvent.LOFA_SIMULATE_SECONDARY:
                 if state.pump_secondary_status == PUMP_ON:
@@ -260,6 +269,8 @@ class EventProcessor:
                 # Stop auto simulation if running
                 if self._auto_simulator and self._auto_simulator.is_running:
                     self._auto_simulator.cancel()
+                if self._lofa_sequence and self._lofa_sequence.is_running:
+                    self._lofa_sequence.cancel()
                 
                 # Reset state
                 state.reset()
