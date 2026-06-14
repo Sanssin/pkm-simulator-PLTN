@@ -113,12 +113,6 @@ class VideoDisplayApp:
         self.fullscreen = fullscreen
         self.display_idx = display_idx
         
-        # Pastikan environment variable untuk display Linux diatur agar PyGame tidak "nyasar" atau gaib
-        os.environ['DISPLAY'] = ':0'
-        if 'WAYLAND_DISPLAY' not in os.environ:
-            os.environ['WAYLAND_DISPLAY'] = 'wayland-0'
-        os.environ['XDG_RUNTIME_DIR'] = f'/run/user/{os.getuid()}'
-        
         # Menentukan display yang akan digunakan
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
             
