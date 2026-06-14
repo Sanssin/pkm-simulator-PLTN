@@ -31,7 +31,9 @@ class VideoPlayer:
                 "--vo=gpu",
                 "--hwdec=auto",
                 f"--audio-device={AUDIO_DEVICE}",
-                "--keep-open=yes"
+                "--audio-fallback-to-null=yes",
+                "--keep-open=yes",
+                "--log-file=/tmp/mpv.log"
             ]
             
             if loop:
@@ -40,8 +42,12 @@ class VideoPlayer:
             import os
             env = os.environ.copy()
             env["XDG_RUNTIME_DIR"] = "/run/user/1000"
-            env["WAYLAND_DISPLAY"] = "wayland-1"
+            env["WAYLAND_DISPLAY"] = "wayland-0" # changed from wayland-1 as it's more common
             
+            # If running as root (e.g. systemd), drop privileges to user pkm for Wayland access
+            if os.geteuid() == 0:
+                cmd = ['sudo', '-u', 'pkm'] + cmd
+                
             try:
                 self.process = subprocess.Popen(
                     cmd,
