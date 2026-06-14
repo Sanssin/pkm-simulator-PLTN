@@ -136,10 +136,10 @@ class TestSCRAMIntegration(unittest.TestCase):
             self.assertEqual(state.shim_rod, 0)
             self.assertEqual(state.regulating_rod, 0)
             
-            # Pumps should be stopped due to SCRAM (AC-034 requirement)
-            self.assertEqual(state.pump_primary_status, PUMP_OFF)
-            self.assertEqual(state.pump_secondary_status, PUMP_OFF)
-            self.assertEqual(state.pump_tertiary_status, PUMP_OFF)
+            # Pumps should KEEP RUNNING during SCRAM to remove decay heat
+            self.assertEqual(state.pump_primary_status, PUMP_ON)
+            self.assertEqual(state.pump_secondary_status, PUMP_ON)
+            self.assertEqual(state.pump_tertiary_status, PUMP_ON)
 
 
 class TestEventProcessorIntegration(unittest.TestCase):
