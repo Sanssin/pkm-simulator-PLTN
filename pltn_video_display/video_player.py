@@ -37,9 +37,15 @@ class VideoPlayer:
             if loop:
                 cmd.append("--loop-file=inf")
                 
+            import os
+            env = os.environ.copy()
+            env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+            env["WAYLAND_DISPLAY"] = "wayland-1"
+            
             try:
                 self.process = subprocess.Popen(
                     cmd,
+                    env=env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )
