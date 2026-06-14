@@ -34,6 +34,7 @@ from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
 from io_handlers import ButtonIOHandler, ButtonEvent
 from controllers.actuator_manager import ActuatorManager
+from pltn_video_display.video_player import VideoPlayer
 
 # Try to import GPIO library
 try:
@@ -90,6 +91,9 @@ class PLTNPanelController:
         
         # Initialize refactored modules
         self._init_modules()
+        
+        # Initialize video player (Thread 9 concept, non-blocking)
+        self.video_player = VideoPlayer()
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller initialized successfully")
@@ -333,6 +337,14 @@ class PLTNPanelController:
                     # Update LOFA thermodynamics
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
+
+                    # Manage Video Player
+                    if state.auto_running:
+                        if not self.video_player.is_playing():
+                            self.video_player.play(loop=True)
+                    else:
+                        if self.video_player.is_playing():
+                            self.video_player.stop()
 
                     # Primary Physics Simulation (runs every 10ms)
                     if True:
