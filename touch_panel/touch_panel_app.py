@@ -158,7 +158,7 @@ def main(argv: Sequence[str] = None) -> int:
             p = psutil.Process()
             if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
             if hasattr(p, 'nice'):
-                p.nice(psutil.NORMAL_PRIORITY_CLASS if platform.system() == 'Windows' else 0)
+                p.nice(getattr(psutil, 'NORMAL_PRIORITY_CLASS', 32) if platform.system() == 'Windows' else 0)
         except Exception:
             pass
         return launch_touch_panel(windowed=args.windowed, screen_idx=args.screen)

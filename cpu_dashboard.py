@@ -96,9 +96,10 @@ def main():
                 if info:
                     aff = str(info['affinity']).replace(" ", "")
                     # Tweak nice value formatting
+                    high_pri = getattr(psutil, 'HIGH_PRIORITY_CLASS', -999)
                     if info['nice'] == 'N/A':
                         pri = 'N/A'
-                    elif info['nice'] < 0 or info['nice'] == psutil.HIGH_PRIORITY_CLASS:
+                    elif info['nice'] < 0 or info['nice'] == high_pri:
                         pri = f"{info['nice']} (HIGH)"
                     else:
                         pri = f"{info['nice']} (NORMAL)"
