@@ -63,7 +63,7 @@ def run_stress_test(duration=30):
                 v_cpu = p_video.cpu_percent()
                 
                 # Measure overall system core loads
-                sys_cores = psutil.cpu_percent(percore=True)
+                sys_cores = psutil.cpu_percent(percpu=True)
                 sys_avg = sum(sys_cores) / len(sys_cores)
                 
                 # Measure thermal if available (Raspberry Pi)
