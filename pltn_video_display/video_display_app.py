@@ -637,12 +637,10 @@ class VideoDisplayApp:
         self.mock_state["safety_rod"] = 0
         self.mock_state["shim_rod"] = 0
         self.mock_state["regulating_rod"] = 0
-        self.mock_state["pump_primary"] = 0
-        self.mock_state["pump_secondary"] = 0
-        self.mock_state["pump_tertiary"] = 0
-        self.mock_mode = "idle"  # Kembali ke IDLE setelah emergency
-        self.user_has_interacted = False  # Reset interaction flag
-        print("  → Emergency: All rods inserted, pumps stopped, returning to IDLE")
+        # Pumps are NOT stopped during emergency (decay heat removal)
+        self.mock_mode = "manual"  # Tetap di MANUAL untuk melihat status
+        self.user_has_interacted = True  # Keep interaction flag True to show status
+        print("  → Emergency: All rods inserted, pumps running, switching to MANUAL")
 
     
     def play_video(self, video_path: str, loop: bool = False):
@@ -1759,16 +1757,16 @@ class VideoDisplayApp:
             self.current_step = 0
             # Don't return here, continue to draw manual guide
         
-        # MODE 1: EMERGENCY - Always return to IDLE
+        # MODE 1: EMERGENCY - Switch to MANUAL to show real-time physics updates
         if emergency:
-            if self.display_mode != DisplayMode.IDLE:
-                print("🚨 Emergency detected - returning to IDLE")
+            if self.display_mode != DisplayMode.MANUAL_GUIDE:
+                print("🚨 Emergency detected - switching to MANUAL to show status")
                 self.stop_video()
-                self.display_mode = DisplayMode.IDLE
-                self.user_has_interacted = False
-                self.auto_complete_time = None
-                self._clear_manual_flag()
-            self.draw_idle_screen()
+                self.display_mode = DisplayMode.MANUAL_GUIDE
+                self.user_has_interacted = True
+            
+            # Draw the manual guide to show status, then add a SCRAM overlay if needed
+            self.draw_manual_guide(state)
             return
         
         # MODE 2: AUTO SIMULATION - Play video
