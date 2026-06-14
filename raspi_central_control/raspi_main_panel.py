@@ -286,7 +286,7 @@ class PLTNPanelController:
             except Exception as e:
                 logger.debug(f"Touch polling error: {e}")
                 
-            time.sleep(0.01)  # Faster polling for smoother touch response
+            time.sleep(0.05)  # 20 FPS is enough for touch polling
             
         logger.info("Touch input polling thread stopped")
     
@@ -360,7 +360,7 @@ class PLTNPanelController:
                     # Update hardware actuators
                     self.actuator_manager.update_actuators(state)
                 
-                time.sleep(0.01)  # 10ms logic cycle for smoother simulation
+                time.sleep(0.05)  # 20Hz logic cycle (down from 100Hz) to save huge CPU
                 
             except Exception as e:
                 logger.error(f"Control logic error: {e}")
