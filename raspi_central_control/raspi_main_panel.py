@@ -255,6 +255,12 @@ class PLTNPanelController:
                                     button_event = ButtonEvent.REACTOR_RESET
                                 elif evt_type == "EMERGENCY":
                                     button_event = ButtonEvent.EMERGENCY
+                                elif evt_type == "LOFA_SIMULATE":
+                                    if target == "PRIMARY": button_event = ButtonEvent.LOFA_SIMULATE_PRIMARY
+                                    elif target == "SECONDARY": button_event = ButtonEvent.LOFA_SIMULATE_SECONDARY
+                                    elif target == "TERTIARY": button_event = ButtonEvent.LOFA_SIMULATE_TERTIARY
+                                elif evt_type == "LOFA_CANCEL":
+                                    button_event = ButtonEvent.REACTOR_RESET
                                     
                                 if button_event is not None:
                                     self.button_event_queue.put(button_event)
