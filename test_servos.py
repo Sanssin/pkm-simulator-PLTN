@@ -50,6 +50,15 @@ MID_PW = 1500
 
 print(f"Safety: GPIO {SAFETY_PIN}, Shim: GPIO {SHIM_PIN}, Regulating: GPIO {REG_PIN}")
 print("Please ensure the servos are connected to these GPIO pins.")
+
+def smooth_move(pi, pin, start_pw, end_pw, duration=1.0, steps=50):
+    pw_range = end_pw - start_pw
+    delay = duration / steps
+    for i in range(1, steps + 1):
+        pw = start_pw + (pw_range * i / steps)
+        pi.set_servo_pulsewidth(pin, int(pw))
+        time.sleep(delay)
+
 input("Press Enter to begin the test sequence...")
 
 try:
@@ -58,19 +67,19 @@ try:
         
         print(f"  -> Moving to 0% (PW: {MIN_PW})")
         pi.set_servo_pulsewidth(pin, MIN_PW)
-        time.sleep(1.5)
-        
-        print(f"  -> Moving to 50% (PW: {MID_PW})")
-        pi.set_servo_pulsewidth(pin, MID_PW)
-        time.sleep(1.5)
-        
-        print(f"  -> Moving to 100% (PW: {MAX_PW})")
-        pi.set_servo_pulsewidth(pin, MAX_PW)
-        time.sleep(1.5)
-        
-        print("  -> Returning to 0%")
-        pi.set_servo_pulsewidth(pin, MIN_PW)
         time.sleep(1.0)
+        
+        print(f"  -> Ramping to 50% (PW: {MID_PW}) smoothly...")
+        smooth_move(pi, pin, MIN_PW, MID_PW, duration=1.5, steps=75)
+        time.sleep(0.5)
+        
+        print(f"  -> Ramping to 100% (PW: {MAX_PW}) smoothly...")
+        smooth_move(pi, pin, MID_PW, MAX_PW, duration=1.5, steps=75)
+        time.sleep(0.5)
+        
+        print("  -> Ramping back to 0% smoothly...")
+        smooth_move(pi, pin, MAX_PW, MIN_PW, duration=2.0, steps=100)
+        time.sleep(0.5)
         
         # Turn off PWM signal for this pin
         pi.set_servo_pulsewidth(pin, 0)
