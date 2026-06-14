@@ -674,19 +674,9 @@ class VideoDisplayApp:
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
             
-            # Use X11 embedding if possible to force it to same screen as PyGame
-        ]
-        
-        try:
-            wm_info = pygame.display.get_wm_info()
-            wid = wm_info.get('window')
-            if wid:
-                cmd.append(f'--wid={wid}')
-                print(f"   Embedding mpv into PyGame Window ID: {wid}")
-            else:
-                cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
-        except Exception:
-            cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
+        # Use fullscreen directly on the target display instead of X11 WID embedding
+        # WID embedding on Wayland/RPi often causes the window to disappear or steal focus incorrectly
+        cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
 
         cmd.extend([
             # === AUDIO OUTPUT (HDMI) ===
@@ -705,7 +695,7 @@ class VideoDisplayApp:
             # Set environment for mpv
             env = {
                 'DISPLAY': ':0',
-                # 'WAYLAND_DISPLAY': 'wayland-0', # Removed to allow X11 WID embedding to work
+                'WAYLAND_DISPLAY': 'wayland-0', # Re-enabled for native Wayland performance
                 'XDG_RUNTIME_DIR': '/run/user/1000',
                 'AUDIODEV': 'hw:1,0'    # Force HDMI audio device
             }
@@ -1683,7 +1673,7 @@ class VideoDisplayApp:
                 # Force AUTO mode
                 if self.display_mode != DisplayMode.AUTO_VIDEO:
                     print("🎬 Switching to AUTO VIDEO mode")
-                    video_path = str(Path(__file__).parent / "assets" / "penjelasan.mp4")
+                    video_path = str(Path.home() / "video_pltn" / "pwr_tutorial_ver.mp4")
                     self.play_video(video_path, loop=True)
                     self.display_mode = DisplayMode.AUTO_VIDEO
                 
@@ -1774,7 +1764,7 @@ class VideoDisplayApp:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
                 # Use video from assets folder (production ready)
-                video_path = str(Path(__file__).parent / "assets" / "penjelasan.mp4")
+                video_path = str(Path.home() / "video_pltn" / "pwr_tutorial_ver.mp4")
                 self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
