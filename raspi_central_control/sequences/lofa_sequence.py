@@ -75,6 +75,24 @@ class LOFASequence:
         with self._state_manager as state:
             state.auto_sim_phase = label
 
+    def _ramp_value(self, field: str, start: float, target: float, 
+                    duration: float, is_int: bool = False) -> bool:
+        start_time = time.time()
+        while time.time() - start_time < duration:
+            if self._check_cancelled(): return False
+            elapsed = time.time() - start_time
+            progress = elapsed / duration
+            current = start + (target - start) * progress
+            if is_int: current = int(current)
+            with self._state_manager as state:
+                setattr(state, field, current)
+            time.sleep(0.05)
+        
+        final_value = int(target) if is_int else target
+        with self._state_manager as state:
+            setattr(state, field, final_value)
+        return True
+
     def _simulation_thread(self) -> None:
         """Main sequence logic."""
         self._running = True
@@ -88,34 +106,57 @@ class LOFASequence:
                 state.auto_sim_running = True
                 
             self._set_phase(LofaPhase.PREPARE, "Menyiapkan Skenario...")
-            time.sleep(2.0)
+            time.sleep(1.0)
             if self._check_cancelled(): return
             
-            # 2. NORMAL_OPS: Jump to normal operation state
-            self._set_phase(LofaPhase.NORMAL_OPS, "Operasi Normal (Setup)")
+            # 2. NORMAL_OPS: Fast Ramp to Normal Operation (approx 10 seconds)
+            self._set_phase(LofaPhase.NORMAL_OPS, "Mempercepat ke Operasi Normal...")
+            
+            # Start Pumps safely (Tertiary -> Secondary -> Primary)
             with self._state_manager as state:
-                # Set pumps
                 state.pump_tertiary_status = PUMP_ON
+            time.sleep(0.5)
+            with self._state_manager as state:
                 state.pump_secondary_status = PUMP_ON
+            time.sleep(0.5)
+            with self._state_manager as state:
                 state.pump_primary_status = PUMP_ON
+            time.sleep(0.5)
+            
+            if self._check_cancelled(): return
+            
+            # We can run multiple ramps in parallel threads for speed, or sequentially if fast enough
+            # To avoid jumps, let's ramp safety rod, pressure, shim, reg, and power
+            # We'll use a fast 5-second ramp for all of them together
+            start_time = time.time()
+            duration = 5.0
+            while time.time() - start_time < duration:
+                if self._check_cancelled(): return
+                progress = (time.time() - start_time) / duration
+                with self._state_manager as state:
+                    state.pressure = 0.0 + 150.0 * progress
+                    state.safety_rod = 0.0 + 100.0 * progress
+                    state.shim_rod = 0.0 + 50.0 * progress
+                    state.regulating_rod = 0.0 + 50.0 * progress
+                    state.thermal_kw = 0.0 + 250000.0 * progress
+                    state.temperature_core = 25.0 + (280.0 - 25.0) * progress
+                    state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * progress
+                    state.turbine_speed = 0.0 + 100.0 * progress
+                    state.reactor_active = True
+                time.sleep(0.05)
                 
-                # Set pressure and temps
+            # Finalize values
+            with self._state_manager as state:
                 state.pressure = 150.0
-                state.condenser_pressure = 0.1
-                
-                # Set rods
                 state.safety_rod = 100.0
                 state.shim_rod = 50.0
                 state.regulating_rod = 50.0
-                
-                # Set power
-                state.thermal_kw = 250000.0  # 250 MW
+                state.thermal_kw = 250000.0
                 state.temperature_core = 280.0
                 state.temperature_coolant_primary = 300.0
-                state.reactor_active = True
-                
                 state.turbine_speed = 100.0
                 
+            self._set_phase(LofaPhase.NORMAL_OPS, "Operasi Normal Stabil")
             time.sleep(5.0)  # Let user observe normal operation
             if self._check_cancelled(): return
             
