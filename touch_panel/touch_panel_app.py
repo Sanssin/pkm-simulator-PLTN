@@ -152,6 +152,15 @@ def main(argv: Sequence[str] = None) -> int:
         return 0
 
     if args.launch:
+        # [CPU-033] Fine-tune priorities: Pin UI to Core 2 & 3
+        try:
+            import psutil
+            p = psutil.Process()
+            if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
+            if hasattr(p, 'nice'):
+                p.nice(psutil.NORMAL_PRIORITY_CLASS if platform.system() == 'Windows' else 0)
+        except Exception:
+            pass
         return launch_touch_panel(windowed=args.windowed, screen_idx=args.screen)
 
     checker = TouchPanelSetupChecker()

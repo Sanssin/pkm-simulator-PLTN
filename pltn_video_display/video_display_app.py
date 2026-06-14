@@ -1858,6 +1858,17 @@ def main():
     
     args = parser.parse_args()
     
+    # [CPU-033] Fine-tune priorities: Pin UI to Core 2 & 3
+    try:
+        import psutil
+        import platform
+        p = psutil.Process()
+        if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
+        if hasattr(p, 'nice'):
+            p.nice(psutil.NORMAL_PRIORITY_CLASS if platform.system() == 'Windows' else 0)
+    except Exception:
+        pass
+        
     # Run application
     app = VideoDisplayApp(
         test_mode=args.test,
