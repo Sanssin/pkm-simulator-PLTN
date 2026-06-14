@@ -25,6 +25,32 @@ class CpuManager:
         logger.info("Setting up CPU optimization for Hardware Node...")
         CpuManager.set_affinity([0, 1])
         CpuManager.set_high_priority()
+        CpuManager.setup_os_optimizations()
+
+    @staticmethod
+    def setup_os_optimizations():
+        """
+        [CPU-023] System startup optimization.
+        Set CPU governor to performance and pin IRQs to Core 0.
+        Requires root/sudo privileges on Linux.
+        """
+        if os.name == 'nt':
+            return
+            
+        logger.info("Menerapkan OS-level optimizations (Governor & IRQ Affinity)...")
+        try:
+            # 1. Set CPU Governor ke performance (menghilangkan lag / dynamic scaling latency)
+            # Akan memaksa CPU Raspberry Pi berjalan pada clock maksimal terus-menerus.
+            os.system("echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1")
+            logger.info("CPU scaling governor diatur ke 'performance'.")
+            
+            # 2. IRQ Affinity: Mengarahkan semua interupsi hardware (USB/Network/Touch) ke Core 0
+            # Mask '1' dalam hex merepresentasikan Core 0.
+            # Ini membebaskan Core 1, 2, 3 dari interupsi acak OS sehingga simulasi lebih stabil.
+            os.system("find /proc/irq/ -name smp_affinity -exec sh -c 'echo 1 > {}' \\; > /dev/null 2>&1")
+            logger.info("Hardware IRQ affinity dikunci ke Core 0.")
+        except Exception as e:
+            logger.warning(f"Gagal menerapkan OS optimizations (mungkin butuh akses sudo): {e}")
 
     @staticmethod
     def setup_ui_node():
