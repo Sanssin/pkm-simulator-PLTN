@@ -682,6 +682,7 @@ class VideoDisplayApp:
             # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
+        ]
             
         # Use fullscreen directly on the target display instead of X11 WID embedding
         # WID embedding on Wayland/RPi often causes the window to disappear or steal focus incorrectly
