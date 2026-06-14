@@ -342,7 +342,7 @@ class PLTNPanelController:
                         self.lofa_simulator.update(state)
 
                     # Manage Video Player
-                    if state.auto_running:
+                    if state.auto_sim_running or state.simulation_mode == 'auto':
                         if not self.video_player.is_playing():
                             self.video_player.play(loop=True)
                     else:
