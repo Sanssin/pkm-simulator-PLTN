@@ -338,6 +338,10 @@ class TouchPanelBaseWindow(QMainWindow):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
         
+        btn_layout = QHBoxLayout()
+        btn_layout.setAlignment(Qt.AlignCenter)
+        btn_layout.setSpacing(30)
+        
         start_btn = QPushButton("Mulai Mode Manual")
         start_btn.setObjectName("hudStartBtn")
         start_btn.setFixedSize(320, 80)
@@ -358,10 +362,33 @@ class TouchPanelBaseWindow(QMainWindow):
         """)
         start_btn.clicked.connect(self._start_manual_mode)
         
+        auto_btn = QPushButton("Mulai Mode Otomatis")
+        auto_btn.setObjectName("hudAutoBtn")
+        auto_btn.setFixedSize(320, 80)
+        auto_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #10B981;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #059669;
+            }
+            QPushButton:pressed {
+                background-color: #047857;
+            }
+        """)
+        auto_btn.clicked.connect(self._start_auto_mode)
+        
+        btn_layout.addWidget(start_btn)
+        btn_layout.addWidget(auto_btn)
+        
         layout.addStretch()
         layout.addWidget(title)
         layout.addWidget(subtitle)
-        layout.addWidget(start_btn, alignment=Qt.AlignCenter)
+        layout.addLayout(btn_layout)
         layout.addStretch()
         
         hud.setStyleSheet("background-color: #0F172A;")
@@ -377,6 +404,10 @@ class TouchPanelBaseWindow(QMainWindow):
             flag_path.touch()
         except Exception as e:
             logger.error("Failed to write manual started flag: %s", e)
+
+    def _start_auto_mode(self) -> None:
+        self.stacked_widget.setCurrentIndex(1)
+        self._on_button_click("START_AUTO_SIMULATION")
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
