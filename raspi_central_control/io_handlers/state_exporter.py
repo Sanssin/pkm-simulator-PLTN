@@ -67,4 +67,4 @@ class StateExporter:
             except Exception as e:
                 logger.error(f"State export error: {e}")
             
-            time.sleep(0.1)
+            time.sleep(0.05)
