@@ -84,6 +84,21 @@ class ActuatorManager:
                 else:
                     self.use_pigpio_for_led = None
                 
+                # Initialize Cherenkov LED
+                if hasattr(config, 'LED_CHERENKOV_PIN'):
+                    if self.use_pigpio_for_led:
+                        import pigpio
+                        self.motors.pi.set_mode(config.LED_CHERENKOV_PIN, pigpio.OUTPUT)
+                        self.motors.pi.set_PWM_frequency(config.LED_CHERENKOV_PIN, 1000)
+                        self.motors.pi.set_PWM_range(config.LED_CHERENKOV_PIN, 100)
+                        self.motors.pi.set_PWM_dutycycle(config.LED_CHERENKOV_PIN, 0)
+                        logger.info(f"ActuatorManager: Cherenkov LED initialized on GPIO {config.LED_CHERENKOV_PIN} (via pigpio)")
+                    else:
+                        GPIO.setup(config.LED_CHERENKOV_PIN, GPIO.OUT)
+                        self.cherenkov_pwm = GPIO.PWM(config.LED_CHERENKOV_PIN, 1000)
+                        self.cherenkov_pwm.start(0)
+                        logger.info(f"ActuatorManager: Cherenkov LED initialized on GPIO {config.LED_CHERENKOV_PIN} (via RPi.GPIO fallback)")
+                
                 # Initialize Relief Valve LEDs
                 if hasattr(config, 'LED_RELIEF_GREEN_PIN'):
                     GPIO.setup(config.LED_RELIEF_GREEN_PIN, GPIO.OUT)
@@ -186,6 +201,19 @@ class ActuatorManager:
                     self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, int(duty_cycle))
                 elif hasattr(self, 'led_pwm') and self.led_pwm is not None:
                     self.led_pwm.ChangeDutyCycle(duty_cycle)
+                    
+            # Update Cherenkov LED based on thermal_kw (0-300000 kW)
+            if hasattr(config, 'LED_CHERENKOV_PIN'):
+                # Glow brightness is proportional to reactor thermal power
+                # Adding a small curve so it looks more dramatic at high power
+                power_ratio = getattr(state, 'thermal_kw', 0.0) / 300000.0
+                power_ratio = max(0.0, min(1.0, power_ratio))
+                cherenkov_duty = (power_ratio ** 1.5) * 100.0  # Non-linear brightness curve
+                
+                if getattr(self, 'use_pigpio_for_led', False):
+                    self.motors.pi.set_PWM_dutycycle(config.LED_CHERENKOV_PIN, int(cherenkov_duty))
+                elif hasattr(self, 'cherenkov_pwm') and self.cherenkov_pwm is not None:
+                    self.cherenkov_pwm.ChangeDutyCycle(cherenkov_duty)
 
             # Physical relay control for Humidifiers
             self.relays.set_relays(
@@ -225,8 +253,12 @@ class ActuatorManager:
                 if hasattr(self, 'use_pigpio_for_led'):
                     if self.use_pigpio_for_led and hasattr(self.motors, 'pi') and self.motors.pi is not None:
                         self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
+                        if hasattr(config, 'LED_CHERENKOV_PIN'):
+                            self.motors.pi.set_PWM_dutycycle(config.LED_CHERENKOV_PIN, 0)
                     elif not self.use_pigpio_for_led and hasattr(self, 'led_pwm') and self.led_pwm is not None:
                         self.led_pwm.stop()
+                        if hasattr(self, 'cherenkov_pwm') and self.cherenkov_pwm is not None:
+                            self.cherenkov_pwm.stop()
                 GPIO.cleanup()
                 logger.info("ActuatorManager: Cleaned up GPIO.")
             except Exception as e:
