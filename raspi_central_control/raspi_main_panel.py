@@ -203,9 +203,14 @@ class PLTNPanelController:
         """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
         logger.info("Touch input polling thread started")
         
-        # CPU-012: Configure Touch affinity (Core 1)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        # Configure Touch affinity natively via psutil if possible
+        try:
+            import psutil
+            if hasattr(os, 'gettid'):
+                p = psutil.Process(os.gettid())
+                if hasattr(p, 'cpu_affinity'): p.cpu_affinity([1])
+        except Exception:
+            pass
         
         touch_input_file = Path("/tmp/pltn_input.json")
         last_processed_timestamp = time.time()  # Ignore old events on startup
@@ -294,9 +299,14 @@ class PLTNPanelController:
         """Thread for control logic (50ms cycle)."""
         logger.info("Control logic thread started")
         
-        # Configure Controller affinity (Core 1)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        # Configure Control Logic affinity natively via psutil if possible
+        try:
+            import psutil
+            if hasattr(os, 'gettid'):
+                p = psutil.Process(os.gettid())
+                if hasattr(p, 'cpu_affinity'): p.cpu_affinity([1])
+        except Exception:
+            pass
         
         while self.state_manager.running:
             try:

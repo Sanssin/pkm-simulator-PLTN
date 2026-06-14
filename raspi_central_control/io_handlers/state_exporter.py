@@ -25,11 +25,12 @@ class StateExporter:
         
     def _export_loop(self):
         """Background loop to write state to JSON."""
-        # Config System IO affinity (Core 0) if cpu_manager exists
+        # Config System IO affinity (Core 0)
         try:
-            import cpu_manager
+            import psutil
             if hasattr(os, 'gettid'):
-                cpu_manager.set_cpu_affinity(os.gettid(), [0])
+                p = psutil.Process(os.gettid())
+                if hasattr(p, 'cpu_affinity'): p.cpu_affinity([0])
         except Exception:
             pass
             
