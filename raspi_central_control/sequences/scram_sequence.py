@@ -97,10 +97,7 @@ class SCRAMSequence:
                 state.shim_rod = 0
                 state.regulating_rod = 0
                 
-                # Motor stop (all pumps OFF)
-                state.pump_primary_status = 0
-                state.pump_secondary_status = 0
-                state.pump_tertiary_status = 0
+                # NOTE: Pumps are explicitly left running to remove decay heat!
                 
                 # Alarm trigger
                 state.emergency_active = True
