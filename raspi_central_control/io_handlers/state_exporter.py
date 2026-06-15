@@ -57,7 +57,9 @@ class StateExporter:
                         "emergency": bool(state.emergency_active),
                         "lofa_primary": bool(state.lofa_primary),
                         "lofa_secondary": bool(state.lofa_secondary),
-                        "lofa_tertiary": bool(state.lofa_tertiary)
+                        "lofa_tertiary": bool(state.lofa_tertiary),
+                        "relief_valve_open": getattr(state, 'relief_valve_open', False),
+                        "spray_active": getattr(state, 'spray_active', False)
                     }
                 
                 temp_file = self.export_path.with_suffix('.tmp')

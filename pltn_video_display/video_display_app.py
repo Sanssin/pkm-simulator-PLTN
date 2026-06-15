@@ -864,6 +864,22 @@ class VideoDisplayApp:
         press_val = state.get("pressure", 0)
         press_cx = start_x + (3 * width) // 4
         self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
+        
+        # Pressurizer Status Indicators (Valve & Spray)
+        relief_open = state.get("relief_valve_open", False)
+        spray_active = state.get("spray_active", False)
+        
+        ind_y = gauge_y - int(40 * self.scale)  # Inside the upper part of the gauge
+        
+        if relief_open:
+            pygame.draw.circle(self.screen, self.COLOR_WARNING, (press_cx - int(35 * self.scale), ind_y), int(8 * self.scale))
+            lbl_v = self.font_caption.render("VALVE", True, self.COLOR_WARNING)
+            self.screen.blit(lbl_v, lbl_v.get_rect(center=(press_cx - int(35 * self.scale), ind_y + int(15 * self.scale))))
+            
+        if spray_active:
+            pygame.draw.circle(self.screen, (0, 255, 255), (press_cx + int(35 * self.scale), ind_y), int(8 * self.scale))
+            lbl_s = self.font_caption.render("SPRAY", True, (0, 255, 255))
+            self.screen.blit(lbl_s, lbl_s.get_rect(center=(press_cx + int(35 * self.scale), ind_y + int(15 * self.scale))))
             
         # 2. Bottom Row: Pump Status (Full Width)
         bottom_y = gauge_y + int(240 * self.scale)
