@@ -185,7 +185,7 @@ class PLTNPanelController:
         logger.info("✓ LOFASequence initialized")
         
         # Pump controller
-        self.pump_controller = PumpController(transition_time=3.0)
+        self.pump_controller = PumpController(startup_time=5.0, shutdown_time=3.0)
         logger.info("✓ PumpController initialized")
         
         # Event processor
