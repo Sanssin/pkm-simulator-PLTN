@@ -312,6 +312,10 @@ class TouchPanelBaseWindow(QMainWindow):
         self.current_alarm = None
 
     def _update_audio_state(self) -> None:
+        if self.sim_mode == "Otomatis":
+            self._stop_alarm()
+            return
+            
         is_lofa = self.sim_alarm == "LOFA AKTIF!"
         if self.sim_emergency:
             self._play_alarm("SCRAM")
