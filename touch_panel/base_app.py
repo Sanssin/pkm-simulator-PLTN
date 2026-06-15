@@ -129,7 +129,7 @@ class TouchPanelLayoutSpec:
     status_cards: List[StatusCardSpec] = field(
         default_factory=lambda: [
             StatusCardSpec("Pressurizer", "155.5 bar"),
-            StatusCardSpec("Status Pompa", "P1/P2/P3 NYALA"),
+            StatusCardSpec("Status Pompa", "Pompa 1/Pompa 2/Pompa 3 NYALA"),
             StatusCardSpec("Posisi Batang", "100 / 75 / 60"),
             StatusCardSpec("Daya Termal", "450000 kW"),
             StatusCardSpec("Status Sistem", "Siap"),
@@ -481,31 +481,31 @@ class TouchPanelBaseWindow(QMainWindow):
         pumps_layout.setContentsMargins(12, 2, 12, 8)
         pumps_layout.setSpacing(20)
         
-        self.btn_pump_p1_on = QPushButton("P1 NYALA")
+        self.btn_pump_p1_on = QPushButton("Pompa 1 NYALA")
         self.btn_pump_p1_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_on.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_ON"))
-        self.btn_pump_p1_off = QPushButton("P1 MATI")
+        self.btn_pump_p1_off = QPushButton("Pompa 1 MATI")
         self.btn_pump_p1_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_off.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_OFF"))
         
-        self.btn_pump_p2_on = QPushButton("P2 NYALA")
+        self.btn_pump_p2_on = QPushButton("Pompa 2 NYALA")
         self.btn_pump_p2_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_on.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_ON"))
-        self.btn_pump_p2_off = QPushButton("P2 MATI")
+        self.btn_pump_p2_off = QPushButton("Pompa 2 MATI")
         self.btn_pump_p2_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_off.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_OFF"))
         
-        self.btn_pump_p3_on = QPushButton("P3 NYALA")
+        self.btn_pump_p3_on = QPushButton("Pompa 3 NYALA")
         self.btn_pump_p3_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_on.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_ON"))
-        self.btn_pump_p3_off = QPushButton("P3 MATI")
+        self.btn_pump_p3_off = QPushButton("Pompa 3 MATI")
         self.btn_pump_p3_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_off.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_OFF"))
 
         # P1 layout (Vertical)
         p1_layout = QVBoxLayout()
         p1_layout.setSpacing(12)
-        lbl_p1 = QLabel("Sirkuit Primer (P1):")
+        lbl_p1 = QLabel("Aliran Primer:")
         lbl_p1.setWordWrap(True)
         lbl_p1.setFixedHeight(36)
         p1_layout.addWidget(lbl_p1)
@@ -519,7 +519,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # P2 layout (Vertical)
         p2_layout = QVBoxLayout()
         p2_layout.setSpacing(12)
-        lbl_p2 = QLabel("Sirkuit Sekunder (P2):")
+        lbl_p2 = QLabel("Aliran Sekunder:")
         lbl_p2.setWordWrap(True)
         lbl_p2.setFixedHeight(36)
         p2_layout.addWidget(lbl_p2)
@@ -533,7 +533,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # P3 layout (Vertical)
         p3_layout = QVBoxLayout()
         p3_layout.setSpacing(12)
-        lbl_p3 = QLabel("Sirkuit Tersier (P3):")
+        lbl_p3 = QLabel("Aliran Tersier:")
         lbl_p3.setWordWrap(True)
         lbl_p3.setFixedHeight(36)
         p3_layout.addWidget(lbl_p3)
