@@ -331,11 +331,11 @@ class TouchPanelBaseWindow(QMainWindow):
         title = QLabel("PLTN Simulator")
         title.setObjectName("hudTitle")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
+        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #880e4f; margin-bottom: 20px;")
         
         subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
+        subtitle.setStyleSheet("font-size: 24px; color: #c2185b; margin-bottom: 50px;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -346,17 +346,18 @@ class TouchPanelBaseWindow(QMainWindow):
         start_btn.setFixedSize(320, 80)
         start_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3B82F6;
+                background-color: #ec407a;
                 color: white;
                 font-size: 24px;
                 font-weight: bold;
                 border-radius: 12px;
+                border: 2px solid #d81b60;
             }
             QPushButton:hover {
-                background-color: #2563EB;
+                background-color: #e91e63;
             }
             QPushButton:pressed {
-                background-color: #1D4ED8;
+                background-color: #c2185b;
             }
         """)
         start_btn.clicked.connect(self._start_manual_mode)
@@ -366,17 +367,18 @@ class TouchPanelBaseWindow(QMainWindow):
         auto_btn.setFixedSize(320, 80)
         auto_btn.setStyleSheet("""
             QPushButton {
-                background-color: #10B981;
+                background-color: #ff4081;
                 color: white;
                 font-size: 24px;
                 font-weight: bold;
                 border-radius: 12px;
+                border: 2px solid #f50057;
             }
             QPushButton:hover {
-                background-color: #059669;
+                background-color: #f50057;
             }
             QPushButton:pressed {
-                background-color: #047857;
+                background-color: #c51162;
             }
         """)
         auto_btn.clicked.connect(self._start_auto_mode)
@@ -390,7 +392,7 @@ class TouchPanelBaseWindow(QMainWindow):
         layout.addLayout(btn_layout)
         layout.addStretch()
         
-        hud.setStyleSheet("background-color: #0F172A;")
+        hud.setStyleSheet("background-color: #fff0f6;")
         return hud
 
     def _start_manual_mode(self) -> None:
@@ -1009,24 +1011,24 @@ class TouchPanelBaseWindow(QMainWindow):
 
         # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")
-        self.badge_mode.setStyleSheet("background-color: #2c3e50; border: 2px solid #2c3e50; color: #ffffff;")
+        self.badge_mode.setStyleSheet("background-color: #ad1457; border: 2px solid #ff80ab; color: #ffffff;")
         
         if self.local_mode:
             self.badge_connection.setText("LOCAL DEMO")
-            self.badge_connection.setStyleSheet("background-color: #ffb400; border: 2px solid #cc9000; color: #ffffff;")
+            self.badge_connection.setStyleSheet("background-color: #ff80ab; border: 2px solid #ff4081; color: #ffffff;")
         else:
             self.badge_connection.setText("TERINKRONISASI")
-            self.badge_connection.setStyleSheet("background-color: #3cd21e; border: 2px solid #2da616; color: #ffffff;")
+            self.badge_connection.setStyleSheet("background-color: #e91e63; border: 2px solid #c2185b; color: #ffffff;")
 
         if self.sim_emergency:
             self.badge_status.setText("SCRAM AKTIF")
-            self.badge_status.setStyleSheet("background-color: #ff3b30; border: 2px solid #cc2f26; color: #ffffff;")
+            self.badge_status.setStyleSheet("background-color: #880e4f; border: 2px solid #ff1744; color: #ffffff;")
         elif self.sim_alarm != "Tidak Ada":
             self.badge_status.setText("PERINGATAN")
-            self.badge_status.setStyleSheet("background-color: #ffb400; border: 2px solid #cc9000; color: #ffffff;")
+            self.badge_status.setStyleSheet("background-color: #ff4081; border: 2px solid #f50057; color: #ffffff;")
         else:
             self.badge_status.setText("SISTEM NORMAL")
-            self.badge_status.setStyleSheet("background-color: #298ed8; border: 2px solid #1e6fa8; color: #ffffff;")
+            self.badge_status.setStyleSheet("background-color: #f06292; border: 2px solid #ec407a; color: #ffffff;")
 
     def _apply_pump_state(self, btn_on: QPushButton, btn_off: QPushButton, state_val: float) -> None:
         if not _PYQT_AVAILABLE:
@@ -1080,8 +1082,8 @@ class TouchPanelBaseWindow(QMainWindow):
     def _stylesheet(self) -> str:
         return """
         QWidget#centralWidget {
-            background-color: #f5f8fa;
-            color: #2c3e50;
+            background-color: #fff0f6;
+            color: #880e4f;
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
         }
         
@@ -1089,11 +1091,11 @@ class TouchPanelBaseWindow(QMainWindow):
         QGroupBox {
             font-size: 22px;
             font-weight: bold;
-            color: #2c3e50;
-            border: 2px solid #969696;
+            color: #880e4f;
+            border: 2px solid #ff80ab;
             border-radius: 12px;
             margin-top: 20px;
-            background-color: #ffffff;
+            background-color: #ffe4ec;
             padding: 12px 14px 14px 14px;
         }
         QGroupBox::title {
@@ -1101,106 +1103,106 @@ class TouchPanelBaseWindow(QMainWindow):
             subcontrol-position: top left;
             left: 15px;
             padding: 0 8px;
-            background-color: #f5f8fa;
-            color: #2c3e50;
+            background-color: #fff0f6;
+            color: #880e4f;
         }
 
         QLabel {
             font-size: 20px;
             font-weight: bold;
-            color: #2c3e50;
+            color: #880e4f;
         }
         QLabel#diagValue {
             font-size: 26px;
             font-weight: bold;
-            color: #3cd21e;
+            color: #d81b60;
         }
         
         /* Button default styles */
         QPushButton {
-            background-color: #ffffff;
-            border: 2px solid #969696;
+            background-color: #ffd3e2;
+            border: 2px solid #ff80ab;
             border-radius: 8px;
             padding: 10px;
-            color: #2c3e50;
+            color: #880e4f;
             font-size: 20px;
             font-weight: bold;
         }
         QPushButton:hover {
-            background-color: #e0e0e0;
-            border-color: #7f8c8d;
+            background-color: #ffbcd1;
+            border-color: #ff4081;
         }
         QPushButton:pressed {
-            background-color: #d0d0d0;
-            border-color: #298ed8;
+            background-color: #ff80ab;
+            border-color: #ad1457;
         }
         
         /* Hold buttons (Reactor adjustment up/down) pressed styles */
         HoldButton:pressed {
-            background-color: #298ed8;
-            border-color: #1e6fa8;
+            background-color: #ff4081;
+            border-color: #c51162;
             color: #ffffff;
         }
 
         /* Active pump control button custom states */
         QPushButton:disabled {
-            background-color: #e2e8f0;
-            border: 2px solid #cbd5e1;
-            color: #94a3b8;
+            background-color: #fce4ec;
+            border: 2px solid #f8bbd0;
+            color: #c2185b;
         }
         QPushButton[active="true"], QPushButton[active="true"]:disabled {
-            background-color: #3cd21e;
-            border: 2px solid #2da616;
+            background-color: #e91e63;
+            border: 2px solid #c2185b;
             color: #ffffff;
         }
         QPushButton[active_starting="true"], QPushButton[active_starting="true"]:disabled {
-            background-color: #ffb400;
-            border: 2px solid #cc9000;
+            background-color: #ff4081;
+            border: 2px solid #ff80ab;
             color: #ffffff;
         }
         QPushButton[active_off="true"], QPushButton[active_off="true"]:disabled {
-            background-color: #ff3b30;
-            border: 2px solid #cc2f26;
+            background-color: #880e4f;
+            border: 2px solid #560027;
             color: #ffffff;
         }
 
         /* Accent classes */
         QPushButton[emphasis="primary"] {
-            background-color: #298ed8;
-            border: 2px solid #1e6fa8;
+            background-color: #ec407a;
+            border: 2px solid #d81b60;
             color: #ffffff;
         }
         QPushButton[emphasis="primary"]:hover {
-            background-color: #1e6fa8;
+            background-color: #e91e63;
         }
 
         QPushButton[emphasis="secondary"] {
-            background-color: #7f8c8d;
-            border: 2px solid #636e6f;
+            background-color: #f06292;
+            border: 2px solid #ec407a;
             color: #ffffff;
         }
         QPushButton[emphasis="secondary"]:hover {
-            background-color: #636e6f;
+            background-color: #ec407a;
         }
 
         QPushButton[emphasis="warning"] {
-            background-color: #ffb400;
-            border: 2px solid #cc9000;
+            background-color: #ff4081;
+            border: 2px solid #f50057;
             color: #ffffff;
         }
         QPushButton[emphasis="warning"]:hover {
-            background-color: #cc9000;
+            background-color: #f50057;
         }
 
         QPushButton[emphasis="danger"] {
-            background-color: #ff3b30;
-            border: 2px solid #cc2f26;
+            background-color: #c2185b;
+            border: 2px solid #880e4f;
             color: #ffffff;
             font-size: 22px;
             font-weight: bold;
         }
         QPushButton[emphasis="danger"]:hover {
-            background-color: #cc2f26;
+            background-color: #880e4f;
         }
 
         /* System Operations large buttons */
@@ -1212,18 +1214,18 @@ class TouchPanelBaseWindow(QMainWindow):
 
         /* Header frame & title typography */
         QFrame#headerFrame {
-            background-color: #ffffff;
-            border: 2px solid #969696;
+            background-color: #ffe4ec;
+            border: 2px solid #ff80ab;
             border-radius: 10px;
         }
         QLabel#titleLabel {
-            color: #2c3e50;
+            color: #880e4f;
             font-size: 28px;
             font-weight: bold;
             letter-spacing: 0.5px;
         }
         QLabel#subtitleLabel {
-            color: #7f8c8d;
+            color: #c2185b;
             font-size: 18px;
             font-weight: bold;
         }
@@ -1235,18 +1237,18 @@ class TouchPanelBaseWindow(QMainWindow):
             font-size: 18px;
             font-weight: bold;
             color: #ffffff;
-            border: 2px solid #969696;
-            background-color: #2c3e50;
+            border: 2px solid #ff80ab;
+            background-color: #ad1457;
         }
 
         /* Footer frame styling */
         QFrame#footerFrame {
-            background-color: #ffffff;
-            border: 2px solid #969696;
+            background-color: #ffe4ec;
+            border: 2px solid #ff80ab;
             border-radius: 8px;
         }
         QLabel#footerLabel {
-            color: #7f8c8d;
+            color: #c2185b;
             font-size: 18px;
             font-weight: bold;
         }
