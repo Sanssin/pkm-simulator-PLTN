@@ -1813,7 +1813,22 @@ class VideoDisplayApp:
         print("🚀 Video Display App running...")
         print("   Press ESC to exit")
         
+        import subprocess
+        check_monitor_timer = 0
+        
         while running:
+            # Pastikan secara absolut HDMI-A-1 masih terhubung. Jika tidak, matikan diri.
+            check_monitor_timer += 1
+            if check_monitor_timer >= 60:  # Cek setiap ~2 detik (30 fps x 2)
+                check_monitor_timer = 0
+                try:
+                    res = subprocess.run(["wlr-randr"], capture_output=True, text=True, timeout=1)
+                    if "HDMI-A-1" not in res.stdout:
+                        print("🚨 Kritis: Monitor HDMI-A-1 tidak ditemukan! Mematikan program agar tidak nyangkut di Touchscreen...")
+                        running = False
+                except Exception:
+                    pass
+            
             # Handle events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
