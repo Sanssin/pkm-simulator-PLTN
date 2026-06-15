@@ -113,6 +113,11 @@ class VideoDisplayApp:
         self.fullscreen = fullscreen
         self.display_idx = display_idx
         
+        # Memaksa Pygame menggunakan X11 driver (XWayland) agar indeks monitor (0/1) konsisten
+        # Wayland native sering mengabaikan SDL_VIDEO_DISPLAY_INDEX jika dijalankan sebagai service
+        if not sys.platform == "win32":
+            os.environ['SDL_VIDEODRIVER'] = 'x11'
+            
         # Menentukan display yang akan digunakan
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
             
