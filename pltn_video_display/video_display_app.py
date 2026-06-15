@@ -1822,8 +1822,10 @@ class VideoDisplayApp:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                 elif event.type == getattr(pygame, 'WINDOWEVENT', None):
-                    if event.event in (getattr(pygame, 'WINDOWEVENT_MINIMIZED', None), getattr(pygame, 'WINDOWEVENT_HIDDEN', None)):
-                        print("⚠️ Window tersembunyi (kabel HDMI mungkin dicabut). Mematikan program agar Watchdog me-restart...")
+                    if event.event in (getattr(pygame, 'WINDOWEVENT_MINIMIZED', None), 
+                                     getattr(pygame, 'WINDOWEVENT_HIDDEN', None),
+                                     getattr(pygame, 'WINDOWEVENT_DISPLAY_CHANGED', None)):
+                        print("⚠️ Window bermigrasi atau tersembunyi (kabel HDMI mungkin dicabut). Mematikan program agar Watchdog me-restart...")
                         running = False
                 
                 # Handle touch/mouse click to switch from IDLE to MANUAL
