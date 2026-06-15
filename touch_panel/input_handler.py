@@ -56,7 +56,7 @@ class TouchInputWriter:
 
     def write_events(self, events: Sequence[TouchEvent]) -> Path:
         if not events:
-            raise ValueError("events must not be empty")
+            raise ValueError("events tidak boleh kosong")
 
         payload = {
             "timestamp": events[-1].timestamp,
@@ -73,7 +73,7 @@ class TouchInputWriter:
 
     def append_events(self, events: Sequence[TouchEvent]) -> Path:
         if not events:
-            raise ValueError("events must not be empty")
+            raise ValueError("events tidak boleh kosong")
 
         with self._lock:
             current = {"timestamp": 0.0, "events": []}
@@ -81,7 +81,7 @@ class TouchInputWriter:
                 try:
                     current = json.loads(self.path.read_text(encoding="utf-8"))
                 except json.JSONDecodeError as exc:
-                    raise ValueError(f"Invalid touch input JSON at {self.path}: {exc}") from exc
+                    raise ValueError(f"JSON input sentuh tidak valid di {self.path}: {exc}") from exc
 
             current_events = list(current.get("events", []))
             current_events.extend(event.to_dict() for event in events)
@@ -143,7 +143,7 @@ class TouchInputHandler:
     def end_touch(self, control: str, timestamp: Optional[float] = None) -> Tuple[TouchKind, List[TouchEvent]]:
         self._validate_control(control)
         if control not in self._active_presses:
-            raise ValueError(f"No active touch for control {control}")
+            raise ValueError(f"Tidak ada sentuhan aktif untuk kontrol {control}")
 
         start_ts = self._active_presses.pop(control)
         end_ts = timestamp or time.time()
@@ -160,7 +160,7 @@ class TouchInputHandler:
         kind = self.classifier.classify(duration)
         events = self._build_events(control, kind, duration, timestamp or time.time())
         self.writer.append_events(events)
-        logger.info("Touch %s -> %s (%s events)", control, kind.value, len(events))
+        logger.info("Sentuh %s -> %s (%s event)", control, kind.value, len(events))
         return kind, events
 
     def _build_events(self, control: str, kind: TouchKind, duration: float, timestamp: float) -> List[TouchEvent]:
@@ -171,7 +171,7 @@ class TouchInputHandler:
 
     def _validate_control(self, control: str) -> None:
         if control not in CONTROL_EVENT_MAP:
-            raise ValueError(f"Unknown control: {control}")
+            raise ValueError(f"Kontrol tidak dikenal: {control}")
 
     def _event_for_control(self, control: str, timestamp: float) -> TouchEvent:
         event_type, kwargs = CONTROL_EVENT_MAP[control]
@@ -224,10 +224,10 @@ def demo_sequence() -> List[TouchEvent]:
 def run_demo() -> int:
     """Run the TS-003 input prototype demo."""
     events = demo_sequence()
-    print("TS-003 Input Handler Demo")
+    print("Demo Input Handler TS-003")
     for event in events:
         print(json.dumps(event.to_dict(), ensure_ascii=False))
-    print(f"Wrote {len(events)} event(s) to /tmp/pltn_input.json")
+    print(f"Menulis {len(events)} event ke /tmp/pltn_input.json")
     return 0
 
 
@@ -254,10 +254,10 @@ class UsbTouchInputBridge:
         try:
             from evdev import InputDevice, ecodes
         except Exception as exc:
-            raise RuntimeError("evdev is required for USB HID bridge but is not installed") from exc
+            raise RuntimeError("evdev diperlukan untuk bridge USB HID tetapi tidak terinstal") from exc
 
         if not self.device_path:
-            raise RuntimeError("device_path is required for USB HID bridge prototype")
+            raise RuntimeError("device_path diperlukan untuk prototipe bridge USB HID")
 
         self._evdev = ecodes
         self._device = InputDevice(self.device_path)
