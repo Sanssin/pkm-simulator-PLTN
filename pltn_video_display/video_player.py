@@ -34,7 +34,7 @@ class VideoPlayer:
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
                 "--vo=gpu",
-                "--hwdec=no",
+                "--hwdec=auto",
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
