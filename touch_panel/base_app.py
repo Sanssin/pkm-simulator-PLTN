@@ -650,7 +650,7 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_reset.clicked.connect(lambda: self._on_button_click("REACTOR_RESET"))
 
-        btn_emergency = QPushButton("🚨 SCRAM DARURAT")
+        btn_emergency = QPushButton("[!] SCRAM DARURAT")
         btn_emergency.setProperty("emphasis", "danger")
         btn_emergency.setProperty("sys_op", "true")
         btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
