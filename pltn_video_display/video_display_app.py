@@ -895,7 +895,7 @@ class VideoDisplayApp:
         rod_bar_x = start_x + (width - rod_bar_w) // 2 + int(30*self.scale)
         
         for i, (name, val) in enumerate(rods):
-            ry = rods_y + int(25 * self.scale) + i * int(30 * self.scale)
+            ry = rods_y + int(30 * self.scale) + i * int(40 * self.scale)
             
             # Label
             lbl = self.font_body.render(f"{name}", True, self.COLOR_TEXT_SECONDARY)
@@ -916,7 +916,7 @@ class VideoDisplayApp:
                 pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
             
         # 4. Bottom Row: Pump Status (Full Width)
-        bottom_y = rods_y + int(130 * self.scale)
+        bottom_y = rods_y + int(160 * self.scale)
         bottom_h = height - (bottom_y - start_y)
         
         box_x = start_x + int(10 * self.scale)
@@ -926,7 +926,7 @@ class VideoDisplayApp:
         pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
         
         pump_title = self.font_medium.render("STATUS POMPA PENDINGIN", True, self.COLOR_TEXT)
-        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(20 * self.scale))))
+        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(25 * self.scale))))
         
         pumps = [
             ("Primer", state.get("pump_primary", 0) > 0),
@@ -935,7 +935,7 @@ class VideoDisplayApp:
         ]
         
         segment_w = box_w // 3
-        item_y = bottom_y + int(80 * self.scale)
+        item_y = bottom_y + int(120 * self.scale)
         
         for idx, (name, is_on) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
@@ -958,7 +958,7 @@ class VideoDisplayApp:
             status_str = "AKTIF" if is_on else "MATI (GAGAL)" if is_lofa else "MATI"
             lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
-            self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(90 * self.scale))))
+            self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(95 * self.scale))))
 
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
