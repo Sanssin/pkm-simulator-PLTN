@@ -58,12 +58,19 @@ class PanelState:
     pump_tertiary_transition_start: float = 0.0
     
     # Rod positions (0-100%)
-    safety_rod: int = 0
-    shim_rod: int = 0
-    regulating_rod: int = 0
+    safety_rod: float = 0.0
+    shim_rod: float = 0.0
+    regulating_rod: float = 0.0
     
     # Thermal power from ESP-BC (kW)
     thermal_kw: float = 0.0
+    
+    # Temperatures
+    temperature_core: float = 25.0
+    temperature_coolant: float = 25.0
+    temperature_fuel_cladding: float = 25.0
+    temperature_coolant_primary: float = 25.0
+    temperature_coolant_secondary: float = 25.0
     
     # Turbine speed from ESP-BC (%)
     turbine_speed: float = 0.0
@@ -73,6 +80,11 @@ class PanelState:
     humid_ct2_cmd: int = 0
     humid_ct3_cmd: int = 0
     humid_ct4_cmd: int = 0
+    
+    # LOFA (Loss of Flow Accident) flags
+    lofa_primary: bool = False
+    lofa_secondary: bool = False
+    lofa_tertiary: bool = False
     
     # Emergency state
     emergency_active: bool = False
@@ -104,11 +116,19 @@ class PanelState:
         self.shim_rod = 0
         self.regulating_rod = 0
         self.thermal_kw = 0.0
+        self.temperature_core = 25.0
+        self.temperature_coolant = 25.0
+        self.temperature_fuel_cladding = 25.0
+        self.temperature_coolant_primary = 25.0
+        self.temperature_coolant_secondary = 25.0
         self.turbine_speed = 0.0
         self.humid_ct1_cmd = 0
         self.humid_ct2_cmd = 0
         self.humid_ct3_cmd = 0
         self.humid_ct4_cmd = 0
+        self.lofa_primary = False
+        self.lofa_secondary = False
+        self.lofa_tertiary = False
         self.emergency_active = False
         self.interlock_satisfied = False
 

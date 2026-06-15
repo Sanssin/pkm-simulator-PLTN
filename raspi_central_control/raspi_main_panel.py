@@ -10,6 +10,7 @@ import time
 import logging
 import signal
 import sys
+import os
 import threading
 import json
 from pathlib import Path
@@ -18,19 +19,17 @@ from queue import Queue
 
 # Import our modules
 import raspi_config as config
-from raspi_tca9548a import DualMultiplexerManager
-from raspi_uart_master import UARTMaster
-from raspi_gpio_buttons import ButtonHandler as ButtonManager, ButtonPin
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
+import cpu_manager
 
 # Import refactored modules
 from controllers import StateManager, PanelState, InterlockValidator, EventProcessor
 from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
-from communication import ESPProtocol
 from io_handlers import ButtonIOHandler, ButtonEvent
+from controllers.actuator_manager import ActuatorManager
 
 # Try to import GPIO library
 try:
@@ -66,15 +65,13 @@ class PLTNPanelController:
     - EventProcessor: Button event handling
     - SCRAMSequence: Emergency shutdown
     - AutoSimulator: Automated startup
-    - ESPProtocol: ESP communication
     - ButtonIOHandler: Button input handling
     """
     
     def __init__(self):
         """Initialize PLTN Panel Controller"""
         logger.info("=" * 60)
-        logger.info("PLTN Simulator v5.0 - Refactored Architecture")
-        logger.info("ESP-BC (Rods+Turbine+Humid) | ESP-E (LED Visualizer)")
+        logger.info("PLTN Simulator v5.0 - Refactored Architecture (ESP Removed)")
         logger.info("=" * 60)
         
         # Core state management
@@ -83,9 +80,6 @@ class PLTNPanelController:
         
         # Event queue for button presses
         self.button_event_queue = Queue(maxsize=100)
-        
-        # ESP communication trigger
-        self.esp_send_immediate = threading.Event()
         
         # State export file for video display
         self.state_export_file = Path("/tmp/pltn_state.json")
@@ -96,9 +90,6 @@ class PLTNPanelController:
         # Initialize refactored modules
         self._init_modules()
         
-        # Setup button callbacks
-        self._setup_button_callbacks()
-        
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller initialized successfully")
         logger.info("=" * 60)
@@ -107,23 +98,9 @@ class PLTNPanelController:
         """Initialize hardware components with graceful degradation."""
         logger.info("Phase 1: Core hardware initialization...")
         
-        # Initialize UART master
-        try:
-            self.uart_master = UARTMaster()
-            self.uart_lock = threading.Lock()
-            logger.info("✓ UART master initialized")
-        except Exception as e:
-            logger.warning(f"✗ UART master failed: {e}")
-            self.uart_master = None
-            self.uart_lock = threading.Lock()
-        
-        # Initialize button manager
-        try:
-            self.button_manager = ButtonManager()
-            logger.info("✓ Button manager initialized")
-        except Exception as e:
-            logger.warning(f"✗ Button manager failed: {e}")
-            self.button_manager = None
+        # Initialize Unified Actuator Manager
+        self.actuator_manager = ActuatorManager()
+        logger.info("✓ Actuator Manager initialized")
         
         # Initialize buzzer
         try:
@@ -849,17 +826,6 @@ class PLTNPanelController:
             logger.warning(f"✗ Humidifier failed: {e}")
             self.humidifier = None
         
-        # Initialize OLED manager
-        try:
-            self.mux_manager = DualMultiplexerManager()
-            from raspi_oled_manager import OLEDManager
-            self.oled_manager = OLEDManager(self.mux_manager)
-            logger.info("✓ OLED manager initialized")
-        except Exception as e:
-            logger.warning(f"✗ OLED manager failed: {e}")
-            self.mux_manager = None
-            self.oled_manager = None
-        
         # Initialize health monitor
         try:
             self.health_monitor = SystemHealthMonitor()
@@ -895,15 +861,21 @@ class PLTNPanelController:
         
         # SCRAM sequence
         self.scram_sequence = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_send_immediate.set
+            state_manager=self.state_manager
         )
         logger.info("✓ SCRAMSequence initialized")
         
+        # LOFA Simulator
+        from controllers.lofa_simulator import LOFASimulator
+        self.lofa_simulator = LOFASimulator(
+            max_core_temp=self.interlock_validator.MAX_CORE_TEMPERATURE_LOFA,
+            trigger_scram_callback=self.scram_sequence.execute
+        )
+        logger.info("✓ LOFASimulator initialized")
+        
         # Auto simulator
         self.auto_simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_send_immediate.set
+            state_manager=self.state_manager
         )
         logger.info("✓ AutoSimulator initialized")
         
@@ -914,103 +886,108 @@ class PLTNPanelController:
             interlock_validator=self.interlock_validator,
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
-            buzzer=self.buzzer,
-            esp_trigger=self.esp_send_immediate.set,
-            oled_reset=self.oled_manager.reset_all_interpolators if self.oled_manager else None
+            buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")
         
-        # ESP protocol (uses uart_master directly for now)
-        # Note: Full ESPProtocol integration would replace esp_communication_thread
-        logger.info("✓ ESP communication ready")
-    
-    def _setup_button_callbacks(self):
-        """Setup button callbacks to queue events."""
-        if not self.button_manager:
-            return
-        
-        # Map buttons to event queue
-        button_event_map = {
-            ButtonPin.PUMP_PRIMARY_ON: ButtonEvent.PUMP_PRIMARY_ON,
-            ButtonPin.PUMP_PRIMARY_OFF: ButtonEvent.PUMP_PRIMARY_OFF,
-            ButtonPin.PUMP_SECONDARY_ON: ButtonEvent.PUMP_SECONDARY_ON,
-            ButtonPin.PUMP_SECONDARY_OFF: ButtonEvent.PUMP_SECONDARY_OFF,
-            ButtonPin.PUMP_TERTIARY_ON: ButtonEvent.PUMP_TERTIARY_ON,
-            ButtonPin.PUMP_TERTIARY_OFF: ButtonEvent.PUMP_TERTIARY_OFF,
-            ButtonPin.EMERGENCY: ButtonEvent.EMERGENCY,
-            ButtonPin.REACTOR_RESET: ButtonEvent.REACTOR_RESET,
-            ButtonPin.START_AUTO_SIMULATION: ButtonEvent.START_AUTO_SIMULATION,
-        }
-        
-        for pin, event in button_event_map.items():
-            def make_callback(evt):
-                return lambda: self.button_event_queue.put(evt)
-            self.button_manager.register_callback(pin, make_callback(event))
-        
-        logger.info("✓ Button callbacks registered")
+        # (ESP communication removed)
     
     # ============================================
     # Thread Functions
     # ============================================
     
-    def button_polling_thread(self):
-        """Thread for button polling (5ms cycle)."""
-        logger.info("Button polling thread started")
+    def touch_input_polling_thread(self):
+        """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
+        logger.info("Touch input polling thread started")
+        
+        # CPU-012: Configure Touch affinity (Core 1)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        
+        touch_input_file = Path("/tmp/pltn_input.json")
+        last_processed_timestamp = time.time()  # Ignore old events on startup
         
         while self.state_manager.running:
             try:
-                if self.button_manager:
-                    self.button_manager.check_all_buttons()
-                time.sleep(0.005)
+                if touch_input_file.exists():
+                    try:
+                        with open(touch_input_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            
+                        file_timestamp = data.get("timestamp", 0.0)
+                        if file_timestamp > last_processed_timestamp:
+                            events = data.get("events", [])
+                            newest_timestamp = last_processed_timestamp
+                            
+                            for evt in events:
+                                evt_ts = evt.get("timestamp", 0.0)
+                                if evt_ts <= last_processed_timestamp:
+                                    continue
+                                    
+                                if evt_ts > newest_timestamp:
+                                    newest_timestamp = evt_ts
+                                    
+                                evt_type = evt.get("type")
+                                target = evt.get("target")
+                                rod = evt.get("rod")
+                                direction = evt.get("direction")
+                                
+                                button_event = None
+                                
+                                if evt_type == "PUMP_ON":
+                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_ON
+                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_ON
+                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_ON
+                                elif evt_type == "PUMP_OFF":
+                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_OFF
+                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_OFF
+                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_OFF
+                                elif evt_type == "ROD_MOVE":
+                                    if rod == "SAFETY" and direction == "UP": button_event = ButtonEvent.SAFETY_ROD_UP
+                                    elif rod == "SAFETY" and direction == "DOWN": button_event = ButtonEvent.SAFETY_ROD_DOWN
+                                    elif rod == "SHIM" and direction == "UP": button_event = ButtonEvent.SHIM_ROD_UP
+                                    elif rod == "SHIM" and direction == "DOWN": button_event = ButtonEvent.SHIM_ROD_DOWN
+                                    elif rod == "REGULATING" and direction == "UP": button_event = ButtonEvent.REGULATING_ROD_UP
+                                    elif rod == "REGULATING" and direction == "DOWN": button_event = ButtonEvent.REGULATING_ROD_DOWN
+                                elif evt_type == "PRESSURE":
+                                    if direction == "UP": button_event = ButtonEvent.PRESSURE_UP
+                                    elif direction == "DOWN": button_event = ButtonEvent.PRESSURE_DOWN
+                                elif evt_type == "START_AUTO":
+                                    button_event = ButtonEvent.START_AUTO_SIMULATION
+                                elif evt_type == "RESET":
+                                    button_event = ButtonEvent.REACTOR_RESET
+                                elif evt_type == "EMERGENCY":
+                                    button_event = ButtonEvent.EMERGENCY
+                                    
+                                if button_event is not None:
+                                    self.button_event_queue.put(button_event)
+                                    # --- Latency Measurement ---
+                                    latency_ms = (time.time() - evt_ts) * 1000.0
+                                    try:
+                                        with open("/tmp/latency_log.txt", "a") as f:
+                                            f.write(f"{evt_ts:.3f},{time.time():.3f},{latency_ms:.2f},{button_event.name}\n")
+                                    except Exception:
+                                        pass
+                                    logger.info(f"Touch event received from HMI: {button_event.name} (Latency: {latency_ms:.2f}ms)")
+                                    
+                            last_processed_timestamp = newest_timestamp
+                            
+                    except json.JSONDecodeError:
+                        pass # Ignore partially written file
             except Exception as e:
-                logger.error(f"Button polling error: {e}")
-                time.sleep(0.05)
-        
-        logger.info("Button polling thread stopped")
-    
-    def button_hold_thread(self):
-        """Thread for detecting held buttons."""
-        logger.info("Button hold detection thread started")
-        
-        HOLD_BUTTONS = {
-            ButtonPin.SAFETY_ROD_UP,
-            ButtonPin.SAFETY_ROD_DOWN,
-            ButtonPin.SHIM_ROD_UP,
-            ButtonPin.SHIM_ROD_DOWN,
-            ButtonPin.REGULATING_ROD_UP,
-            ButtonPin.REGULATING_ROD_DOWN,
-            ButtonPin.PRESSURE_UP,
-            ButtonPin.PRESSURE_DOWN
-        }
-        
-        pin_to_event = {
-            ButtonPin.SAFETY_ROD_UP: ButtonEvent.SAFETY_ROD_UP,
-            ButtonPin.SAFETY_ROD_DOWN: ButtonEvent.SAFETY_ROD_DOWN,
-            ButtonPin.SHIM_ROD_UP: ButtonEvent.SHIM_ROD_UP,
-            ButtonPin.SHIM_ROD_DOWN: ButtonEvent.SHIM_ROD_DOWN,
-            ButtonPin.REGULATING_ROD_UP: ButtonEvent.REGULATING_ROD_UP,
-            ButtonPin.REGULATING_ROD_DOWN: ButtonEvent.REGULATING_ROD_DOWN,
-            ButtonPin.PRESSURE_UP: ButtonEvent.PRESSURE_UP,
-            ButtonPin.PRESSURE_DOWN: ButtonEvent.PRESSURE_DOWN
-        }
-        
-        while self.state_manager.running:
-            try:
-                if self.button_manager:
-                    pressed = self.button_manager.check_hold_buttons(hold_interval=0.05)
-                    for pin in pressed & HOLD_BUTTONS:
-                        if pin in pin_to_event:
-                            self.button_event_queue.put(pin_to_event[pin])
-                time.sleep(0.01)
-            except Exception as e:
-                logger.error(f"Button hold error: {e}")
-                time.sleep(0.05)
-        
-        logger.info("Button hold detection thread stopped")
+                logger.debug(f"Touch polling error: {e}")
+                
+            time.sleep(0.01)  # Faster polling for smoother touch response
+            
+        logger.info("Touch input polling thread stopped")
     
     def control_logic_thread(self):
         """Thread for control logic (50ms cycle)."""
         logger.info("Control logic thread started")
+        
+        # Configure Controller affinity (Core 1)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [1])
         
         while self.state_manager.running:
             try:
@@ -1054,8 +1031,46 @@ class PLTNPanelController:
                             elif current_time - transition_start >= pump_transition_time:
                                 setattr(state, status_attr, 0)  # OFF
                                 setattr(state, transition_attr, 0)
+                                
+                    # Update LOFA thermodynamics
+                    if hasattr(self, 'lofa_simulator'):
+                        self.lofa_simulator.update(state)
+
+                    # Primary Physics Simulation (runs every 10ms)
+                    if True:
+                        avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
+                        if avg_rod > 10.0:
+                            reactor_thermal_capacity = (avg_rod**2) * 90.0 + (state.shim_rod * 150.0) + (state.regulating_rod * 200.0)
+                            reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
+                        else:
+                            reactor_thermal_capacity = 0.0
+                            
+                        # Turbine starts spinning when thermal power exceeds threshold (e.g. 50000 kW)
+                        # Speed is proportional to the power generated
+                        if not state.emergency_active:
+                            if reactor_thermal_capacity > 50000.0:
+                                # Map thermal capacity (50000 - 900000) to target speed (10 - 100%)
+                                # We start at 10% minimum so it visually spins when just crossing threshold
+                                target_speed = 10.0 + ((reactor_thermal_capacity - 50000.0) / 850000.0) * 90.0
+                                target_speed = min(max(target_speed, 10.0), 100.0)
+                                
+                                # Smooth acceleration / deceleration
+                                if state.turbine_speed < target_speed:
+                                    state.turbine_speed = min(state.turbine_speed + 0.2, target_speed)
+                                else:
+                                    state.turbine_speed = max(state.turbine_speed - 0.5, target_speed)
+                            else:
+                                state.turbine_speed = max(state.turbine_speed - 0.5, 0.0)
+                        else:
+                            # Emergency: stop turbine quickly
+                            state.turbine_speed = max(state.turbine_speed - 2.0, 0.0)
+                                
+                        state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
+                        
+                    # Update hardware actuators
+                    self.actuator_manager.update_actuators(state)
                 
-                time.sleep(0.05)
+                time.sleep(0.01)  # 10ms logic cycle for smoother simulation
                 
             except Exception as e:
                 logger.error(f"Control logic error: {e}")
@@ -1063,6 +1078,7 @@ class PLTNPanelController:
         
         logger.info("Control logic thread stopped")
     
+<<<<<<< HEAD
     def esp_communication_thread(self):
         """Thread for ESP communication (50ms cycle)."""
         logger.info("ESP communication thread started")
@@ -1225,9 +1241,15 @@ class PLTNPanelController:
         
         logger.info("OLED update thread stopped")
     
+=======
+>>>>>>> e1988691453258634004ab069086a04ce0474749
     def state_export_thread(self):
         """Export state to JSON for video display."""
         logger.info("State export thread started")
+        
+        # CPU-013: Configure System IO affinity (Core 0)
+        if hasattr(os, 'gettid'):
+            cpu_manager.set_cpu_affinity(os.gettid(), [0])
         
         while self.state_manager.running:
             try:
@@ -1245,8 +1267,13 @@ class PLTNPanelController:
                         "pump_secondary": int(state.pump_secondary_status),
                         "pump_tertiary": int(state.pump_tertiary_status),
                         "thermal_kw": float(state.thermal_kw),
+                        "temperature_core": float(state.temperature_core),
+                        "temperature_coolant": float(state.temperature_coolant),
                         "turbine_speed": float(state.turbine_speed),
-                        "emergency": bool(state.emergency_active)
+                        "emergency": bool(state.emergency_active),
+                        "lofa_primary": bool(state.lofa_primary),
+                        "lofa_secondary": bool(state.lofa_secondary),
+                        "lofa_tertiary": bool(state.lofa_tertiary)
                     }
                 
                 temp_file = self.state_export_file.with_suffix('.tmp')
@@ -1274,11 +1301,8 @@ class PLTNPanelController:
         
         # Start all threads
         threads = [
-            threading.Thread(target=self.button_polling_thread, daemon=True, name="ButtonThread"),
-            threading.Thread(target=self.button_hold_thread, daemon=True, name="ButtonHoldThread"),
+            threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
-            threading.Thread(target=self.esp_communication_thread, daemon=True, name="ESPCommThread"),
-            threading.Thread(target=self.oled_update_thread, daemon=True, name="OLEDThread"),
             threading.Thread(target=self.state_export_thread, daemon=True, name="StateExportThread"),
         ]
         
@@ -1314,19 +1338,11 @@ class PLTNPanelController:
         self.event_processor.stop()
         
         # Cleanup hardware
-        if self.button_manager:
-            self.button_manager.cleanup()
-        
         if self.buzzer:
             self.buzzer.cleanup()
         
-        if self.uart_master:
-            self.uart_master.update_esp_bc(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-            self.uart_master.update_esp_e(0.0)
-            self.uart_master.close()
-        
-        if self.mux_manager:
-            self.mux_manager.close()
+        if hasattr(self, "actuator_manager"):
+            self.actuator_manager.cleanup()
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller shutdown complete")

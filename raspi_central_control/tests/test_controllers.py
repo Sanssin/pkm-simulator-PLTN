@@ -311,8 +311,7 @@ class TestEventProcessor(unittest.TestCase):
             state_manager=self.state_manager,
             event_queue=self.event_queue,
             interlock_validator=self.validator,
-            buzzer=self.buzzer,
-            esp_trigger=self.esp_trigger
+            buzzer=self.buzzer
         )
         
         self.assertIsNotNone(processor)

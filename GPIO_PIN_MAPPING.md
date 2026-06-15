@@ -9,32 +9,8 @@
 ### Reserved Pins (DO NOT USE)
 ```
 GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - I2C Bus 1 (SDA, SCL) - OLED Displays
+GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
-```
-
-### Button Pins (17 buttons)
-```
-GPIO 5  - PUMP_PRIMARY_ON          ⚠️ CONFLICT! (Need for UART3 RXD)
-GPIO 6  - PUMP_PRIMARY_OFF
-GPIO 13 - PUMP_SECONDARY_ON
-GPIO 19 - PUMP_SECONDARY_OFF
-GPIO 26 - PUMP_TERTIARY_ON
-GPIO 21 - PUMP_TERTIARY_OFF
-
-GPIO 20 - SAFETY_ROD_UP
-GPIO 16 - SAFETY_ROD_DOWN
-GPIO 12 - SHIM_ROD_UP
-GPIO 7  - SHIM_ROD_DOWN
-GPIO 8  - REGULATING_ROD_UP
-GPIO 25 - REGULATING_ROD_DOWN
-
-GPIO 24 - PRESSURE_UP
-GPIO 23 - PRESSURE_DOWN
-
-GPIO 17 - REACTOR_START (GREEN)
-GPIO 27 - REACTOR_RESET (YELLOW)
-GPIO 18 - EMERGENCY (RED)
 ```
 
 ### Output Pins
@@ -55,34 +31,11 @@ GPIO 4, 5   - UART3 → ESP-E (Visualizer)     [NEED TO FREE GPIO 5]
 ### Reserved Pins (DO NOT USE)
 ```
 GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - I2C Bus 1 (SDA, SCL) - OLED Displays
+GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
 GPIO 4, 5    - UART3 (TXD, RXD) - ESP-E Communication  ✅ NEW
 GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
 ```
 
-### Button Pins (17 buttons) - UPDATED
-```
-GPIO 11 - PUMP_PRIMARY_ON          ✅ MOVED from GPIO 5
-GPIO 6  - PUMP_PRIMARY_OFF
-GPIO 13 - PUMP_SECONDARY_ON
-GPIO 19 - PUMP_SECONDARY_OFF
-GPIO 26 - PUMP_TERTIARY_ON
-GPIO 21 - PUMP_TERTIARY_OFF
-
-GPIO 20 - SAFETY_ROD_UP
-GPIO 16 - SAFETY_ROD_DOWN
-GPIO 12 - SHIM_ROD_UP
-GPIO 7  - SHIM_ROD_DOWN
-GPIO 8  - REGULATING_ROD_UP
-GPIO 25 - REGULATING_ROD_DOWN
-
-GPIO 24 - PRESSURE_UP
-GPIO 23 - PRESSURE_DOWN
-
-GPIO 17 - REACTOR_START (GREEN)
-GPIO 27 - REACTOR_RESET (YELLOW)
-GPIO 18 - EMERGENCY (RED)
-```
 
 ### Output Pins
 ```
@@ -102,8 +55,8 @@ GPIO 9, 10, 11 - SPI0 (if SPI not needed, can use as GPIO)
 |------|-------------------|------------------|-------|
 | 0 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
 | 1 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
-| 2 | I2C SDA (OLEDs) | I2C SDA (OLEDs) | Don't use |
-| 3 | I2C SCL (OLEDs) | I2C SCL (OLEDs) | Don't use |
+| 2 | Available | Available | Don't use |
+| 3 | Available | Available | Don't use |
 | **4** | **Available** | **UART3 TXD (ESP-E)** | ✅ NEW |
 | **5** | **PUMP_PRIMARY_ON** | **UART3 RXD (ESP-E)** | ✅ MOVED |
 | 6 | PUMP_PRIMARY_OFF | PUMP_PRIMARY_OFF | Same |

@@ -76,9 +76,7 @@ class SystemHealthMonitor:
         
         # Check each component
         self._check_multiplexers(panel_controller)
-        self._check_uart_master(panel_controller)
-        self._check_esp_bc(panel_controller)
-        self._check_esp_e(panel_controller)
+        self._check_actuator_manager(panel_controller)
         self._check_oled_displays(panel_controller)
         self._check_gpio_buttons(panel_controller)
         self._check_humidifier(panel_controller)
@@ -169,152 +167,33 @@ class SystemHealthMonitor:
             )
             logger.error(f"  ❌ CRITICAL: Exception - {e}")
     
-    def _check_uart_master(self, panel):
-        """Check UART master initialization"""
-        logger.info("\n[2/8] Checking UART Master...")
+    def _check_actuator_manager(self, panel):
+        """Check Actuator Manager initialization"""
+        logger.info("\n[2/8] Checking Actuator Manager...")
         
-        if not hasattr(panel, 'uart_master') or not panel.uart_master:
-            self.components["uart_master"] = ComponentHealth(
-                name="UART Master",
+        if not hasattr(panel, 'actuator_manager') or not panel.actuator_manager:
+            self.components["actuator_manager"] = ComponentHealth(
+                name="Actuator Manager",
                 status=HealthStatus.CRITICAL,
-                message="UART Master not initialized"
+                message="Actuator Manager not initialized"
             )
-            logger.error("  ❌ CRITICAL: UART Master not available")
+            logger.error("  ❌ CRITICAL: Actuator Manager not available")
             return
         
-        self.components["uart_master"] = ComponentHealth(
-            name="UART Master",
-            status=HealthStatus.OK,
-            message="UART Master initialized"
-        )
-        logger.info("  ✅ OK: UART Master initialized")
-    
-    def _check_esp_bc(self, panel):
-        """Check ESP-BC communication"""
-        logger.info("\n[3/8] Checking ESP-BC (Control Rods + Turbine)...")
-        
-        if not hasattr(panel, 'uart_master') or not panel.uart_master:
-            self.components["esp_bc"] = ComponentHealth(
-                name="ESP-BC",
-                status=HealthStatus.UNKNOWN,
-                message="Cannot test - UART not available"
+        if panel.actuator_manager.hardware_active:
+            self.components["actuator_manager"] = ComponentHealth(
+                name="Actuator Manager",
+                status=HealthStatus.OK,
+                message="Hardware mode active"
             )
-            logger.warning("  ⚠️  UNKNOWN: Cannot test without UART")
-            return
-        
-        try:
-            # Small delay before communication (stability)
-            logger.info("  ⏳ Waiting 0.1s before communication...")
-            time.sleep(0.1)
-            
-            # Try communication via UART
-            success = panel.uart_master.update_esp_bc(0, 0, 0)
-            
-            if success:
-                health = panel.uart_master.get_health_status()
-                esp_bc_health = health.get('esp_bc', {})
-                error_count = esp_bc_health.get('error_count', 999)
-                
-                if error_count == 0:
-                    self.components["esp_bc"] = ComponentHealth(
-                        name="ESP-BC",
-                        status=HealthStatus.OK,
-                        message="Communication successful",
-                        details=esp_bc_health
-                    )
-                    logger.info("  ✅ OK: ESP-BC responding via UART")
-                else:
-                    self.components["esp_bc"] = ComponentHealth(
-                        name="ESP-BC",
-                        status=HealthStatus.WARNING,
-                        message=f"Communication works but {error_count} errors",
-                        details=esp_bc_health
-                    )
-                    logger.warning(f"  ⚠️  WARNING: ESP-BC has {error_count} errors")
-            else:
-                self.components["esp_bc"] = ComponentHealth(
-                    name="ESP-BC",
-                    status=HealthStatus.ERROR,
-                    message="Communication failed"
-                )
-                logger.error("  ❌ ERROR: ESP-BC not responding")
-                logger.error("     Check: ESP32 powered on, UART wiring (GPIO 14/15)")
-                
-        except Exception as e:
-            self.components["esp_bc"] = ComponentHealth(
-                name="ESP-BC",
-                status=HealthStatus.ERROR,
-                message=f"Exception: {e}"
-            )
-            logger.error(f"  ❌ ERROR: Exception - {e}")
-    
-    def _check_esp_e(self, panel):
-        """Check ESP-E communication"""
-        logger.info("\n[4/8] Checking ESP-E (LED Visualizer)...")
-        
-        if not hasattr(panel, 'uart_master') or not panel.uart_master:
-            self.components["esp_e"] = ComponentHealth(
-                name="ESP-E",
+            logger.info("  ✅ OK: Actuator Manager (Hardware Mode)")
+        else:
+            self.components["actuator_manager"] = ComponentHealth(
+                name="Actuator Manager",
                 status=HealthStatus.WARNING,
-                message="Cannot test - UART not available (non-critical)"
+                message="Mock mode active (GPIO unavailable)"
             )
-            logger.warning("  ⚠️  WARNING: Cannot test without UART (non-critical)")
-            return
-        
-        # Check if ESP-E is enabled
-        if not panel.uart_master.esp_e_enabled:
-            self.components["esp_e"] = ComponentHealth(
-                name="ESP-E",
-                status=HealthStatus.INFO,
-                message="ESP-E disabled (not configured)"
-            )
-            logger.info("  ℹ️  INFO: ESP-E disabled (non-critical)")
-            return
-        
-        try:
-            # Small delay before communication (stability)
-            logger.info("  ⏳ Waiting 0.1s before communication...")
-            time.sleep(0.1)
-            
-            # Try communication via UART (simplified protocol)
-            success = panel.uart_master.update_esp_e(0.0)
-            
-            if success:
-                health = panel.uart_master.get_health_status()
-                esp_e_health = health.get('esp_e', {})
-                error_count = esp_e_health.get('error_count', 999)
-                
-                if error_count == 0:
-                    self.components["esp_e"] = ComponentHealth(
-                        name="ESP-E",
-                        status=HealthStatus.OK,
-                        message="Communication successful",
-                        details=esp_e_health
-                    )
-                    logger.info("  ✅ OK: ESP-E responding via UART")
-                else:
-                    self.components["esp_e"] = ComponentHealth(
-                        name="ESP-E",
-                        status=HealthStatus.WARNING,
-                        message=f"Communication works but {error_count} errors",
-                        details=esp_e_health
-                    )
-                    logger.warning(f"  ⚠️  WARNING: ESP-E has {error_count} errors")
-            else:
-                self.components["esp_e"] = ComponentHealth(
-                    name="ESP-E",
-                    status=HealthStatus.WARNING,
-                    message="Communication failed (non-critical)"
-                )
-                logger.warning("  ⚠️  WARNING: ESP-E not responding (visualization only)")
-                
-        except Exception as e:
-            self.components["esp_e"] = ComponentHealth(
-                name="ESP-E",
-                status=HealthStatus.WARNING,
-                message=f"Exception: {e} (non-critical)"
-            )
-            logger.warning(f"  ⚠️  WARNING: Exception - {e} (non-critical)")
+            logger.warning("  ⚠️  WARNING: Actuator Manager (Mock Mode)")
     
     def _check_oled_displays(self, panel):
         """Check OLED displays"""
@@ -377,7 +256,7 @@ class SystemHealthMonitor:
         """Check GPIO button initialization"""
         logger.info("\n[6/8] Checking GPIO Buttons...")
         
-        if not panel.button_manager:
+        if not hasattr(panel, 'button_manager') or not panel.button_manager:
             self.components["buttons"] = ComponentHealth(
                 name="GPIO Buttons",
                 status=HealthStatus.WARNING,

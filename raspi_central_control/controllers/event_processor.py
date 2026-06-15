@@ -40,8 +40,6 @@ class EventProcessor:
             scram_sequence=scram_sequence,
             auto_simulator=auto_simulator,
             buzzer=buzzer,
-            esp_trigger=esp_send_immediate.set,
-            oled_reset=oled_manager.reset_all_interpolators
         )
         
         # Start processing thread
@@ -59,9 +57,7 @@ class EventProcessor:
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
-                 buzzer = None,
-                 esp_trigger: Optional[Callable[[], None]] = None,
-                 oled_reset: Optional[Callable[[], None]] = None):
+                 buzzer = None):
         """
         Initialize EventProcessor.
         
@@ -72,8 +68,6 @@ class EventProcessor:
             scram_sequence: SCRAMSequence for emergency shutdown
             auto_simulator: AutoSimulator for auto startup
             buzzer: BuzzerAlarm instance for audio feedback
-            esp_trigger: Callback to trigger immediate ESP update
-            oled_reset: Callback to reset OLED interpolators
         """
         self._state_manager = state_manager
         self._event_queue = event_queue
@@ -81,8 +75,6 @@ class EventProcessor:
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
         self._buzzer = buzzer
-        self._esp_trigger = esp_trigger
-        self._oled_reset = oled_reset
         
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -113,11 +105,6 @@ class EventProcessor:
         self._running = False
         if self._thread:
             self._thread.join(timeout=2.0)
-    
-    def _trigger_esp(self) -> None:
-        """Trigger ESP communication if callback is set."""
-        if self._esp_trigger:
-            self._esp_trigger()
     
     def _sound_warning(self, duration: float = 1.5) -> None:
         """Play interlock warning buzzer."""
@@ -158,9 +145,6 @@ class EventProcessor:
                     
                     # Process event
                     self._process_event(event)
-                    
-                    # Trigger ESP update
-                    self._trigger_esp()
                     
                     # Mark task done
                     self._event_queue.task_done()
@@ -244,18 +228,18 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.safety_rod = min(state.safety_rod + 1, 100)
+                state.safety_rod = min(state.safety_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.SAFETY_ROD_DOWN:
                 # Safety rod must be >= shim and >= regulating
-                new_pos = state.safety_rod - 1
+                new_pos = state.safety_rod - 2.5
                 if new_pos < state.shim_rod or new_pos < state.regulating_rod:
                     logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
-                    logger.warning(f"   Safety={state.safety_rod}%, Shim={state.shim_rod}%, Reg={state.regulating_rod}%")
+                    logger.warning(f"   Safety={state.safety_rod:.1f}%, Shim={state.shim_rod:.1f}%, Reg={state.regulating_rod:.1f}%")
                     logger.warning(f"   Lower Shim/Regulating first, then Safety can follow")
                     self._sound_warning()
                     return
-                state.safety_rod = max(new_pos, 0)
+                state.safety_rod = max(new_pos, 0.0)
             
             # Shim rod events
             elif event == ButtonEvent.SHIM_ROD_UP:
@@ -275,10 +259,10 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.shim_rod = min(state.shim_rod + 1, 100)
+                state.shim_rod = min(state.shim_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.SHIM_ROD_DOWN:
-                state.shim_rod = max(state.shim_rod - 1, 0)
+                state.shim_rod = max(state.shim_rod - 2.5, 0.0)
             
             # Regulating rod events
             elif event == ButtonEvent.REGULATING_ROD_UP:
@@ -298,10 +282,10 @@ class EventProcessor:
                                  f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                     self._sound_warning()
                     return
-                state.regulating_rod = min(state.regulating_rod + 1, 100)
+                state.regulating_rod = min(state.regulating_rod + 2.5, 100.0)
             
             elif event == ButtonEvent.REGULATING_ROD_DOWN:
-                state.regulating_rod = max(state.regulating_rod - 1, 0)
+                state.regulating_rod = max(state.regulating_rod - 2.5, 0.0)
             
             # Emergency SCRAM
             elif event == ButtonEvent.EMERGENCY:
@@ -330,10 +314,6 @@ class EventProcessor:
                 
                 # Reset state
                 state.reset()
-                
-                # Reset OLED interpolators
-                if self._oled_reset:
-                    self._oled_reset()
                 
                 logger.info("=" * 60)
                 logger.info("SIMULATION RESET")

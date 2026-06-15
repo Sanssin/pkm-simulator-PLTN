@@ -123,8 +123,7 @@ class TestSCRAMIntegration(unittest.TestCase):
         
         # Execute SCRAM
         scram = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=self.esp_trigger
+            state_manager=self.state_manager
         )
         
         with patch.object(scram, 'ROD_DROP_DURATION', 0.1):
@@ -137,10 +136,10 @@ class TestSCRAMIntegration(unittest.TestCase):
             self.assertEqual(state.shim_rod, 0)
             self.assertEqual(state.regulating_rod, 0)
             
-            # Pumps should remain ON (for decay heat removal)
-            self.assertEqual(state.pump_primary_status, PUMP_ON)
-            self.assertEqual(state.pump_secondary_status, PUMP_ON)
-            self.assertEqual(state.pump_tertiary_status, PUMP_ON)
+            # Pumps should be stopped due to SCRAM (AC-034 requirement)
+            self.assertEqual(state.pump_primary_status, PUMP_OFF)
+            self.assertEqual(state.pump_secondary_status, PUMP_OFF)
+            self.assertEqual(state.pump_tertiary_status, PUMP_OFF)
 
 
 class TestEventProcessorIntegration(unittest.TestCase):
@@ -152,12 +151,10 @@ class TestEventProcessorIntegration(unittest.TestCase):
         self.event_queue = Queue()
         self.interlock_validator = InterlockValidator()
         self.scram_sequence = SCRAMSequence(
-            state_manager=self.state_manager,
-            esp_trigger=Mock()
+            state_manager=self.state_manager
         )
         self.auto_simulator = AutoSimulator(
-            state_manager=self.state_manager,
-            esp_trigger=Mock()
+            state_manager=self.state_manager
         )
         
         self.processor = EventProcessor(

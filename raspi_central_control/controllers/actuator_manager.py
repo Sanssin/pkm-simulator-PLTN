@@ -1,0 +1,194 @@
+"""
+Unified Actuator Manager for PLTN Simulator.
+Handles direct control of all Raspberry Pi hardware actuators:
+- Servos (for control rods)
+- PWM Motors (for pumps)
+- Relays (for other systems)
+
+Implements graceful degradation: if hardware is not connected or libraries are missing,
+it will print debug messages instead of crashing.
+"""
+
+import logging
+import time
+import raspi_config as config
+
+try:
+    from .servo_controller import ServoController
+    from .motor_controller import MotorController
+    from .led_strip_controller import LedStripController
+except ImportError:
+    from servo_controller import ServoController
+    from motor_controller import MotorController
+    from led_strip_controller import LedStripController
+
+logger = logging.getLogger(__name__)
+
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+
+class ActuatorManager:
+    HUMIDIFIER_PINS = {
+        'ct1': 2,
+        'ct2': 3,
+        'ct3': 9,
+        'ct4': 10
+    }
+
+    def __init__(self):
+        self.hardware_active = GPIO_AVAILABLE
+        
+        # Initialize sub-controllers
+        self.servos = ServoController(safety_pin=23, shim_pin=24, reg_pin=25)
+        self.motors = MotorController()
+        
+        # Initialize LED Strip
+        try:
+            self.led_strip = LedStripController(
+                pin=getattr(config, 'LED_STRIP_PIN', 18),
+                count=getattr(config, 'LED_STRIP_COUNT', 571)
+            )
+            
+            # Add segments
+            seg_prim = getattr(config, 'LED_SEGMENT_PRIMER', (0, 190))
+            seg_sec = getattr(config, 'LED_SEGMENT_SEKUNDER', (190, 190))
+            seg_ter = getattr(config, 'LED_SEGMENT_TERSIER', (380, 191))
+            
+            self.led_strip.add_segment('primer', seg_prim[0], seg_prim[1], flow_direction=1)
+            self.led_strip.add_segment('sekunder', seg_sec[0], seg_sec[1], flow_direction=1)
+            self.led_strip.add_segment('tersier', seg_ter[0], seg_ter[1], flow_direction=1)
+            
+            if self.hardware_active:
+                self.led_strip.start()
+        except Exception as e:
+            logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
+            self.led_strip = None
+        
+        if self.hardware_active:
+            try:
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setwarnings(False)
+                
+                # Initialize humidifier pins
+                for pin in self.HUMIDIFIER_PINS.values():
+                    GPIO.setup(pin, GPIO.OUT)
+                    # Relay modules are Active-LOW in this setup. Default to HIGH (OFF).
+                    GPIO.output(pin, GPIO.HIGH)
+                
+                # Initialize Power LED
+                if hasattr(config, 'LED_POWER_PIN'):
+                    if not self.motors.mock_mode and hasattr(self.motors, 'pi') and self.motors.pi.connected:
+                        import pigpio
+                        self.motors.pi.set_mode(config.LED_POWER_PIN, pigpio.OUTPUT)
+                        self.motors.pi.set_PWM_frequency(config.LED_POWER_PIN, 1000)
+                        self.motors.pi.set_PWM_range(config.LED_POWER_PIN, 100) # 0-100% duty cycle
+                        self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
+                        self.use_pigpio_for_led = True
+                        logger.info(f"ActuatorManager: Power LED initialized on GPIO {config.LED_POWER_PIN} (via pigpio)")
+                    else:
+                        GPIO.setup(config.LED_POWER_PIN, GPIO.OUT)
+                        self.led_pwm = GPIO.PWM(config.LED_POWER_PIN, 1000)  # 1kHz
+                        self.led_pwm.start(0)
+                        self.use_pigpio_for_led = False
+                        logger.info(f"ActuatorManager: Power LED initialized on GPIO {config.LED_POWER_PIN} (via RPi.GPIO fallback)")
+                else:
+                    self.use_pigpio_for_led = None
+                
+                logger.info(f"ActuatorManager: Hardware mode active. Humidifiers on pins: {list(self.HUMIDIFIER_PINS.values())}")
+            except Exception as e:
+                logger.warning(f"ActuatorManager: Failed to initialize GPIO: {e}. Falling back to Mock mode.")
+                self.hardware_active = False
+        else:
+            logger.info("ActuatorManager: Running in Mock mode (No RPi.GPIO available).")
+
+    def update_actuators(self, state):
+        """
+        Updates all physical actuators based on the current state.
+        This is called periodically (e.g., every 10ms) from the control logic thread.
+        """
+        # Servos are managed by pigpio independently of RPi.GPIO
+        self.servos.set_rods(state.safety_rod, state.shim_rod, state.regulating_rod)
+        
+        # Motors are also managed by pigpio
+        # Calculate smooth speed during transition (3.0 seconds duration, as in raspi_main_panel)
+        def calc_speed(status, transition_start):
+            if status == 0:  # OFF
+                return 0.0
+            elif status == 2:  # ON
+                return 100.0
+            
+            # For STARTING (1) and SHUTTING_DOWN (3)
+            current_time = time.time()
+            if transition_start == 0:
+                return 0.0 if status == 1 else 100.0
+                
+            progress = (current_time - transition_start) / 3.0
+            progress = max(0.0, min(1.0, progress))
+            
+            if status == 1:  # STARTING: 0 to 100%
+                return progress * 100.0
+            elif status == 3:  # SHUTTING_DOWN: 100 to 0%
+                return (1.0 - progress) * 100.0
+            return 0.0
+
+        prim_speed = calc_speed(state.pump_primary_status, state.pump_primary_transition_start)
+        sec_speed = calc_speed(state.pump_secondary_status, state.pump_secondary_transition_start)
+        tert_speed = calc_speed(state.pump_tertiary_status, state.pump_tertiary_transition_start)
+        
+        self.motors.set_speed('pump_primary', prim_speed)
+        self.motors.set_speed('pump_secondary', sec_speed)
+        self.motors.set_speed('pump_tertiary', tert_speed)
+        self.motors.set_speed('turbine', state.turbine_speed)
+        
+        # Update LED Strip speeds (0.0 to 1.0 multiplier)
+        if self.led_strip is not None:
+            self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
+            self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
+            self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
+        
+        if not self.hardware_active:
+            # In mock mode, we don't do anything physical for standard GPIO.
+            return
+
+        try:
+            # Update Power LED based on thermal_kw (0-300000 kW)
+            if hasattr(self, 'use_pigpio_for_led') and self.use_pigpio_for_led is not None:
+                power_ratio = getattr(state, 'thermal_kw', 0.0) / 300000.0
+                power_ratio = max(0.0, min(1.0, power_ratio))
+                duty_cycle = power_ratio * 100.0
+                
+                if self.use_pigpio_for_led:
+                    self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, int(duty_cycle))
+                elif hasattr(self, 'led_pwm') and self.led_pwm is not None:
+                    self.led_pwm.ChangeDutyCycle(duty_cycle)
+
+            # Physical relay control for Humidifiers (Active-LOW trigger)
+            GPIO.output(self.HUMIDIFIER_PINS['ct1'], GPIO.LOW if getattr(state, 'humid_ct1_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct2'], GPIO.LOW if getattr(state, 'humid_ct2_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct3'], GPIO.LOW if getattr(state, 'humid_ct3_cmd', 0) else GPIO.HIGH)
+            GPIO.output(self.HUMIDIFIER_PINS['ct4'], GPIO.LOW if getattr(state, 'humid_ct4_cmd', 0) else GPIO.HIGH)
+        except Exception as e:
+            logger.error(f"ActuatorManager: Error updating hardware: {e}")
+
+    def cleanup(self):
+        """Cleanup GPIO pins on exit."""
+        self.servos.cleanup()
+        self.motors.cleanup()
+        
+        if self.led_strip is not None:
+            self.led_strip.stop()
+        
+        if self.hardware_active:
+            try:
+                if hasattr(self, 'use_pigpio_for_led'):
+                    if self.use_pigpio_for_led and hasattr(self.motors, 'pi') and self.motors.pi is not None:
+                        self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
+                    elif not self.use_pigpio_for_led and hasattr(self, 'led_pwm') and self.led_pwm is not None:
+                        self.led_pwm.stop()
+                GPIO.cleanup()
+                logger.info("ActuatorManager: Cleaned up GPIO.")
+            except Exception as e:
+                logger.error(f"ActuatorManager: Cleanup error: {e}")

@@ -60,8 +60,7 @@ class AutoSimulator:
     
     Usage:
         simulator = AutoSimulator(
-            state_manager=state_manager,
-            esp_trigger=esp_send_immediate.set
+            state_manager=state_manager
         )
         
         # Start simulation (non-blocking)
@@ -77,18 +76,14 @@ class AutoSimulator:
     
     UPDATE_INTERVAL = 0.05  # 50ms for smooth animation
     
-    def __init__(self,
-                 state_manager: 'StateManager',
-                 esp_trigger: Optional[Callable[[], None]] = None):
+    def __init__(self, state_manager: 'StateManager'):
         """
         Initialize AutoSimulator.
         
         Args:
             state_manager: StateManager instance for state access
-            esp_trigger: Callback to trigger immediate ESP communication
         """
         self._state_manager = state_manager
-        self._esp_trigger = esp_trigger
         self._current_phase = SimPhase.IDLE
         self._running = False
         self._cancelled = False
@@ -142,11 +137,6 @@ class AutoSimulator:
         with self._state_manager as state:
             state.auto_sim_phase = label
     
-    def _trigger_esp(self) -> None:
-        """Trigger ESP communication if callback is set."""
-        if self._esp_trigger:
-            self._esp_trigger()
-    
     def _ramp_value(self, field: str, start: float, target: float, 
                     duration: float, is_int: bool = False) -> bool:
         """
@@ -178,14 +168,12 @@ class AutoSimulator:
             with self._state_manager as state:
                 setattr(state, field, current)
             
-            self._trigger_esp()
             time.sleep(self.UPDATE_INTERVAL)
         
         # Ensure exact final value
         final_value = int(target) if is_int else target
         with self._state_manager as state:
             setattr(state, field, final_value)
-        self._trigger_esp()
         
         return True
     
