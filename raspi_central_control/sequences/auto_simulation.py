@@ -456,6 +456,13 @@ class AutoSimulator:
         logger.info("Silakan lanjutkan dengan kontrol manual")
         logger.info("=" * 70)
         
+        # Keep auto mode active so the 7-minute video can finish playing
+        logger.info("\n 🎬 Menunggu video tutorial selesai (sekitar 5.5 menit tersisa)...")
+        for _ in range(325):
+            if self._check_cancelled():
+                return
+            time.sleep(1)
+            
         self._current_phase = SimPhase.COMPLETE
         logger.info("\n Auto simulation complete")
         logger.info("   Mode: MANUAL (operator control active)")
