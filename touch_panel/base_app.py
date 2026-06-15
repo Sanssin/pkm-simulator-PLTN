@@ -375,6 +375,7 @@ class TouchPanelBaseWindow(QMainWindow):
                     logger.info(f"Fallback to screen index {self.screen_idx}: {target_screen.name()}")
                 
                 if target_screen:
+                    self._target_screen_name = target_screen.name()
                     # For Wayland deterministic output assignment, we must create native window handle
                     self.setAttribute(Qt.WA_NativeWindow, True)
                     self.winId()  # Force creation of the platform window handle
@@ -1052,10 +1053,20 @@ class TouchPanelBaseWindow(QMainWindow):
         # Check if our target monitor was disconnected
         if _PYQT_AVAILABLE:
             from PyQt5.QtWidgets import QApplication
-            if len(QApplication.screens()) <= self.screen_idx:
-                logger.error(f"Screen {self.screen_idx} disconnected! Exiting for watchdog restart.")
-                import sys
-                sys.exit(1)
+            
+            # Check if the screen we bound to initially is still in the screens list
+            if hasattr(self, '_target_screen_name') and self._target_screen_name:
+                screen_still_exists = any(s.name() == self._target_screen_name for s in QApplication.screens())
+                if not screen_still_exists:
+                    logger.error(f"Target screen {self._target_screen_name} disconnected! Exiting for watchdog restart.")
+                    import sys
+                    sys.exit(1)
+            else:
+                # Fallback to len check if we somehow don't have a specific name
+                if len(QApplication.screens()) <= self.screen_idx:
+                    logger.error(f"Screen {self.screen_idx} disconnected! Exiting for watchdog restart.")
+                    import sys
+                    sys.exit(1)
 
         # Load external state or process internal physics
         self._check_and_load_state()
