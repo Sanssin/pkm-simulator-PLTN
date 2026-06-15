@@ -46,13 +46,14 @@ class ActuatorManager:
         try:
             self.led_strip = LedStripController(
                 pin=getattr(config, 'LED_STRIP_PIN', 18),
-                count=getattr(config, 'LED_STRIP_COUNT', 592),
+                count=getattr(config, 'LED_STRIP_COUNT', 638),
                 channel=0, dma=10
             )
             self.led_strip.add_segment('pressurizer', getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[0], getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[1], flow_direction=1)
-            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (21, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (21, 190))[1])
-            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (211, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (211, 190))[1])
-            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (401, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (401, 191))[1])
+            self.led_strip.add_segment('kondenser', getattr(config, 'LED_SEGMENT_KONDENSER', (21, 46))[0], getattr(config, 'LED_SEGMENT_KONDENSER', (21, 46))[1], flow_direction=1)
+            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (67, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (67, 190))[1])
+            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (257, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (257, 190))[1])
+            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (447, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (447, 191))[1])
             
             if self.hardware_active:
                 self.led_strip.start()
@@ -158,6 +159,7 @@ class ActuatorManager:
         
         # Update LED Strip speeds (0.0 to 1.0 multiplier)
         if self.led_strip is not None:
+            self.led_strip.set_flow_speed('kondenser', tert_speed / 100.0)
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
