@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # === CONSTANTS ===
 VIDEO_PATH = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
 TARGET_SCREEN_NAME = "HDMI-A-1" # As seen in wlr-randr for the 4K monitor
-AUDIO_DEVICE = "alsa/hw:1,0"    # Based on aplay -l (card 1: vc4hdmi0) or pulse/alsa_output.platform-fef00700.hdmi.hdmi-stereo
+AUDIO_DEVICE = "alsa/plughw:1,0"    # Based on aplay -l (card 1: vc4hdmi0) or pulse/alsa_output.platform-fef00700.hdmi.hdmi-stereo
 
 class VideoPlayer:
     def __init__(self):
@@ -33,6 +33,7 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
+                "--profile=fast",
                 "--vo=gpu",
                 "--hwdec=no",
                 "--ao=alsa",
