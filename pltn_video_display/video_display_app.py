@@ -935,18 +935,18 @@ class VideoDisplayApp:
         ]
         
         segment_w = box_w // 3
-        item_y = bottom_y + int(60 * self.scale)
+        item_y = bottom_y + int(80 * self.scale)
         
         for idx, (name, is_on) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
             
-            circ_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
-            pygame.draw.circle(self.screen, circ_color, (center_x - int(50 * self.scale), item_y), int(10 * self.scale))
-            pygame.draw.circle(self.screen, self.COLOR_BORDER, (center_x - int(50 * self.scale), item_y), int(10 * self.scale), max(int(1 * self.scale), 1))
+            # Draw the actual pump icon/image
+            self.draw_centrifugal_pump(center_x, item_y, is_on)
             
+            # Draw label below the pump
             status_str = "AKTIF" if is_on else "MATI"
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, self.COLOR_TEXT)
-            self.screen.blit(lbl_pump, lbl_pump.get_rect(midleft=(center_x - int(30 * self.scale), item_y)))
+            self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(90 * self.scale))))
 
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
