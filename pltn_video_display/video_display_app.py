@@ -1525,24 +1525,41 @@ class VideoDisplayApp:
     def draw_pump_status(self, state: Dict, center_x: int, start_y: int):
         """Menggambar indikator pompa tanpa judul (judul diurus oleh parent)"""
         pumps = [
-            ("Pompa 1", state.get("pump_primary", 0) > 0),
-            ("Pompa 2", state.get("pump_secondary", 0) > 0),
-            ("Pompa 3", state.get("pump_tertiary", 0) > 0)
+            ("Pompa 1", state.get("pump_primary", 0), state.get("lofa_primary", False)),
+            ("Pompa 2", state.get("pump_secondary", 0), state.get("lofa_secondary", False)),
+            ("Pompa 3", state.get("pump_tertiary", 0), state.get("lofa_tertiary", False))
         ]
         
         spacing = int(160 * self.scale)
         start_x = center_x - spacing
         
-        for i, (name, is_on) in enumerate(pumps):
+        import time
+        blink = int(time.time() * 2) % 2 == 0
+        
+        for i, (name, p_state, lofa) in enumerate(pumps):
             px = start_x + (i * spacing)
             
             lbl_top = self.font_medium.render(name, True, self.COLOR_TEXT)
             self.screen.blit(lbl_top, lbl_top.get_rect(center=(px, start_y)))
             
-            color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
+            if lofa:
+                color = self.COLOR_ERROR if blink else self.COLOR_WARNING
+                status_text = "FAILED"
+            elif p_state == 2:
+                color = self.COLOR_SUCCESS
+                status_text = "ON"
+            elif p_state == 1:
+                color = (150, 200, 50) if blink else self.COLOR_SUCCESS
+                status_text = "STARTING"
+            elif p_state == 3:
+                color = self.COLOR_WARNING
+                status_text = "STOPPING"
+            else:
+                color = self.COLOR_ERROR
+                status_text = "OFF"
+                
             pygame.draw.circle(self.screen, color, (px, start_y + int(50 * self.scale)), int(20 * self.scale))
             
-            status_text = "ON" if is_on else "OFF"
             lbl_bot = self.font_medium.render(status_text, True, self.COLOR_TEXT)
             self.screen.blit(lbl_bot, lbl_bot.get_rect(center=(px, start_y + int(100 * self.scale))))
 

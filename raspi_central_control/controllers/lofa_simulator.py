@@ -179,6 +179,10 @@ class LOFASimulator:
         # General Core Overheat
         if state.temperature_core >= self.max_core_temp and not scram_reason:
             scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= {self.max_core_temp}°C"
+            
+        # Overpressure SCRAM
+        if state.pressure >= 200.0 and not scram_reason:
+            scram_reason = f"Overpressure: Pressure {state.pressure:.1f} bar >= 200.0 bar"
 
         # Execute SCRAM if needed
         if scram_reason and not state.emergency_active:
