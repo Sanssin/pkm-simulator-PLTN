@@ -1,7 +1,10 @@
 import time
 import logging
 import threading
-from rpi_ws281x import PixelStrip, Color
+import math
+
+# Global lock to prevent concurrent DMA hardware access from multiple LedStripController threads
+ws281x_lock = threading.Lock()
 
 # Fallback for environments without rpi_ws281x (like Windows/Mac development)
 try:
@@ -31,6 +34,8 @@ class LEDSegment:
         self.flow_direction = flow_direction # 1 for forward, -1 for backward
         self.offset = 0.0
         self.speed = 0.0 # 0.0 = stopped, >0 = moving
+        self.fill_level = -1.0 # -1.0 means flow mode, 0.0-1.0 means fill mode
+        self.fill_color = Color(255, 100, 0)
         
         # Pre-compute gradient for this segment
         self.gradient = self._generate_gradient()
@@ -67,21 +72,28 @@ class LedStripController:
     Masing-masing segmen dapat mengalir dengan kecepatan berbeda berdasarkan status pompa.
     """
     
-    def __init__(self, pin: int = 18, count: int = 571):
+    def __init__(self, pin: int = 18, count: int = 571, channel: int = 0, dma: int = 10):
         self.pin = pin
         self.count = count
         
         self.freq_hz = 800000
-        self.dma = 10
+        self.dma = dma
         self.brightness = 255
         self.invert = False
-        self.channel = 0
+        self.channel = channel
         
-        self.strip = PixelStrip(
-            self.count, self.pin, self.freq_hz, self.dma, 
-            self.invert, self.brightness, self.channel
-        )
-        self.strip.begin()
+        try:
+            self.strip = PixelStrip(
+                self.count, self.pin, self.freq_hz, self.dma, 
+                self.invert, self.brightness, self.channel
+            )
+            self.strip.begin()
+        except RuntimeError as e:
+            logger.error(f"WS281x C library failed: {e}. (Run as sudo for /dev/mem access). Running in mock mode.")
+            self.strip = None
+        except Exception as e:
+            logger.error(f"Failed to initialize WS281x: {e}. Running in mock mode.")
+            self.strip = None
         
         self.segments = {}
         self.running = False
@@ -106,6 +118,13 @@ class LedStripController:
         """Mengatur kecepatan aliran segmen. 0 = berhenti."""
         if name in self.segments:
             self.segments[name].speed = speed
+
+    def set_fill_level(self, name: str, level: float, r: int, g: int, b: int):
+        """Mengatur mode segment sebagai bar level terisi warna tertentu."""
+        if name in self.segments:
+            self.segments[name].fill_level = max(0.0, min(1.0, level))
+            self.segments[name].fill_color = Color(r, g, b)
+            self.segments[name].fill_rgb = (r, g, b)
 
     def clear(self):
         """Mematikan seluruh LED."""
@@ -146,18 +165,43 @@ class LedStripController:
                 
             # Render setiap segmen
             for name, seg in self.segments.items():
-                # Update offset berdasarkan speed (speed * dt)
-                # offset maju -> dikurangi (seperti animasi sebelumnya)
-                seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) # multiplier 20.0 agar dt (0.05) terasa cepat
-                
-                int_offset = int(seg.offset)
-                
-                for i in range(seg.length):
-                    # Pola aliran 5 nyala, 5 mati
-                    if ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                        # Pixel nyala, gunakan warna gradien segmen
-                        self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
-            
-            self.strip.show()
-            time.sleep(self.update_interval)
+                if seg.fill_level >= 0.0:
+                    # Mode fill: nyalakan lampu sejumlah fill_level
+                    lit_count = int(seg.fill_level * seg.length)
+                    
+                    # Tambahkan animasi jika speed > 0
+                    if seg.speed > 0.0:
+                        seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0)
+                    int_offset = int(seg.offset)
 
+                    for i in range(seg.length):
+                        if i < lit_count:
+                            # Jika animasi berjalan, buat efek gelembung/pola
+                            if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
+                                # Matikan lampu untuk pola "mati" agar efek gelembung/ombak sangat kontras terlihat
+                                self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                            else:
+                                self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
+                        else:
+                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                else:
+                    # Mode flow: update offset berdasarkan speed
+                    seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
+                    int_offset = int(seg.offset)
+                    
+                    for i in range(seg.length):
+                        # Pola aliran 5 nyala, 5 mati
+                        if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                            # Pixel nyala, gunakan warna gradien segmen
+                            self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
+            
+            # Use lock to prevent hardware conflict between two PWM channels
+            with ws281x_lock:
+                try:
+                    self.strip.show()
+                except RuntimeError as e:
+                    logger.error(f"WS281x render failed (DMA Error): {e}")
+                    self.running = False
+                    break
+                
+            time.sleep(self.update_interval)

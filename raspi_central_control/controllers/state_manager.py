@@ -89,6 +89,11 @@ class PanelState:
     # Emergency state
     emergency_active: bool = False
     
+    # LOFA specific mitigation
+    condenser_pressure: float = 0.0
+    relief_valve_open: bool = False
+    spray_active: bool = False
+    
     # Interlock satisfied flag
     interlock_satisfied: bool = False
     
@@ -130,6 +135,9 @@ class PanelState:
         self.lofa_secondary = False
         self.lofa_tertiary = False
         self.emergency_active = False
+        self.condenser_pressure = 0.0
+        self.relief_valve_open = False
+        self.spray_active = False
         self.interlock_satisfied = False
 
 

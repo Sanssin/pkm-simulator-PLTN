@@ -21,12 +21,21 @@ class MotorController:
     # Frekuensi PWM untuk VNH2SP30 bisa diatur (5kHz is typical for these motors to avoid whining noise)
     PWM_FREQUENCY = 5000 
     
-    MOTOR_PINS = {
-        'pump_primary': 17,
-        'pump_secondary': 20,
-        'pump_tertiary': 21,
-        'turbine': 26
-    }
+    try:
+        import raspi_config as config
+        MOTOR_PINS = getattr(config, 'MOTOR_PINS', {
+            'pump_primary': 17,
+            'pump_secondary': 20,
+            'pump_tertiary': 27,
+            'turbine': 26
+        })
+    except ImportError:
+        MOTOR_PINS = {
+            'pump_primary': 17,
+            'pump_secondary': 20,
+            'pump_tertiary': 27,
+            'turbine': 26
+        }
     
     def __init__(self, pi_instance=None):
         self.mock_mode = not PIGPIO_AVAILABLE
@@ -72,6 +81,10 @@ class MotorController:
             
         # Constrain speed between 0 and 100
         speed_percent = max(0.0, min(100.0, float(speed_percent)))
+        
+        # Hardware safety limit: Cap turbine motor to 50% maximum
+        if motor_name == 'turbine':
+            speed_percent = speed_percent * 0.5  # Scale 0-100% input to 0-50% hardware output
         
         self.current_speeds[motor_name] = speed_percent
         

@@ -337,6 +337,10 @@ class TouchPanelBaseWindow(QMainWindow):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
         
+        btn_layout = QHBoxLayout()
+        btn_layout.setAlignment(Qt.AlignCenter)
+        btn_layout.setSpacing(30)
+        
         start_btn = QPushButton("Mulai Mode Manual")
         start_btn.setObjectName("hudStartBtn")
         start_btn.setFixedSize(320, 80)
@@ -357,10 +361,33 @@ class TouchPanelBaseWindow(QMainWindow):
         """)
         start_btn.clicked.connect(self._start_manual_mode)
         
+        auto_btn = QPushButton("Mulai Mode Otomatis")
+        auto_btn.setObjectName("hudAutoBtn")
+        auto_btn.setFixedSize(320, 80)
+        auto_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #10B981;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #059669;
+            }
+            QPushButton:pressed {
+                background-color: #047857;
+            }
+        """)
+        auto_btn.clicked.connect(self._start_auto_mode)
+        
+        btn_layout.addWidget(start_btn)
+        btn_layout.addWidget(auto_btn)
+        
         layout.addStretch()
         layout.addWidget(title)
         layout.addWidget(subtitle)
-        layout.addWidget(start_btn, alignment=Qt.AlignCenter)
+        layout.addLayout(btn_layout)
         layout.addStretch()
         
         hud.setStyleSheet("background-color: #0F172A;")
@@ -376,6 +403,10 @@ class TouchPanelBaseWindow(QMainWindow):
             flag_path.touch()
         except Exception as e:
             logger.error("Failed to write manual started flag: %s", e)
+
+    def _start_auto_mode(self) -> None:
+        self.stacked_widget.setCurrentIndex(1)
+        self._on_button_click("START_AUTO_SIMULATION")
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
@@ -607,11 +638,11 @@ class TouchPanelBaseWindow(QMainWindow):
         sys_layout.setContentsMargins(16, 20, 16, 20)
         sys_layout.setSpacing(16)
 
-        btn_start_auto = QPushButton("Simulasi LOFA")
-        btn_start_auto.setProperty("emphasis", "primary")
-        btn_start_auto.setProperty("sys_op", "true")
-        btn_start_auto.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_start_auto.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
+        btn_lofa_sim = QPushButton("Simulasi LOFA")
+        btn_lofa_sim.setProperty("emphasis", "primary")
+        btn_lofa_sim.setProperty("sys_op", "true")
+        btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
         
         btn_reset = QPushButton("ATUR ULANG PANEL")
         btn_reset.setProperty("emphasis", "secondary")
@@ -625,7 +656,7 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
 
-        sys_layout.addWidget(btn_start_auto)
+        sys_layout.addWidget(btn_lofa_sim)
         sys_layout.addWidget(btn_reset)
         sys_layout.addWidget(btn_emergency)
         column.addWidget(sys_group)
