@@ -863,7 +863,7 @@ class VideoDisplayApp:
         # Right Gauge: Pressurizer
         press_val = state.get("pressure", 0)
         press_cx = start_x + (3 * width) // 4
-        self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
+        self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar", warn_val=160.0, crit_val=180.0)
             
         # 2. Bottom Row: Pump Status (Full Width)
         bottom_y = gauge_y + int(240 * self.scale)
@@ -1390,7 +1390,7 @@ class VideoDisplayApp:
             pygame.draw.rect(self.screen, fill_color, fill_rect, border_radius=int(8*self.scale))
             pygame.draw.rect(self.screen, self.COLOR_BORDER, fill_rect, max(int(2.7*self.scale), 1), border_radius=int(8*self.scale))
     
-    def draw_gauge(self, center_x: int, center_y: int, value: float, max_val: float, subtitle: str, format_str: str):
+    def draw_gauge(self, center_x: int, center_y: int, value: float, max_val: float, subtitle: str, format_str: str, warn_val: float = None, crit_val: float = None):
         """Gauge Full Circle (360 derajat) dengan isian dari bawah dan Jarum Tepi"""
         import math
         
@@ -1426,8 +1426,12 @@ class VideoDisplayApp:
         
         # 2. Menggambar Isian Warna (Aktif)
         if ratio > 0.01:
-            # Perubahan warna otomatis (Hijau)
+            # Perubahan warna otomatis
             fill_color = self.COLOR_SUCCESS
+            if crit_val is not None and value >= crit_val:
+                fill_color = self.COLOR_ERROR
+            elif warn_val is not None and value >= warn_val:
+                fill_color = self.COLOR_WARNING
             
             for angle_deg in range(135, int(end_angle_deg), 2):
                 angle_rad = math.radians(angle_deg)
