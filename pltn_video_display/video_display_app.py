@@ -940,12 +940,24 @@ class VideoDisplayApp:
         for idx, (name, is_on) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
             
+            # Check LOFA status for this pump
+            is_lofa = False
+            if name == "Primer" and state.get("lofa_primary", False): is_lofa = True
+            if name == "Sekunder" and state.get("lofa_secondary", False): is_lofa = True
+            if name == "Tersier" and state.get("lofa_tertiary", False): is_lofa = True
+            
+            import time
+            if is_lofa and int(time.time() * 2) % 2 == 0:
+                # Blink effect behind the pump
+                pygame.draw.circle(self.screen, self.COLOR_ERROR, (center_x, item_y), int(55 * self.scale))
+                
             # Draw the actual pump icon/image
             self.draw_centrifugal_pump(center_x, item_y, is_on)
             
             # Draw label below the pump
-            status_str = "AKTIF" if is_on else "MATI"
-            lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, self.COLOR_TEXT)
+            status_str = "AKTIF" if is_on else "MATI (GAGAL)" if is_lofa else "MATI"
+            lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
+            lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
             self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(90 * self.scale))))
 
     def draw_manual_guide(self, state: Dict):
@@ -978,27 +990,51 @@ class VideoDisplayApp:
         default_temp = state.get("temperature", (current_pressure / 160.0) * 300.0)
         core_temp = state.get("temperature_core", default_temp)
         
+        import time
+        blink_on = int(time.time() * 2) % 2 == 0
+        
         status_text = "SISTEM PLTN NORMAL"
         status_color = self.COLOR_SUCCESS
         status_text_color = (255, 255, 255)
         
         if current_pressure > 180 or core_temp > 500:
             status_color = self.COLOR_ERROR
-            status_text = "!!! BAHAYA: TEKANAN ATAU SUHU KRITIS - SEGERA SCRAM !!!"
-            import time
-            if int(time.time() * 2) % 2 == 0:
+            status_text = "!!! BAHAYA: TEKANAN/SUHU KRITIS !!!"
+            if blink_on:
                 status_color = (200, 0, 0)
         elif current_pressure > 160 or core_temp > 400:
             status_color = self.COLOR_WARNING
-            status_text = "⚠️ PERINGATAN: TEKANAN/SUHU TINGGI - SEGERA TURUNKAN"
+            status_text = "⚠️ PERINGATAN: TEKANAN/SUHU TINGGI"
             status_text_color = (0, 0, 0)
             
-        banner_rect = pygame.Rect(margin_x, banner_y, self.width - 2 * margin_x, banner_h)
-        pygame.draw.rect(self.screen, status_color, banner_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, banner_rect, max(int(2 * self.scale), 1), border_radius=int(8 * self.scale))
+        relief_open = state.get("relief_valve_open", False)
+        spray_active = state.get("spray_active", False)
+        mitigasi_text = f"Valve: {'BUKA' if relief_open else 'TUTUP'} | Spray: {'AKTIF' if spray_active else 'MATI'}"
+        mitigasi_color = self.COLOR_WARNING if (relief_open or spray_active) else self.COLOR_BG_PANEL
+        mitigasi_text_color = (0, 0, 0) if (relief_open or spray_active) else self.COLOR_TEXT
         
-        banner_surface = self.font_large.render(status_text, True, status_text_color)
-        self.screen.blit(banner_surface, banner_surface.get_rect(center=(self.width//2, banner_y + banner_h//2)))
+        lofa_active = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
+        lofa_text = "⚠️ SIMULASI LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
+        lofa_color = self.COLOR_ERROR if lofa_active else self.COLOR_BG_PANEL
+        if lofa_active and blink_on:
+            lofa_color = (200, 0, 0)
+        lofa_text_color = (255, 255, 255) if lofa_active else self.COLOR_TEXT
+        
+        box_gap = int(15 * self.scale)
+        box_w = (self.width - 2 * margin_x - 2 * box_gap) // 3
+        
+        boxes = [
+            (margin_x, status_color, status_text, status_text_color),
+            (margin_x + box_w + box_gap, mitigasi_color, mitigasi_text, mitigasi_text_color),
+            (margin_x + 2 * (box_w + box_gap), lofa_color, lofa_text, lofa_text_color)
+        ]
+        
+        for bx, bcolor, btext, btcolor in boxes:
+            brect = pygame.Rect(bx, banner_y, box_w, banner_h)
+            pygame.draw.rect(self.screen, bcolor, brect, border_radius=int(8 * self.scale))
+            pygame.draw.rect(self.screen, self.COLOR_BORDER, brect, max(int(2 * self.scale), 1), border_radius=int(8 * self.scale))
+            bsurf = self.font_medium.render(btext, True, btcolor)
+            self.screen.blit(bsurf, bsurf.get_rect(center=(bx + box_w//2, banner_y + banner_h//2)))
         
         # === MENGHITUNG GRID LAYOUT (Improved proportions) ===
         panel_gap = int(20 * self.scale)  # Gap antar panel (vertikal dan horizontal sama)
