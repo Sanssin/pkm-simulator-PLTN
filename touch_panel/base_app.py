@@ -1049,6 +1049,14 @@ class TouchPanelBaseWindow(QMainWindow):
             self.local_mode = True
 
     def _on_timer_tick(self) -> None:
+        # Check if our target monitor was disconnected
+        if _PYQT_AVAILABLE:
+            from PyQt5.QtWidgets import QApplication
+            if len(QApplication.screens()) <= self.screen_idx:
+                logger.error(f"Screen {self.screen_idx} disconnected! Exiting for watchdog restart.")
+                import sys
+                sys.exit(1)
+
         # Load external state or process internal physics
         self._check_and_load_state()
         
