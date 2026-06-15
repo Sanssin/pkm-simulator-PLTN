@@ -891,8 +891,8 @@ class VideoDisplayApp:
             ("Regulating", state.get("regulating_rod", 0))
         ]
         
-        rod_bar_w = width - int(120 * self.scale)
-        rod_bar_x = start_x + (width - rod_bar_w) // 2 + int(30*self.scale)
+        rod_bar_w = width - int(220 * self.scale)
+        rod_bar_x = start_x + int(140 * self.scale)
         
         for i, (name, val) in enumerate(rods):
             ry = rods_y + int(30 * self.scale) + i * int(40 * self.scale)
