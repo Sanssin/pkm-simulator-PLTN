@@ -852,36 +852,21 @@ class VideoDisplayApp:
     def draw_reactor_diagnostic_displays(self, state: Dict, start_x: int, start_y: int, width: int, height: int):
         """Draw Reactor Diagnostic Displays in a hierarchical layout"""
         
-        # 1. Thermal Power Output (Most Prominent - Top)
+        # 1. Gauges Row (Side-by-Side: Power and Pressure)
+        gauge_y = start_y + int(140 * self.scale)
+        
+        # Left Gauge: Thermal Power
         thermal_mw = state.get("thermal_kw", 0.0) / 1000.0
-        gauge_cx = start_x + width // 2
-        gauge_cy = start_y + int(120 * self.scale)
-        self.draw_gauge(gauge_cx, gauge_cy, thermal_mw, 300.0, "Listrik Dihasilkan", "{:.2f} MW")
+        power_cx = start_x + width // 4
+        self.draw_gauge(power_cx, gauge_y, thermal_mw, 300.0, "Listrik Dihasilkan", "{:.2f} MW")
         
-        # 2. Pressurizer (Below Thermal Power)
+        # Right Gauge: Pressurizer
         press_val = state.get("pressure", 0)
-        press_y = start_y + int(220 * self.scale)
-        
-        lbl_press = self.font_medium.render(f"Tekanan Pressurizer: {press_val:.2f} bar", True, self.COLOR_TEXT)
-        self.screen.blit(lbl_press, lbl_press.get_rect(center=(start_x + width // 2, press_y)))
-        
-        bar_w = width - int(80 * self.scale)
-        bar_x = start_x + (width - bar_w) // 2
-        bar_y = press_y + int(25 * self.scale)
-        bar_h = int(20 * self.scale)
-        
-        bar_rect = pygame.Rect(bar_x, bar_y, bar_w, bar_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(6 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(2 * self.scale), 1), border_radius=int(6 * self.scale))
-        
-        fill_ratio = min(max(press_val / 200.0, 0.0), 1.0)
-        fill_w = int((bar_w - 4) * fill_ratio)
-        if fill_w > 0:
-            fill_rect = pygame.Rect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4)
-            pygame.draw.rect(self.screen, self.COLOR_PRIMARY, fill_rect, border_radius=int(4 * self.scale))
+        press_cx = start_x + (3 * width) // 4
+        self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
             
-        # 3. Control Rods (Batang Kendali)
-        rods_y = press_y + int(70 * self.scale)
+        # 2. Control Rods (Batang Kendali)
+        rods_y = start_y + int(310 * self.scale)
         lbl_rods = self.font_medium.render("Posisi Batang Kendali", True, self.COLOR_TEXT)
         self.screen.blit(lbl_rods, lbl_rods.get_rect(center=(start_x + width // 2, rods_y)))
         
@@ -893,6 +878,7 @@ class VideoDisplayApp:
         
         rod_bar_w = width - int(220 * self.scale)
         rod_bar_x = start_x + int(140 * self.scale)
+        bar_h = int(20 * self.scale)
         
         for i, (name, val) in enumerate(rods):
             ry = rods_y + int(30 * self.scale) + i * int(40 * self.scale)
