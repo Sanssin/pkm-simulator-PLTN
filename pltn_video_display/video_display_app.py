@@ -915,84 +915,38 @@ class VideoDisplayApp:
                 f_rect = pygame.Rect(rod_bar_x + 2, ry + 2, f_w, bar_h - 4)
                 pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
             
-        # 4. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
+        # 4. Bottom Row: Pump Status (Full Width)
         bottom_y = rods_y + int(130 * self.scale)
         bottom_h = height - (bottom_y - start_y)
-        box_w = (width - int(30 * self.scale)) // 2
         
-        # Sub-panel 3.1: Pump Status (Left)
-        left_box_x = start_x + int(10 * self.scale)
-        left_rect = pygame.Rect(left_box_x, bottom_y, box_w, bottom_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, left_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, left_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
+        box_x = start_x + int(10 * self.scale)
+        box_w = width - int(20 * self.scale)
+        box_rect = pygame.Rect(box_x, bottom_y, box_w, bottom_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, box_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
         
-        # Title of Pump sub-panel
-        pump_title = self.font_medium.render("STATUS POMPA", True, self.COLOR_TEXT)
-        self.screen.blit(pump_title, pump_title.get_rect(center=(left_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
+        pump_title = self.font_medium.render("STATUS POMPA PENDINGIN", True, self.COLOR_TEXT)
+        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(20 * self.scale))))
         
-        # Draw 3 pumps stacked vertically
         pumps = [
             ("Primer", state.get("pump_primary", 0) > 0),
             ("Sekunder", state.get("pump_secondary", 0) > 0),
             ("Tersier", state.get("pump_tertiary", 0) > 0)
         ]
         
-        item_gap = int(22 * self.scale)
-        start_item_y = bottom_y + int(45 * self.scale)
+        segment_w = box_w // 3
+        item_y = bottom_y + int(60 * self.scale)
         
         for idx, (name, is_on) in enumerate(pumps):
-            item_y = start_item_y + idx * item_gap
-            # Draw status circle indicator
-            circ_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
-            pygame.draw.circle(self.screen, circ_color, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale))
-            pygame.draw.circle(self.screen, self.COLOR_BORDER, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale), max(int(1 * self.scale), 1))
+            center_x = box_x + idx * segment_w + segment_w // 2
             
-            # Draw label
+            circ_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
+            pygame.draw.circle(self.screen, circ_color, (center_x - int(50 * self.scale), item_y), int(10 * self.scale))
+            pygame.draw.circle(self.screen, self.COLOR_BORDER, (center_x - int(50 * self.scale), item_y), int(10 * self.scale), max(int(1 * self.scale), 1))
+            
             status_str = "AKTIF" if is_on else "MATI"
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, self.COLOR_TEXT)
-            self.screen.blit(lbl_pump, (left_box_x + int(50 * self.scale), item_y - int(10 * self.scale)))
-            
-        # Sub-panel 3.2: Active System Alarm (Right)
-        right_box_x = start_x + width - box_w - int(10 * self.scale)
-        right_rect = pygame.Rect(right_box_x, bottom_y, box_w, bottom_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, right_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, right_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
-        
-        # Title of Alarm sub-panel
-        alarm_title = self.font_medium.render("ALARM SISTEM AKTIF", True, self.COLOR_TEXT)
-        self.screen.blit(alarm_title, alarm_title.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
-        
-        # Determine Alarms
-        alarms = []
-        if state.get("emergency", False):
-            alarms.append("EMERGENCY SHUTDOWN")
-        elif state.get("pressure", 0) >= 180.0:
-            alarms.append("TEKANAN KRITIS")
-        elif state.get("pressure", 0) >= 160.0:
-            alarms.append("TEKANAN TINGGI")
-            
-        # Check interlock condition
-        pressure_ok = state.get("pressure", 0) >= 140.0
-        pumps_ok = (state.get("pump_primary", 0) > 0 and 
-                    state.get("pump_secondary", 0) > 0 and 
-                    state.get("pump_tertiary", 0) > 0)
-        rods_moved = (state.get("safety_rod", 0) > 0 or 
-                      state.get("shim_rod", 0) > 0 or 
-                      state.get("regulating_rod", 0) > 0)
-                      
-        if rods_moved and not (pressure_ok and pumps_ok):
-            alarms.append("MELANGGAR INTERLOCK")
-            
-        # Render alarms list
-        if not alarms:
-            # Show "SISTEM NORMAL" in Green
-            lbl_normal = self.font_body.render("SISTEM NORMAL", True, self.COLOR_SUCCESS)
-            self.screen.blit(lbl_normal, lbl_normal.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(60 * self.scale))))
-        else:
-            # Render each alarm in Red/Orange
-            for idx, alarm_msg in enumerate(alarms[:3]):  # Limit to 3 alarms to avoid overflow
-                lbl_alarm = self.font_body.render(alarm_msg, True, self.COLOR_ERROR)
-                self.screen.blit(lbl_alarm, lbl_alarm.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(50 * self.scale) + idx * int(22 * self.scale))))
+            self.screen.blit(lbl_pump, lbl_pump.get_rect(midleft=(center_x - int(30 * self.scale), item_y)))
 
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
