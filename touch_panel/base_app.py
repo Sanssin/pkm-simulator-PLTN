@@ -210,6 +210,9 @@ class TouchPanelBaseWindow(QMainWindow):
         # Build UI layout
         self._build_window()
         
+        # Initialize Audio
+        self._init_audio()
+        
         # Setup polling timer
         if _PYQT_AVAILABLE:
             self.update_timer = QTimer(self)
@@ -258,7 +261,64 @@ class TouchPanelBaseWindow(QMainWindow):
         self.sim_condenser_pressure = 0.05
         
         # Active holds and timers
+        self.hold_timers: Dict[str, Tuple[QTimer, int]] = {}
         self._active_holds: Dict[str, float] = {}
+        
+    def _init_audio(self) -> None:
+        self.audio_enabled = False
+        self.current_alarm = None
+        self.scram_sound = None
+        self.lofa_sound = None
+        try:
+            import pygame
+            pygame.mixer.init()
+            
+            base_path = Path(__file__).parent / "assets"
+            scram_path = base_path / "scram_alarm.wav"
+            lofa_path = base_path / "lofa_alarm.wav"
+            
+            if scram_path.exists():
+                self.scram_sound = pygame.mixer.Sound(str(scram_path))
+            if lofa_path.exists():
+                self.lofa_sound = pygame.mixer.Sound(str(lofa_path))
+                
+            self.audio_enabled = True
+            logger.info("Audio initialized successfully with Pygame.")
+        except Exception as e:
+            logger.warning(f"Audio initialization failed (pygame not available or no audio device): {e}")
+
+    def _play_alarm(self, alarm_type: str) -> None:
+        if not self.audio_enabled:
+            return
+        if alarm_type == self.current_alarm:
+            return
+            
+        import pygame
+        pygame.mixer.stop()
+        
+        self.current_alarm = alarm_type
+        
+        if alarm_type == "SCRAM" and self.scram_sound:
+            self.scram_sound.play(loops=-1)
+        elif alarm_type == "LOFA" and self.lofa_sound:
+            self.lofa_sound.play(loops=-1)
+            
+    def _stop_alarm(self) -> None:
+        if not self.audio_enabled or self.current_alarm is None:
+            return
+            
+        import pygame
+        pygame.mixer.stop()
+        self.current_alarm = None
+
+    def _update_audio_state(self) -> None:
+        is_lofa = self.sim_alarm == "LOFA AKTIF!"
+        if self.sim_emergency:
+            self._play_alarm("SCRAM")
+        elif is_lofa:
+            self._play_alarm("LOFA")
+        else:
+            self._stop_alarm()
         self.tick_counter = 0
         self.flash_toggle = False
         self.local_mode = True
@@ -988,6 +1048,10 @@ class TouchPanelBaseWindow(QMainWindow):
         # Load external state or process internal physics
         self._check_and_load_state()
         
+        # Update Audio Alarms
+        self._update_audio_state()
+        
+        # Update dynamic components:
         if self.local_mode:
             # Read active holds and tick simulation physics
             for action in list(self._active_holds.keys()):
