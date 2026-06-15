@@ -7,11 +7,11 @@ echo PLTN Video Display - Development Mode
 echo ==========================================
 echo.
 
-REM Check pygame
-python -c "import pygame" 2>nul
+REM Check pygame atau pygame-ce
+py -c "import pygame" 2>nul
 if errorlevel 1 (
-    echo [ERROR] pygame not installed
-    echo    Install: pip install pygame
+    echo [ERROR] pygame / pygame-ce not installed
+    echo    Install: pip install pygame-ce
     pause
     exit /b 1
 ) else (
@@ -51,4 +51,4 @@ echo.
 echo Press any key to start...
 pause >nul
 
-python video_display_app.py --test --windowed
+py video_display_app.py --test --windowed

@@ -95,49 +95,47 @@ class StatusCardSpec:
 
 @dataclass(frozen=True)
 class TouchPanelLayoutSpec:
-    title: str = "PLTN Touch Panel"
-    subtitle: str = "Baseline touchscreen shell for TS-010"
+    title: str = "Panel Sentuh PLTN"
+    subtitle: str = "Shell layar sentuh dasar untuk TS-010"
     top_badges: List[str] = field(default_factory=lambda: ["Mode: Manual", "1280x800", "PyQt5"])
     control_groups: List[List[PanelButtonSpec]] = field(
         default_factory=lambda: [
             [
-                PanelButtonSpec("PUMP PRIMARY ON", "PUMP_PRIMARY_ON"),
-                PanelButtonSpec("PUMP PRIMARY OFF", "PUMP_PRIMARY_OFF"),
-                PanelButtonSpec("PUMP SECONDARY ON", "PUMP_SECONDARY_ON"),
-                PanelButtonSpec("PUMP SECONDARY OFF", "PUMP_SECONDARY_OFF"),
-                PanelButtonSpec("PUMP TERTIARY ON", "PUMP_TERTIARY_ON"),
-                PanelButtonSpec("PUMP TERTIARY OFF", "PUMP_TERTIARY_OFF"),
+                PanelButtonSpec("POMPA PRIMER NYALA", "PUMP_PRIMARY_ON"),
+                PanelButtonSpec("POMPA PRIMER MATI", "PUMP_PRIMARY_OFF"),
+                PanelButtonSpec("POMPA SEKUNDER NYALA", "PUMP_SECONDARY_ON"),
+                PanelButtonSpec("POMPA SEKUNDER MATI", "PUMP_SECONDARY_OFF"),
+                PanelButtonSpec("POMPA TERSIER NYALA", "PUMP_TERTIARY_ON"),
+                PanelButtonSpec("POMPA TERSIER MATI", "PUMP_TERTIARY_OFF"),
             ],
             [
-                PanelButtonSpec("SAFETY ROD ▲", "SAFETY_ROD_UP"),
-                PanelButtonSpec("SAFETY ROD ▼", "SAFETY_ROD_DOWN"),
-                PanelButtonSpec("SHIM ROD ▲", "SHIM_ROD_UP"),
-                PanelButtonSpec("SHIM ROD ▼", "SHIM_ROD_DOWN"),
-                PanelButtonSpec("REG ROD ▲", "REGULATING_ROD_UP"),
-                PanelButtonSpec("REG ROD ▼", "REGULATING_ROD_DOWN"),
-                PanelButtonSpec("PRESSURE ▲", "PRESSURE_UP"),
-                PanelButtonSpec("PRESSURE ▼", "PRESSURE_DOWN"),
+                PanelButtonSpec("BATANG PENGAMAN ▲", "SAFETY_ROD_UP"),
+                PanelButtonSpec("BATANG PENGAMAN ▼", "SAFETY_ROD_DOWN"),
+                PanelButtonSpec("BATANG SHIM ▲", "SHIM_ROD_UP"),
+                PanelButtonSpec("BATANG SHIM ▼", "SHIM_ROD_DOWN"),
+                PanelButtonSpec("BATANG PENGATUR ▲", "REGULATING_ROD_UP"),
+                PanelButtonSpec("BATANG PENGATUR ▼", "REGULATING_ROD_DOWN"),
+                PanelButtonSpec("TEKANAN ▲", "PRESSURE_UP"),
+                PanelButtonSpec("TEKANAN ▼", "PRESSURE_DOWN"),
             ],
             [
-                PanelButtonSpec("START AUTO", "START_AUTO_SIMULATION", "primary"),
-                PanelButtonSpec("RESET", "REACTOR_RESET", "secondary"),
-                PanelButtonSpec("EMERGENCY", "EMERGENCY", "danger"),
-                PanelButtonSpec("LOFA SIMULATE", "LOFA_SIMULATE_PRIMARY", "warning"),
-                PanelButtonSpec("LOFA CANCEL", "LOFA_CANCEL", "warning"),
+                PanelButtonSpec("Simulasi LOFA", "LOFA_SIMULATE_PRIMARY", "primary"),
+                PanelButtonSpec("ATUR ULANG", "REACTOR_RESET", "secondary"),
+                PanelButtonSpec("DARURAT", "EMERGENCY", "danger"),
             ],
         ]
     )
     status_cards: List[StatusCardSpec] = field(
         default_factory=lambda: [
             StatusCardSpec("Pressurizer", "155.5 bar"),
-            StatusCardSpec("Pump Status", "P1/P2/P3 ON"),
-            StatusCardSpec("Rod Position", "100 / 75 / 60"),
-            StatusCardSpec("Thermal Power", "450000 kW"),
-            StatusCardSpec("System Status", "Ready"),
-            StatusCardSpec("Alarm", "None"),
+            StatusCardSpec("Status Pompa", "P1/P2/P3 NYALA"),
+            StatusCardSpec("Posisi Batang", "100 / 75 / 60"),
+            StatusCardSpec("Daya Termal", "450000 kW"),
+            StatusCardSpec("Status Sistem", "Siap"),
+            StatusCardSpec("Alarm", "Tidak Ada"),
         ]
     )
-    footer_text: str = "Tap controls on the left. Hold the rod/pressure controls for continuous adjustment."
+    footer_text: str = "Ketuk kontrol di sebelah kiri. Tahan kontrol batang/tekanan untuk penyesuaian terus-menerus."
 
 
 def get_layout_spec() -> TouchPanelLayoutSpec:
@@ -238,15 +236,18 @@ class TouchPanelBaseWindow(QMainWindow):
         self.sim_safety_rod = 100
         self.sim_shim_rod = 75
         self.sim_regulating_rod = 60
-        self.sim_pump_primary = 1
-        self.sim_pump_secondary = 1
-        self.sim_pump_tertiary = 1
+        self.sim_pump_primary = 1.0
+        self.target_pump_primary = 1.0
+        self.sim_pump_secondary = 1.0
+        self.target_pump_secondary = 1.0
+        self.sim_pump_tertiary = 1.0
+        self.target_pump_tertiary = 1.0
         self.sim_thermal_kw = 450000.0
         self.sim_turbine_speed = 85.0
         self.sim_mode = "Manual"
         self.sim_auto_running = False
         self.sim_emergency = False
-        self.sim_alarm = "None"
+        self.sim_alarm = "Tidak Ada"
         
         # Extended coolant & temperatures
         self.sim_coolant_temp_primary = 295.5
@@ -320,7 +321,7 @@ class TouchPanelBaseWindow(QMainWindow):
         title_text.setObjectName("titleLabel")
         title_block.addWidget(title_text)
         
-        subtitle = QLabel("REACTOR SIMULATION MANAGEMENT SYSTEM • TS-010")
+        subtitle = QLabel("SISTEM MANAJEMEN SIMULASI REAKTOR • TS-010")
         subtitle.setObjectName("subtitleLabel")
         title_block.addWidget(subtitle)
 
@@ -337,7 +338,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self.badge_status.setObjectName("badgeStatus")
         layout.addWidget(self.badge_status)
 
-        self.badge_connection = QLabel("LOCAL DEMO")
+        self.badge_connection = QLabel("DEMO LOKAL")
         self.badge_connection.setObjectName("badgeConnection")
         layout.addWidget(self.badge_connection)
 
@@ -354,36 +355,36 @@ class TouchPanelBaseWindow(QMainWindow):
         column.setSpacing(12)
 
         # 1. Primary Pumps Control Group (Arranged vertically for each pump)
-        pumps_group = QGroupBox("Primary Coolant Pumps")
+        pumps_group = QGroupBox("Pompa Pendingin Primer")
         pumps_layout = QHBoxLayout(pumps_group)
         pumps_layout.setContentsMargins(12, 2, 12, 8)
         pumps_layout.setSpacing(20)
         
-        self.btn_pump_p1_on = QPushButton("P1 ON")
+        self.btn_pump_p1_on = QPushButton("P1 NYALA")
         self.btn_pump_p1_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_on.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_ON"))
-        self.btn_pump_p1_off = QPushButton("P1 OFF")
+        self.btn_pump_p1_off = QPushButton("P1 MATI")
         self.btn_pump_p1_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p1_off.clicked.connect(lambda: self._on_button_click("PUMP_PRIMARY_OFF"))
         
-        self.btn_pump_p2_on = QPushButton("P2 ON")
+        self.btn_pump_p2_on = QPushButton("P2 NYALA")
         self.btn_pump_p2_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_on.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_ON"))
-        self.btn_pump_p2_off = QPushButton("P2 OFF")
+        self.btn_pump_p2_off = QPushButton("P2 MATI")
         self.btn_pump_p2_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p2_off.clicked.connect(lambda: self._on_button_click("PUMP_SECONDARY_OFF"))
         
-        self.btn_pump_p3_on = QPushButton("P3 ON")
+        self.btn_pump_p3_on = QPushButton("P3 NYALA")
         self.btn_pump_p3_on.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_on.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_ON"))
-        self.btn_pump_p3_off = QPushButton("P3 OFF")
+        self.btn_pump_p3_off = QPushButton("P3 MATI")
         self.btn_pump_p3_off.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.btn_pump_p3_off.clicked.connect(lambda: self._on_button_click("PUMP_TERTIARY_OFF"))
 
         # P1 layout (Vertical)
         p1_layout = QVBoxLayout()
         p1_layout.setSpacing(12)
-        lbl_p1 = QLabel("Primary Loop (P1):")
+        lbl_p1 = QLabel("Sirkuit Primer (P1):")
         lbl_p1.setWordWrap(True)
         lbl_p1.setFixedHeight(36)
         p1_layout.addWidget(lbl_p1)
@@ -397,7 +398,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # P2 layout (Vertical)
         p2_layout = QVBoxLayout()
         p2_layout.setSpacing(12)
-        lbl_p2 = QLabel("Secondary Loop (P2):")
+        lbl_p2 = QLabel("Sirkuit Sekunder (P2):")
         lbl_p2.setWordWrap(True)
         lbl_p2.setFixedHeight(36)
         p2_layout.addWidget(lbl_p2)
@@ -411,7 +412,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # P3 layout (Vertical)
         p3_layout = QVBoxLayout()
         p3_layout.setSpacing(12)
-        lbl_p3 = QLabel("Tertiary Loop (P3):")
+        lbl_p3 = QLabel("Sirkuit Tersier (P3):")
         lbl_p3.setWordWrap(True)
         lbl_p3.setFixedHeight(36)
         p3_layout.addWidget(lbl_p3)
@@ -428,7 +429,7 @@ class TouchPanelBaseWindow(QMainWindow):
         column.addWidget(pumps_group)
 
         # 2. Control Rods & Pressure Group (Holdable buttons in stacked layout)
-        rods_group = QGroupBox("Reactor Adjustments (Press and Hold)")
+        rods_group = QGroupBox("Penyesuaian Reaktor (Tekan dan Tahan)")
         rods_layout = QHBoxLayout(rods_group)
         rods_layout.setContentsMargins(12, 2, 12, 8)
         rods_layout.setSpacing(15)
@@ -436,16 +437,16 @@ class TouchPanelBaseWindow(QMainWindow):
         # Safety Rod
         saf_layout = QVBoxLayout()
         saf_layout.setSpacing(12)
-        lbl_saf = QLabel("Safety Rod:")
+        lbl_saf = QLabel("Batang Pengaman:")
         lbl_saf.setWordWrap(True)
         lbl_saf.setFixedHeight(36)
         saf_layout.addWidget(lbl_saf)
         saf_buttons_layout = QVBoxLayout()
         saf_buttons_layout.setContentsMargins(0, 0, 0, 0)
         saf_buttons_layout.setSpacing(8)
-        btn_saf_up = HoldButton("▲ UP", "SAFETY_ROD_UP", self)
+        btn_saf_up = HoldButton("▲ NAIK", "SAFETY_ROD_UP", self)
         btn_saf_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_saf_down = HoldButton("▼ DOWN", "SAFETY_ROD_DOWN", self)
+        btn_saf_down = HoldButton("▼ TURUN", "SAFETY_ROD_DOWN", self)
         btn_saf_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         saf_buttons_layout.addWidget(btn_saf_up)
         saf_buttons_layout.addWidget(btn_saf_down)
@@ -455,16 +456,16 @@ class TouchPanelBaseWindow(QMainWindow):
         # Shim Rod
         shim_layout = QVBoxLayout()
         shim_layout.setSpacing(12)
-        lbl_shim = QLabel("Shim Rod:")
+        lbl_shim = QLabel("Batang Shim:")
         lbl_shim.setWordWrap(True)
         lbl_shim.setFixedHeight(36)
         shim_layout.addWidget(lbl_shim)
         shim_buttons_layout = QVBoxLayout()
         shim_buttons_layout.setContentsMargins(0, 0, 0, 0)
         shim_buttons_layout.setSpacing(8)
-        btn_shim_up = HoldButton("▲ UP", "SHIM_ROD_UP", self)
+        btn_shim_up = HoldButton("▲ NAIK", "SHIM_ROD_UP", self)
         btn_shim_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_shim_down = HoldButton("▼ DOWN", "SHIM_ROD_DOWN", self)
+        btn_shim_down = HoldButton("▼ TURUN", "SHIM_ROD_DOWN", self)
         btn_shim_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         shim_buttons_layout.addWidget(btn_shim_up)
         shim_buttons_layout.addWidget(btn_shim_down)
@@ -474,16 +475,16 @@ class TouchPanelBaseWindow(QMainWindow):
         # Regulating Rod
         reg_layout = QVBoxLayout()
         reg_layout.setSpacing(12)
-        lbl_reg = QLabel("Regulating Rod:")
+        lbl_reg = QLabel("Batang Pengatur:")
         lbl_reg.setWordWrap(True)
         lbl_reg.setFixedHeight(36)
         reg_layout.addWidget(lbl_reg)
         reg_buttons_layout = QVBoxLayout()
         reg_buttons_layout.setContentsMargins(0, 0, 0, 0)
         reg_buttons_layout.setSpacing(8)
-        btn_reg_up = HoldButton("▲ UP", "REGULATING_ROD_UP", self)
+        btn_reg_up = HoldButton("▲ NAIK", "REGULATING_ROD_UP", self)
         btn_reg_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_reg_down = HoldButton("▼ DOWN", "REGULATING_ROD_DOWN", self)
+        btn_reg_down = HoldButton("▼ TURUN", "REGULATING_ROD_DOWN", self)
         btn_reg_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         reg_buttons_layout.addWidget(btn_reg_up)
         reg_buttons_layout.addWidget(btn_reg_down)
@@ -493,16 +494,16 @@ class TouchPanelBaseWindow(QMainWindow):
         # Pressurizer
         press_layout = QVBoxLayout()
         press_layout.setSpacing(12)
-        lbl_press = QLabel("Pressurizer Pressure:")
+        lbl_press = QLabel("Tekanan Pressurizer:")
         lbl_press.setWordWrap(True)
         lbl_press.setFixedHeight(36)
         press_layout.addWidget(lbl_press)
         press_buttons_layout = QVBoxLayout()
         press_buttons_layout.setContentsMargins(0, 0, 0, 0)
         press_buttons_layout.setSpacing(8)
-        btn_press_up = HoldButton("▲ INC", "PRESSURE_UP", self)
+        btn_press_up = HoldButton("▲ NAIK", "PRESSURE_UP", self)
         btn_press_up.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_press_down = HoldButton("▼ DEC", "PRESSURE_DOWN", self)
+        btn_press_down = HoldButton("▼ TURUN", "PRESSURE_DOWN", self)
         btn_press_down.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         press_buttons_layout.addWidget(btn_press_up)
         press_buttons_layout.addWidget(btn_press_down)
@@ -511,37 +512,32 @@ class TouchPanelBaseWindow(QMainWindow):
         column.addWidget(rods_group)
 
         # 3. System Operations Group
-        sys_group = QGroupBox("System Simulation Operations")
-        sys_layout = QGridLayout(sys_group)
-        sys_layout.setContentsMargins(12, 16, 12, 12)
-        sys_layout.setSpacing(10)
+        sys_group = QGroupBox("Operasi Simulasi Sistem")
+        sys_layout = QHBoxLayout(sys_group)
+        sys_layout.setContentsMargins(16, 20, 16, 20)
+        sys_layout.setSpacing(16)
 
-        btn_start_auto = QPushButton("START AUTO")
+        btn_start_auto = QPushButton("Simulasi LOFA")
         btn_start_auto.setProperty("emphasis", "primary")
-        btn_start_auto.clicked.connect(lambda: self._on_button_click("START_AUTO_SIMULATION"))
+        btn_start_auto.setProperty("sys_op", "true")
+        btn_start_auto.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        btn_start_auto.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
         
-        btn_reset = QPushButton("RESET PANEL")
+        btn_reset = QPushButton("ATUR ULANG PANEL")
         btn_reset.setProperty("emphasis", "secondary")
+        btn_reset.setProperty("sys_op", "true")
+        btn_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_reset.clicked.connect(lambda: self._on_button_click("REACTOR_RESET"))
 
-        btn_lofa_sim = QPushButton("LOFA SIMULATE")
-        btn_lofa_sim.setProperty("emphasis", "warning")
-        btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
-
-        btn_lofa_cancel = QPushButton("LOFA CANCEL")
-        btn_lofa_cancel.setProperty("emphasis", "warning")
-        btn_lofa_cancel.clicked.connect(lambda: self._on_button_click("LOFA_CANCEL"))
-
-        btn_emergency = QPushButton("🚨 EMERGENCY SCRAM")
+        btn_emergency = QPushButton("🚨 SCRAM DARURAT")
         btn_emergency.setProperty("emphasis", "danger")
-        btn_emergency.setMinimumHeight(48)
+        btn_emergency.setProperty("sys_op", "true")
+        btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
 
-        sys_layout.addWidget(btn_start_auto, 0, 0)
-        sys_layout.addWidget(btn_reset, 0, 1)
-        sys_layout.addWidget(btn_lofa_sim, 1, 0)
-        sys_layout.addWidget(btn_lofa_cancel, 1, 1)
-        sys_layout.addWidget(btn_emergency, 2, 0, 1, 2)
+        sys_layout.addWidget(btn_start_auto)
+        sys_layout.addWidget(btn_reset)
+        sys_layout.addWidget(btn_emergency)
         column.addWidget(sys_group)
 
         return column
@@ -570,7 +566,7 @@ class TouchPanelBaseWindow(QMainWindow):
 
         # Log action to footer
         if self._footer_label is not None:
-            self._footer_label.setText(f"Triggered action command: {action}")
+            self._footer_label.setText(f"Perintah aksi dipicu: {action}")
         self._on_action(action)
 
         # Update local simulation variables
@@ -586,7 +582,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._active_holds[action] = time.time()
 
         if self._footer_label is not None:
-            self._footer_label.setText(f"Adjusting: {action}...")
+            self._footer_label.setText(f"Menyesuaikan: {action}...")
 
     def _on_button_hold(self, action: str) -> None:
         # In local mode, apply gradual changes during hold timer tick
@@ -606,7 +602,7 @@ class TouchPanelBaseWindow(QMainWindow):
                     logger.error("Failed to end touch for %s: %s", action, e)
 
             if self._footer_label is not None:
-                self._footer_label.setText(f"Adjusted: {action} (duration: {duration:.2f}s)")
+                self._footer_label.setText(f"Telah disesuaikan: {action} (durasi: {duration:.2f}d)")
 
     def _on_action(self, action: str) -> None:
         """Kept for backward compatibility and logging."""
@@ -622,28 +618,30 @@ class TouchPanelBaseWindow(QMainWindow):
             return
 
         if action == "PUMP_PRIMARY_ON":
-            self.sim_pump_primary = 1
+            self.target_pump_primary = 1.0
         elif action == "PUMP_PRIMARY_OFF":
-            self.sim_pump_primary = 0
+            self.target_pump_primary = 0.0
         elif action == "PUMP_SECONDARY_ON":
-            self.sim_pump_secondary = 1
+            self.target_pump_secondary = 1.0
         elif action == "PUMP_SECONDARY_OFF":
-            self.sim_pump_secondary = 0
+            self.target_pump_secondary = 0.0
         elif action == "PUMP_TERTIARY_ON":
-            self.sim_pump_tertiary = 1
+            self.target_pump_tertiary = 1.0
         elif action == "PUMP_TERTIARY_OFF":
-            self.sim_pump_tertiary = 0
+            self.target_pump_tertiary = 0.0
             
         elif action == "START_AUTO_SIMULATION":
             self.sim_auto_running = True
-            self.sim_mode = "Auto"
-            self.sim_alarm = "None"
+            self.sim_mode = "Otomatis"
+            self.sim_alarm = "Tidak Ada"
         elif action == "LOFA_SIMULATE_PRIMARY":
-            self.sim_alarm = "LOFA PRIMARY ACTIVE!"
-            self.sim_pump_primary = 0
+            self.sim_auto_running = True
+            self.sim_mode = "LOFA Otomatis"
+            self.sim_alarm = "LOFA PRIMER AKTIF!"
+            self.target_pump_primary = 0.0
         elif action == "LOFA_CANCEL":
-            self.sim_alarm = "None"
-            self.sim_pump_primary = 1
+            self.sim_alarm = "Tidak Ada"
+            self.target_pump_primary = 1.0
             
         elif action == "REACTOR_RESET":
             self._init_simulation_state()
@@ -651,10 +649,10 @@ class TouchPanelBaseWindow(QMainWindow):
         elif action == "EMERGENCY":
             self.sim_emergency = True
             self.sim_mode = "SCRAM"
-            self.sim_alarm = "EMERGENCY SCRAM!"
-            self.sim_pump_primary = 0
-            self.sim_pump_secondary = 0
-            self.sim_pump_tertiary = 0
+            self.sim_alarm = "SCRAM DARURAT!"
+            self.target_pump_primary = 0.0
+            self.target_pump_secondary = 0.0
+            self.target_pump_tertiary = 0.0
             
         elif action == "PRESSURE_UP":
             self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
@@ -690,6 +688,19 @@ class TouchPanelBaseWindow(QMainWindow):
         if self.tick_counter % 5 == 0:
             self.flash_toggle = not self.flash_toggle
 
+        # Pump ramping
+        for pump_attr, target_attr in [
+            ("sim_pump_primary", "target_pump_primary"),
+            ("sim_pump_secondary", "target_pump_secondary"),
+            ("sim_pump_tertiary", "target_pump_tertiary")
+        ]:
+            current = getattr(self, pump_attr, 0.0)
+            target = getattr(self, target_attr, 0.0)
+            if current < target:
+                setattr(self, pump_attr, min(target, current + 0.1))
+            elif current > target:
+                setattr(self, pump_attr, max(target, current - 0.1))
+
         if self.sim_emergency:
             # Drop control rods immediately
             self.sim_safety_rod = max(0, self.sim_safety_rod - 15)
@@ -708,23 +719,40 @@ class TouchPanelBaseWindow(QMainWindow):
             return
 
         if self.sim_auto_running:
-            # Auto mode physics loop
-            # Thermal power stabilizes based on rod position sum
-            rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 3.0
-            target_kw = 450000.0 * (rod_sum / 78.3)
-            self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.1
-            
-            # Turbines follow power output
-            self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
-            
-            # Stabilize pressure
-            self.sim_pressure += (155.5 - self.sim_pressure) * 0.08
-            
-            # Simple temperature sinusoidal oscillations
-            t = time.time()
-            self.sim_fuel_cladding_temp = 420.0 + (self.sim_thermal_kw / 20000.0) + 1.2 * math.sin(t * 0.5)
-            self.sim_coolant_temp_primary = 295.5 + 0.5 * math.sin(t * 0.3)
-            self.sim_coolant_temp_secondary = 252.0 + 0.3 * math.sin(t * 0.25)
+            if self.sim_mode == "LOFA Auto":
+                # LOFA mode physics loop
+                rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 300.0
+                target_kw = 450000.0 * rod_sum
+                # Temperature spikes rapidly due to primary coolant loss
+                self.sim_fuel_cladding_temp += 5.0
+                self.sim_coolant_temp_primary += 3.5
+                
+                if self.sim_fuel_cladding_temp > 650.0:
+                    # Automatic Scram!
+                    self._update_local_simulation("EMERGENCY")
+                    return
+                    
+                self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.05
+                self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
+                self.sim_pressure = min(200.0, self.sim_pressure + 0.5)
+            else:
+                # Auto mode physics loop
+                # Thermal power stabilizes based on rod position sum
+                rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 3.0
+                target_kw = 450000.0 * (rod_sum / 78.3)
+                self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.1
+                
+                # Turbines follow power output
+                self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
+                
+                # Stabilize pressure
+                self.sim_pressure += (155.5 - self.sim_pressure) * 0.08
+                
+                # Simple temperature sinusoidal oscillations
+                t = time.time()
+                self.sim_fuel_cladding_temp = 420.0 + (self.sim_thermal_kw / 20000.0) + 1.2 * math.sin(t * 0.5)
+                self.sim_coolant_temp_primary = 295.5 + 0.5 * math.sin(t * 0.3)
+                self.sim_coolant_temp_secondary = 252.0 + 0.3 * math.sin(t * 0.25)
             
         else:
             # Manual Mode: Slowly decay power if rods are low
@@ -736,7 +764,7 @@ class TouchPanelBaseWindow(QMainWindow):
             if pumps_count == 0:
                 # No coolant flow! Temperature spike warning!
                 self.sim_fuel_cladding_temp += 3.5
-                self.sim_alarm = "COOLANT LOSS FAULT!"
+                self.sim_alarm = "GANGGUAN KEHILANGAN PENDINGIN!"
                 if self.sim_fuel_cladding_temp > 650.0:
                     # Automatic Scram!
                     self._update_local_simulation("EMERGENCY")
@@ -789,7 +817,7 @@ class TouchPanelBaseWindow(QMainWindow):
                         if self.sim_emergency:
                             self.sim_mode = "SCRAM"
                         elif auto_running:
-                            self.sim_mode = "Auto"
+                            self.sim_mode = "Otomatis"
                         else:
                             self.sim_mode = "Manual"
                             
@@ -804,11 +832,11 @@ class TouchPanelBaseWindow(QMainWindow):
                                    state_data.get("lofa_secondary", False) or 
                                    state_data.get("lofa_tertiary", False))
                         if self.sim_emergency:
-                            self.sim_alarm = "EMERGENCY SCRAM!"
+                            self.sim_alarm = "SCRAM DARURAT!"
                         elif is_lofa:
-                            self.sim_alarm = "LOFA ACTIVE!"
+                            self.sim_alarm = "LOFA AKTIF!"
                         else:
-                            self.sim_alarm = "None"
+                            self.sim_alarm = "Tidak Ada"
 
                         self.local_mode = False
                         state_loaded = True
@@ -839,47 +867,61 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _update_ui_displays(self) -> None:
         # 1. Update Pumps Control buttons active styles
-        self._set_button_active(self.btn_pump_p1_on, self.sim_pump_primary == 1)
-        self._set_button_active_off(self.btn_pump_p1_off, self.sim_pump_primary == 0)
-        self._set_button_active(self.btn_pump_p2_on, self.sim_pump_secondary == 1)
-        self._set_button_active_off(self.btn_pump_p2_off, self.sim_pump_secondary == 0)
-        self._set_button_active(self.btn_pump_p3_on, self.sim_pump_tertiary == 1)
-        self._set_button_active_off(self.btn_pump_p3_off, self.sim_pump_tertiary == 0)
+        self._apply_pump_state(self.btn_pump_p1_on, self.btn_pump_p1_off, self.sim_pump_primary)
+        self._apply_pump_state(self.btn_pump_p2_on, self.btn_pump_p2_off, self.sim_pump_secondary)
+        self._apply_pump_state(self.btn_pump_p3_on, self.btn_pump_p3_off, self.sim_pump_tertiary)
 
         # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")
-        self.badge_mode.setStyleSheet("background-color: #ffffff; border: 1px solid #c8cdd2; color: #2c3e50;")
+        self.badge_mode.setStyleSheet("background-color: #2c3e50; border: 2px solid #2c3e50; color: #ffffff;")
         
         if self.local_mode:
             self.badge_connection.setText("LOCAL DEMO")
-            self.badge_connection.setStyleSheet("background-color: #ffb400; border: 1px solid #d99100; color: #ffffff;")
+            self.badge_connection.setStyleSheet("background-color: #ffb400; border: 2px solid #cc9000; color: #ffffff;")
         else:
-            self.badge_connection.setText("SYNCED")
-            self.badge_connection.setStyleSheet("background-color: #3cd21e; border: 1px solid #28a745; color: #ffffff;")
+            self.badge_connection.setText("TERINKRONISASI")
+            self.badge_connection.setStyleSheet("background-color: #3cd21e; border: 2px solid #2da616; color: #ffffff;")
 
         if self.sim_emergency:
-            self.badge_status.setText("SCRAMMED")
-            self.badge_status.setStyleSheet("background-color: #ff3b30; border: 1px solid #dc3545; color: #ffffff;")
-        elif self.sim_alarm != "None":
-            self.badge_status.setText("WARNING")
-            self.badge_status.setStyleSheet("background-color: #ffb400; border: 1px solid #d99100; color: #ffffff;")
+            self.badge_status.setText("SCRAM AKTIF")
+            self.badge_status.setStyleSheet("background-color: #ff3b30; border: 2px solid #cc2f26; color: #ffffff;")
+        elif self.sim_alarm != "Tidak Ada":
+            self.badge_status.setText("PERINGATAN")
+            self.badge_status.setStyleSheet("background-color: #ffb400; border: 2px solid #cc9000; color: #ffffff;")
         else:
-            self.badge_status.setText("SYSTEM OK")
-            self.badge_status.setStyleSheet("background-color: #298ed8; border: 1px solid #1a73e8; color: #ffffff;")
+            self.badge_status.setText("SISTEM NORMAL")
+            self.badge_status.setStyleSheet("background-color: #298ed8; border: 2px solid #1e6fa8; color: #ffffff;")
 
-    def _set_button_active(self, btn: QPushButton, is_active: bool) -> None:
+    def _apply_pump_state(self, btn_on: QPushButton, btn_off: QPushButton, state_val: float) -> None:
         if not _PYQT_AVAILABLE:
             return
-        btn.setProperty("active", "true" if is_active else "false")
-        btn.style().unpolish(btn)
-        btn.style().polish(btn)
-
-    def _set_button_active_off(self, btn: QPushButton, is_active: bool) -> None:
-        if not _PYQT_AVAILABLE:
-            return
-        btn.setProperty("active_off", "true" if is_active else "false")
-        btn.style().unpolish(btn)
-        btn.style().polish(btn)
+            
+        if state_val <= 0.0:  # STOPPED
+            btn_on.setProperty("active", "false")
+            btn_on.setProperty("active_starting", "false")
+            btn_on.setEnabled(True)
+            
+            btn_off.setProperty("active_off", "true")
+            btn_off.setEnabled(False)
+        elif state_val >= 1.0:  # RUNNING
+            btn_on.setProperty("active", "true")
+            btn_on.setProperty("active_starting", "false")
+            btn_on.setEnabled(False)
+            
+            btn_off.setProperty("active_off", "false")
+            btn_off.setEnabled(True)
+        else:  # STARTING
+            btn_on.setProperty("active", "false")
+            btn_on.setProperty("active_starting", "true" if self.flash_toggle else "false")
+            btn_on.setEnabled(False)
+            
+            btn_off.setProperty("active_off", "false")
+            btn_off.setEnabled(False)
+            
+        btn_on.style().unpolish(btn_on)
+        btn_on.style().polish(btn_on)
+        btn_off.style().unpolish(btn_off)
+        btn_off.style().polish(btn_off)
 
     def _progress_bar_style(self, color: str) -> str:
         return f"""
@@ -909,14 +951,14 @@ class TouchPanelBaseWindow(QMainWindow):
         
         /* Groups container styles */
         QGroupBox {
-            font-size: 16px;
+            font-size: 22px;
             font-weight: bold;
-            color: #298ed8;
-            border: 1px solid #c8cdd2;
+            color: #2c3e50;
+            border: 2px solid #969696;
             border-radius: 12px;
-            margin-top: 14px;
+            margin-top: 20px;
             background-color: #ffffff;
-            padding: 6px 10px 10px 10px;
+            padding: 12px 14px 14px 14px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -924,110 +966,129 @@ class TouchPanelBaseWindow(QMainWindow):
             left: 15px;
             padding: 0 8px;
             background-color: #f5f8fa;
+            color: #2c3e50;
         }
 
         QLabel {
-            font-size: 16px;
+            font-size: 20px;
+            font-weight: bold;
             color: #2c3e50;
         }
         QLabel#diagValue {
-            font-size: 17px;
+            font-size: 26px;
             font-weight: bold;
-            color: #2c3e50;
+            color: #3cd21e;
         }
         
         /* Button default styles */
         QPushButton {
             background-color: #ffffff;
-            border: 1px solid #c8cdd2;
+            border: 2px solid #969696;
             border-radius: 8px;
             padding: 10px;
             color: #2c3e50;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: bold;
         }
         QPushButton:hover {
-            background-color: #f1f5f9;
-            border-color: #969696;
+            background-color: #e0e0e0;
+            border-color: #7f8c8d;
         }
         QPushButton:pressed {
-            background-color: #e2e8f0;
+            background-color: #d0d0d0;
             border-color: #298ed8;
         }
         
         /* Hold buttons (Reactor adjustment up/down) pressed styles */
         HoldButton:pressed {
-            background-color: #00b4d8;
-            border-color: #0077b6;
+            background-color: #298ed8;
+            border-color: #1e6fa8;
             color: #ffffff;
         }
 
         /* Active pump control button custom states */
-        QPushButton[active="true"] {
+        QPushButton:disabled {
+            background-color: #e2e8f0;
+            border: 2px solid #cbd5e1;
+            color: #94a3b8;
+        }
+        QPushButton[active="true"], QPushButton[active="true"]:disabled {
             background-color: #3cd21e;
-            border: 1px solid #28a745;
+            border: 2px solid #2da616;
             color: #ffffff;
         }
-        QPushButton[active_off="true"] {
+        QPushButton[active_starting="true"], QPushButton[active_starting="true"]:disabled {
+            background-color: #ffb400;
+            border: 2px solid #cc9000;
+            color: #ffffff;
+        }
+        QPushButton[active_off="true"], QPushButton[active_off="true"]:disabled {
             background-color: #ff3b30;
-            border: 1px solid #dc3545;
+            border: 2px solid #cc2f26;
             color: #ffffff;
         }
 
         /* Accent classes */
         QPushButton[emphasis="primary"] {
             background-color: #298ed8;
-            border: 1px solid #1a73e8;
+            border: 2px solid #1e6fa8;
             color: #ffffff;
         }
         QPushButton[emphasis="primary"]:hover {
-            background-color: #1a73e8;
+            background-color: #1e6fa8;
         }
 
         QPushButton[emphasis="secondary"] {
             background-color: #7f8c8d;
-            border: 1px solid #5f6c6d;
+            border: 2px solid #636e6f;
             color: #ffffff;
         }
         QPushButton[emphasis="secondary"]:hover {
-            background-color: #5f6c6d;
+            background-color: #636e6f;
         }
 
         QPushButton[emphasis="warning"] {
             background-color: #ffb400;
-            border: 1px solid #d99100;
+            border: 2px solid #cc9000;
             color: #ffffff;
         }
         QPushButton[emphasis="warning"]:hover {
-            background-color: #d99100;
+            background-color: #cc9000;
         }
 
         QPushButton[emphasis="danger"] {
             background-color: #ff3b30;
-            border: 2px solid #b91c1c;
+            border: 2px solid #cc2f26;
             color: #ffffff;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
         }
         QPushButton[emphasis="danger"]:hover {
-            background-color: #d32f2f;
+            background-color: #cc2f26;
+        }
+
+        /* System Operations large buttons */
+        QPushButton[sys_op="true"] {
+            font-size: 26px;
+            padding: 16px;
+            border-radius: 12px;
         }
 
         /* Header frame & title typography */
         QFrame#headerFrame {
             background-color: #ffffff;
-            border: 1px solid #c8cdd2;
+            border: 2px solid #969696;
             border-radius: 10px;
         }
         QLabel#titleLabel {
-            color: #298ed8;
-            font-size: 23px;
+            color: #2c3e50;
+            font-size: 28px;
             font-weight: bold;
             letter-spacing: 0.5px;
         }
         QLabel#subtitleLabel {
             color: #7f8c8d;
-            font-size: 13px;
+            font-size: 18px;
             font-weight: bold;
         }
         
@@ -1035,23 +1096,23 @@ class TouchPanelBaseWindow(QMainWindow):
         QLabel#badgeMode, QLabel#badgeStatus, QLabel#badgeConnection {
             padding: 6px 12px;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: bold;
             color: #ffffff;
-            border: 1px solid #c8cdd2;
-            background-color: #ffffff;
-            color: #2c3e50;
+            border: 2px solid #969696;
+            background-color: #2c3e50;
         }
 
         /* Footer frame styling */
         QFrame#footerFrame {
             background-color: #ffffff;
-            border: 1px solid #c8cdd2;
+            border: 2px solid #969696;
             border-radius: 8px;
         }
         QLabel#footerLabel {
-            color: #2c3e50;
-            font-size: 14px;
+            color: #7f8c8d;
+            font-size: 18px;
+            font-weight: bold;
         }
         """
 

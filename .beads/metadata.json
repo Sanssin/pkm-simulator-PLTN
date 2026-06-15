@@ -1,7 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
+  "dolt_mode": "embedded",
   "dolt_database": "pkm_simulator_PLTN",
   "project_id": "4d9f36b0-1771-45f2-8366-357cd80fde80"
 }

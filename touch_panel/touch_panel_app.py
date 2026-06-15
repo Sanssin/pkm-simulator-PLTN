@@ -142,12 +142,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.describe_layout:
         spec = get_layout_spec()
-        print("PLTN Touch Panel Layout")
-        print(f"Title: {spec.title}")
-        print(f"Subtitle: {spec.subtitle}")
-        print(f"Top badges: {', '.join(spec.top_badges)}")
-        print(f"Control groups: {len(spec.control_groups)}")
-        print(f"Status cards: {len(spec.status_cards)}")
+        print("Tata Letak Panel Sentuh PLTN")
+        print(f"Judul: {spec.title}")
+        print(f"Subjudul: {spec.subtitle}")
+        print(f"Lencana Atas: {', '.join(spec.top_badges)}")
+        print(f"Grup Kontrol: {len(spec.control_groups)}")
+        print(f"Kartu Status: {len(spec.status_cards)}")
         return 0
 
     if args.launch:
@@ -155,14 +155,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     checker = TouchPanelSetupChecker()
     results = checker.run()
-    print("PLTN Touch Panel Setup Check")
+    print("Pemeriksaan Persiapan Panel Sentuh PLTN")
     print(format_results(results))
     print("")
     all_ok = all(result.is_ok for result in results)
     if all_ok:
-        print("Touch panel setup check completed without errors.")
+        print("Pemeriksaan persiapan panel sentuh selesai tanpa kesalahan.")
         return 0
-    print("Touch panel setup check found blocking errors.")
+    print("Pemeriksaan persiapan panel sentuh menemukan kesalahan kritis.")
     return 1
 
 
