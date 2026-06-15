@@ -1043,7 +1043,7 @@ class TouchPanelBaseWindow(QMainWindow):
                         state_loaded = True
                         break
                 except Exception as e:
-                    logger.debug("Failed reading state from %s: %s", path, e)
+                    logger.error("Failed reading state from %s: %s", path, e)
 
         if not state_loaded:
             # Switch back to local demo sandbox
