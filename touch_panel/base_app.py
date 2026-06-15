@@ -644,12 +644,6 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
         
-        btn_start_auto = QPushButton("Simulasi Otomatis")
-        btn_start_auto.setProperty("emphasis", "primary")
-        btn_start_auto.setProperty("sys_op", "true")
-        btn_start_auto.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_start_auto.clicked.connect(lambda: self._on_button_click("START_AUTO_SIMULATION"))
-        
         btn_reset = QPushButton("ATUR ULANG PANEL")
         btn_reset.setProperty("emphasis", "secondary")
         btn_reset.setProperty("sys_op", "true")
@@ -662,7 +656,6 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
 
-        sys_layout.addWidget(btn_start_auto)
         sys_layout.addWidget(btn_lofa_sim)
         sys_layout.addWidget(btn_reset)
         sys_layout.addWidget(btn_emergency)
