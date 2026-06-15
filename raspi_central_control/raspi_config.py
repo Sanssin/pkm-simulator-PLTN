@@ -12,7 +12,7 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 # Output Pins
 BUZZER_PIN = 4           # GPIO 4 for passive buzzer alarm (software PWM) - dipindah dari 22
 LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
-LED_CHERENKOV_PIN = 12   # GPIO 12 for Cherenkov Blue LED effect via 74HC245N (PWM)
+LED_CHERENKOV_PIN = 16   # GPIO 16 for Cherenkov Blue LED effect via 74HC245N (PWM)
 LED_RELIEF_GREEN_PIN = 5  # GPIO 5 for Relief Valve Safe (Green)
 LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red)
 
