@@ -948,14 +948,34 @@ class VideoDisplayApp:
         status_color = self.COLOR_SUCCESS
         status_text_color = (255, 255, 255)
         
-        if current_pressure > 180 or core_temp > 500:
+        press_crit = current_pressure > 180
+        temp_crit = core_temp > 500
+        press_warn = current_pressure > 160
+        temp_warn = core_temp > 400
+        
+        if press_crit and temp_crit:
             status_color = self.COLOR_ERROR
-            status_text = "BAHAYA: SISTEM KRITIS"
-            if blink_on:
-                status_color = (200, 0, 0)
-        elif current_pressure > 160 or core_temp > 400:
+            status_text = "BAHAYA: SUHU & TEKANAN KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif press_crit:
+            status_color = self.COLOR_ERROR
+            status_text = "BAHAYA: TEKANAN KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif temp_crit:
+            status_color = self.COLOR_ERROR
+            status_text = "BAHAYA: SUHU KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif press_warn and temp_warn:
             status_color = self.COLOR_WARNING
-            status_text = "PERINGATAN: SUHU/TEKANAN TINGGI"
+            status_text = "PERINGATAN: SUHU & TEKANAN TINGGI"
+            status_text_color = (0, 0, 0)
+        elif press_warn:
+            status_color = self.COLOR_WARNING
+            status_text = "PERINGATAN: TEKANAN TINGGI"
+            status_text_color = (0, 0, 0)
+        elif temp_warn:
+            status_color = self.COLOR_WARNING
+            status_text = "PERINGATAN: SUHU TINGGI"
             status_text_color = (0, 0, 0)
             
         relief_open = state.get("relief_valve_open", False)

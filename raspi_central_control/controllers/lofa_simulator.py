@@ -76,6 +76,11 @@ class LOFASimulator:
         # thermal_kw typically reaches up to 300,000 kW in full power simulation.
         heat_generation_rate = state.thermal_kw * 0.00038
         
+        # Pengaruh Pressurizer ke Suhu: Kompresi adiabatik dan pemanas pressurizer 
+        # memberikan sedikit tambahan energi panas ke sistem.
+        pressure_heating = state.pressure * 0.002  # Faktor kecil
+        heat_generation_rate += pressure_heating
+        
         # 2. Cooling from Pumps
         cooling_efficiency = 0.005  # Passive ambient cooling
         if state.pump_primary_status == PUMP_ON: cooling_efficiency += 0.25
