@@ -43,73 +43,53 @@ class LOFASimulator:
         if dt <= 0:
             return
             
-        # 0. Check LOFA Conditions per pump
-        lofa_detected_now = False
-        
-        if state.pump_primary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
-            if not state.lofa_primary:
-                state.lofa_primary = True
-                logger.critical("⚠️ LOFA PRIMARY DETECTED! Primary pump failed while reactor is active!")
-                lofa_detected_now = True
-        else:
-            state.lofa_primary = False
-            
-        if state.pump_secondary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
-            if not state.lofa_secondary:
-                state.lofa_secondary = True
-                logger.critical("⚠️ LOFA SECONDARY DETECTED! Secondary pump failed while reactor is active!")
-                lofa_detected_now = True
-        else:
-            state.lofa_secondary = False
-            
-        if state.pump_tertiary_status != PUMP_ON and state.thermal_kw > self.lofa_power_threshold:
-            if not state.lofa_tertiary:
-                state.lofa_tertiary = True
-                logger.critical("⚠️ LOFA TERTIARY DETECTED! Tertiary pump failed while reactor is active!")
-                lofa_detected_now = True
-        else:
-            state.lofa_tertiary = False
-            
-        # If any new LOFA is detected, trigger SCRAM immediately
-        if lofa_detected_now and not state.emergency_active:
-            logger.critical("Initiating EMERGENCY SCRAM due to immediate LOFA condition!")
-            if self.trigger_scram:
-                self.trigger_scram()
-                
+        # 0. LOFA Mitigation: Pressurizer Relief & Spray
+        if state.pressure > 165.0:
+            if not state.relief_valve_open:
+                state.relief_valve_open = True
+                logger.warning("🔺 Pressurizer Relief Valve OPENED (Pressure > 165 bar)")
+        elif state.pressure < 155.0:
+            if state.relief_valve_open:
+                state.relief_valve_open = False
+                logger.info("✅ Pressurizer Relief Valve CLOSED (Pressure < 155 bar)")
+
+        if state.temperature_coolant_primary > 340.0:
+            if not state.spray_active:
+                state.spray_active = True
+                logger.warning("💦 Pressurizer Spray ACTIVATED (Coolant > 340°C)")
+        elif state.temperature_coolant_primary < 320.0:
+            if state.spray_active:
+                state.spray_active = False
+                logger.info("✅ Pressurizer Spray DEACTIVATED (Coolant < 320°C)")
+
         # 1. Heat Generation from Core
-        # thermal_kw typically reaches up to 300,000 kW in full power simulation (not 3000 kW).
-        # We use a scaling factor of 0.00038 so that at 100% power with all 3 pumps running,
-        # the temperature stabilizes around 275°C. If a pump fails, it exceeds 300°C and triggers SCRAM.
+        # thermal_kw typically reaches up to 300,000 kW in full power simulation.
         heat_generation_rate = state.thermal_kw * 0.00038
         
         # 2. Cooling from Pumps
-        # Each pump provides a different amount of cooling capacity based on its physical role:
-        # - Primary: Circulates coolant through core (highest impact, 0.25)
-        # - Secondary: Steam generator heat sink (medium impact, 0.12)
-        # - Tertiary: Condenser heat sink (lowest impact, 0.08)
         cooling_efficiency = 0.005  # Passive ambient cooling
         if state.pump_primary_status == PUMP_ON: cooling_efficiency += 0.25
         if state.pump_secondary_status == PUMP_ON: cooling_efficiency += 0.12
         if state.pump_tertiary_status == PUMP_ON: cooling_efficiency += 0.08
+        
+        if state.spray_active:
+            cooling_efficiency += 0.15  # Extra cooling from spray
+
         cooling_rate = (state.temperature_core - self.ambient_temp) * cooling_efficiency
         
         # 3. Calculate Core Temperature change
         delta_temp = (heat_generation_rate - cooling_rate) * dt
         
-        # Update state (assuming caller holds the lock via StateManager)
         new_core_temp = max(self.ambient_temp, state.temperature_core + delta_temp)
         state.temperature_core = new_core_temp
         
-        # Coolant temperature follows core temperature but with some lag and lower max
         state.temperature_fuel_cladding = state.temperature_core * 0.95 + self.ambient_temp * 0.05
         
-        # Primary coolant takes heat from cladding
         if state.pump_primary_status == PUMP_ON:
             state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.85
         else:
             state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.4
             
-        # Secondary coolant takes heat from primary
         if state.pump_secondary_status == PUMP_ON:
             state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.7
         else:
@@ -117,10 +97,73 @@ class LOFASimulator:
             
         state.temperature_coolant = state.temperature_coolant_primary
         
-        # 4. Check for LOFA condition (SCRAM Trigger)
-        if state.temperature_core >= self.max_core_temp:
-            if not state.emergency_active:
-                logger.critical(f"⚠️ LOFA DETECTED! Core Temp {state.temperature_core:.1f}°C > {self.max_core_temp}°C")
-                logger.critical("Initiating EMERGENCY SCRAM due to Loss of Flow Accident!")
-                if self.trigger_scram:
-                    self.trigger_scram()
+        # 4. Pressure Dynamics
+        pressure_generation = (delta_temp * 0.5) if delta_temp > 0 else (delta_temp * 0.2)
+        if state.relief_valve_open:
+            pressure_generation -= 1.5 * dt  # Relieve pressure more slowly (1.5 bar/sec)
+            
+        state.pressure = max(0.0, state.pressure + pressure_generation)
+
+        # 5. Condenser pressure logic for tertiary pump
+        if state.pump_tertiary_status != PUMP_ON and state.thermal_kw > 10.0:
+            state.condenser_pressure += 0.01 * dt
+        else:
+            state.condenser_pressure = max(0.0, state.condenser_pressure - 0.05 * dt)
+
+        # 6. Check for LOFA condition & Auto-SCRAM Triggers (per pump logic)
+        scram_reason = None
+        
+        # Only evaluate pump failures if the reactor is actually operating (has some heat)
+        # Otherwise, starting up with pumps off would immediately trigger LOFA
+        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+            # Primary Pump Failure -> Overheat check
+            if state.pump_primary_status != PUMP_ON:
+                if not state.lofa_primary:
+                    state.lofa_primary = True
+                    logger.warning("⚠️ LOFA PRIMARY DETECTED! Primary pump failed.")
+                
+                if state.temperature_fuel_cladding > 900.0:
+                    scram_reason = f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
+                elif state.temperature_coolant_primary > 380.0:
+                    scram_reason = f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+            else:
+                state.lofa_primary = False
+
+            # Secondary Pump Failure -> Overheat check
+            if state.pump_secondary_status != PUMP_ON:
+                if not state.lofa_secondary:
+                    state.lofa_secondary = True
+                    logger.warning("⚠️ LOFA SECONDARY DETECTED! Secondary pump failed.")
+                
+                # SCRAM naturally triggers when primary overheats due to lack of secondary cooling
+                if state.temperature_fuel_cladding > 900.0 or state.temperature_coolant_primary > 380.0:
+                    scram_reason = "Secondary LOFA: Induced Primary Overheat"
+            else:
+                state.lofa_secondary = False
+        else:
+            state.lofa_primary = False
+            state.lofa_secondary = False
+
+        # Tertiary Pump Failure -> Prolonged effect check
+        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+            if state.pump_tertiary_status != PUMP_ON:
+                if not state.lofa_tertiary:
+                    state.lofa_tertiary = True
+                    logger.warning("⚠️ LOFA TERTIARY DETECTED! Tertiary pump failed.")
+                
+                if state.condenser_pressure > 0.5:
+                    scram_reason = f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+            else:
+                state.lofa_tertiary = False
+        else:
+            state.lofa_tertiary = False
+
+        # General Core Overheat
+        if state.temperature_core >= self.max_core_temp and not scram_reason:
+            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= {self.max_core_temp}°C"
+
+        # Execute SCRAM if needed
+        if scram_reason and not state.emergency_active:
+            logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
+            if self.trigger_scram:
+                self.trigger_scram()

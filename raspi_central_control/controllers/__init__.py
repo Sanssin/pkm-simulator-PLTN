@@ -12,6 +12,7 @@ from .state_manager import StateManager, PanelState
 from .interlock_validator import InterlockValidator, PUMP_OFF, PUMP_STARTING, PUMP_ON, PUMP_SHUTTING_DOWN
 from .event_processor import EventProcessor
 from .lofa_simulator import LOFASimulator
+from .pump_controller import PumpController
 
 __all__ = [
     'StateManager', 
@@ -19,6 +20,7 @@ __all__ = [
     'InterlockValidator',
     'EventProcessor',
     'LOFASimulator',
+    'PumpController',
     'PUMP_OFF',
     'PUMP_STARTING', 
     'PUMP_ON',

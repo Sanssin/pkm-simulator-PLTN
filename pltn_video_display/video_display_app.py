@@ -637,12 +637,10 @@ class VideoDisplayApp:
         self.mock_state["safety_rod"] = 0
         self.mock_state["shim_rod"] = 0
         self.mock_state["regulating_rod"] = 0
-        self.mock_state["pump_primary"] = 0
-        self.mock_state["pump_secondary"] = 0
-        self.mock_state["pump_tertiary"] = 0
-        self.mock_mode = "idle"  # Kembali ke IDLE setelah emergency
-        self.user_has_interacted = False  # Reset interaction flag
-        print("  → Emergency: All rods inserted, pumps stopped, returning to IDLE")
+        # Pumps are NOT stopped during emergency (decay heat removal)
+        self.mock_mode = "manual"  # Tetap di MANUAL untuk melihat status
+        self.user_has_interacted = True  # Keep interaction flag True to show status
+        print("  → Emergency: All rods inserted, pumps running, switching to MANUAL")
 
     
     def play_video(self, video_path: str, loop: bool = False):
@@ -657,6 +655,15 @@ class VideoDisplayApp:
         if self.video_process:
             self.stop_video()
         
+        import pwd
+        import os
+        try:
+            target_user = pwd.getpwuid(1000).pw_name
+            target_home = pwd.getpwuid(1000).pw_dir
+        except Exception:
+            target_user = "pi"
+            target_home = "/home/pi"
+
         # Check if video file exists
         if not Path(video_path).exists():
             print(f"❌ Video not found: {video_path}")
@@ -675,20 +682,11 @@ class VideoDisplayApp:
             # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
             '--hwdec=auto',             # Hardware decode (4K support)
-            
-            # Use X11 embedding if possible to force it to same screen as PyGame
         ]
-        
-        try:
-            wm_info = pygame.display.get_wm_info()
-            wid = wm_info.get('window')
-            if wid:
-                cmd.append(f'--wid={wid}')
-                print(f"   Embedding mpv into PyGame Window ID: {wid}")
-            else:
-                cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
-        except Exception:
-            cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
+            
+        # Use fullscreen directly on the target display instead of X11 WID embedding
+        # WID embedding on Wayland/RPi often causes the window to disappear or steal focus incorrectly
+        cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
 
         cmd.extend([
             # === AUDIO OUTPUT (HDMI) ===
@@ -702,19 +700,29 @@ class VideoDisplayApp:
         
         if loop:
             cmd.insert(1, '--loop=inf')
+            
+        # If running as root (e.g. systemd service), run mpv as the normal user
+        # to avoid XDG_RUNTIME_DIR ownership errors
+        if os.geteuid() == 0:
+            print(f"   Running as root. Dropping privileges to user: {target_user} for mpv")
+            cmd = ['sudo', '-u', target_user] + cmd
         
         try:
             # Set environment for mpv
             env = {
                 'DISPLAY': ':0',
-                # 'WAYLAND_DISPLAY': 'wayland-0', # Removed to allow X11 WID embedding to work
+                'WAYLAND_DISPLAY': 'wayland-0', # Re-enabled for native Wayland performance
                 'XDG_RUNTIME_DIR': '/run/user/1000',
                 'AUDIODEV': 'hw:1,0'    # Force HDMI audio device
             }
             
+            # Combine current os.environ with our custom env variables
+            process_env = os.environ.copy()
+            process_env.update(env)
+            
             self.video_process = subprocess.Popen(
                 cmd,
-                env=env,
+                env=process_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -1000,7 +1008,7 @@ class VideoDisplayApp:
             logo_small_poltek = pygame.transform.smoothscale(self.logo_poltek, self.logo_size_small)
             self.screen.blit(logo_small_poltek, (self.width - self.logo_size_small[0] - margin_x, header_y))
         
-        header_title = self.font_title.render("ALAT PERGA PLTN TIPE PWR", True, self.COLOR_TEXT)
+        header_title = self.font_title.render("ALAT PERAGA PLTN TIPE PWR", True, self.COLOR_TEXT)
         self.screen.blit(header_title, header_title.get_rect(center=(self.width//2, header_y + int(40 * self.scale))))
         
         line_y = header_y + int(120 * self.scale)
@@ -1685,8 +1693,14 @@ class VideoDisplayApp:
                 # Force AUTO mode
                 if self.display_mode != DisplayMode.AUTO_VIDEO:
                     print("🎬 Switching to AUTO VIDEO mode")
-                    video_path = str(Path(__file__).parent / "assets" / "penjelasan.mp4")
-                    self.play_video(video_path, loop=True)
+                    import pwd
+                    try:
+                        target_home = pwd.getpwuid(1000).pw_dir
+                    except Exception:
+                        target_home = "/home/pi"
+                    video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
+                    # Video is now handled by raspi_main_panel.py subprocess!
+                    # self.play_video(video_path, loop=True)
                     self.display_mode = DisplayMode.AUTO_VIDEO
                 
                 # Show overlay in test mode
@@ -1759,16 +1773,16 @@ class VideoDisplayApp:
             self.current_step = 0
             # Don't return here, continue to draw manual guide
         
-        # MODE 1: EMERGENCY - Always return to IDLE
+        # MODE 1: EMERGENCY - Switch to MANUAL to show real-time physics updates
         if emergency:
-            if self.display_mode != DisplayMode.IDLE:
-                print("🚨 Emergency detected - returning to IDLE")
+            if self.display_mode != DisplayMode.MANUAL_GUIDE:
+                print("🚨 Emergency detected - switching to MANUAL to show status")
                 self.stop_video()
-                self.display_mode = DisplayMode.IDLE
-                self.user_has_interacted = False
-                self.auto_complete_time = None
-                self._clear_manual_flag()
-            self.draw_idle_screen()
+                self.display_mode = DisplayMode.MANUAL_GUIDE
+                self.user_has_interacted = True
+            
+            # Draw the manual guide to show status, then add a SCRAM overlay if needed
+            self.draw_manual_guide(state)
             return
         
         # MODE 2: AUTO SIMULATION - Play video
@@ -1776,8 +1790,14 @@ class VideoDisplayApp:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
                 # Use video from assets folder (production ready)
-                video_path = str(Path(__file__).parent / "assets" / "penjelasan.mp4")
-                self.play_video(video_path, loop=True)
+                import pwd
+                try:
+                    target_home = pwd.getpwuid(1000).pw_dir
+                except Exception:
+                    target_home = "/home/pi"
+                video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
+                # Video is now handled by raspi_main_panel.py subprocess!
+                # self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
@@ -1860,6 +1880,17 @@ def main():
     
     args = parser.parse_args()
     
+    # [CPU-033] Fine-tune priorities: Pin UI to Core 2 & 3
+    try:
+        import psutil
+        import platform
+        p = psutil.Process()
+        if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
+        if hasattr(p, 'nice'):
+            p.nice(getattr(psutil, 'NORMAL_PRIORITY_CLASS', 32) if platform.system() == 'Windows' else 0)
+    except Exception:
+        pass
+        
     # Run application
     app = VideoDisplayApp(
         test_mode=args.test,

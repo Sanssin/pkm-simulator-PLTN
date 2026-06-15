@@ -56,6 +56,7 @@ class EventProcessor:
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
+                 lofa_sequence = None,
                  buzzer = None):
         """
         Initialize EventProcessor.
@@ -71,8 +72,12 @@ class EventProcessor:
         self._state_manager = state_manager
         self._event_queue = event_queue
         self._interlock_validator = interlock_validator
+        
+        from controllers.rod_controller import RodController
+        self._rod_controller = RodController(self._interlock_validator)
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
+        self._lofa_sequence = lofa_sequence
         self._buzzer = buzzer
         
         self._running = False
@@ -210,75 +215,35 @@ class EventProcessor:
             elif event == ButtonEvent.PUMP_TERTIARY_OFF:
                 if state.pump_tertiary_status == PUMP_ON:
                     state.pump_tertiary_status = PUMP_SHUTTING_DOWN
+                    
+            # LOFA Simulation events
+            elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
+                if self._lofa_sequence and not self._lofa_sequence.is_running:
+                    # Reset state first
+                    state.reset()
+                    # Start LOFA auto simulation
+                    self._lofa_sequence.start()
+                    logger.info("Automated LOFA simulation sequence started")
+                elif state.pump_primary_status == PUMP_ON:
+                    # If already in manual run, just shut down the pump directly
+                    state.pump_primary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Primary LOFA: Pump shutting down manually")
             
-            # Safety rod events
-            elif event == ButtonEvent.SAFETY_ROD_UP:
-                if not self._interlock_validator.check_rod_movement(state):
-                    logger.warning("INTERLOCK VIOLATION: Cannot raise safety rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
-                    logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
-                                 f"Secondary={state.pump_secondary_status}, "
-                                 f"Tertiary={state.pump_tertiary_status} (need all = 2)")
-                    self._sound_warning()
-                    return
-                state.safety_rod = min(state.safety_rod + 2.5, 100.0)
+            elif event == ButtonEvent.LOFA_SIMULATE_SECONDARY:
+                if state.pump_secondary_status == PUMP_ON:
+                    state.pump_secondary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Secondary LOFA: Pump shutting down")
+                    
+            elif event == ButtonEvent.LOFA_SIMULATE_TERTIARY:
+                if state.pump_tertiary_status == PUMP_ON:
+                    state.pump_tertiary_status = PUMP_SHUTTING_DOWN
+                    logger.warning("Simulating Tertiary LOFA: Pump shutting down")
             
-            elif event == ButtonEvent.SAFETY_ROD_DOWN:
-                # Safety rod must be >= shim and >= regulating
-                new_pos = state.safety_rod - 2.5
-                if new_pos < state.shim_rod or new_pos < state.regulating_rod:
-                    logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
-                    logger.warning(f"   Safety={state.safety_rod:.1f}%, Shim={state.shim_rod:.1f}%, Reg={state.regulating_rod:.1f}%")
-                    logger.warning(f"   Lower Shim/Regulating first, then Safety can follow")
-                    self._sound_warning()
-                    return
-                state.safety_rod = max(new_pos, 0.0)
-            
-            # Shim rod events
-            elif event == ButtonEvent.SHIM_ROD_UP:
-                # Safety rod must be 100% first
-                if state.safety_rod < 100:
-                    logger.warning("SAFETY ROD PRIORITY: Cannot raise shim rod!")
-                    logger.warning(f"   Safety rod must be at 100% first (currently: {state.safety_rod}%)")
-                    logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
-                    self._sound_warning()
-                    return
-                
-                if not self._interlock_validator.check_rod_movement(state):
-                    logger.warning("INTERLOCK VIOLATION: Cannot raise shim rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
-                    logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
-                                 f"Secondary={state.pump_secondary_status}, "
-                                 f"Tertiary={state.pump_tertiary_status} (need all = 2)")
-                    self._sound_warning()
-                    return
-                state.shim_rod = min(state.shim_rod + 2.5, 100.0)
-            
-            elif event == ButtonEvent.SHIM_ROD_DOWN:
-                state.shim_rod = max(state.shim_rod - 2.5, 0.0)
-            
-            # Regulating rod events
-            elif event == ButtonEvent.REGULATING_ROD_UP:
-                # Safety rod must be 100% first
-                if state.safety_rod < 100:
-                    logger.warning("SAFETY ROD PRIORITY: Cannot raise regulating rod!")
-                    logger.warning(f"   Safety rod must be at 100% first (currently: {state.safety_rod}%)")
-                    logger.warning(f"   Correct sequence: Safety rod to 100% → Then shim/regulating rods")
-                    self._sound_warning()
-                    return
-                
-                if not self._interlock_validator.check_rod_movement(state):
-                    logger.warning("INTERLOCK VIOLATION: Cannot raise regulating rod!")
-                    logger.warning(f"   Pressure: {state.pressure:.1f} bar (need >= 140 bar)")
-                    logger.warning(f"   Pumps: Primary={state.pump_primary_status}, "
-                                 f"Secondary={state.pump_secondary_status}, "
-                                 f"Tertiary={state.pump_tertiary_status} (need all = 2)")
-                    self._sound_warning()
-                    return
-                state.regulating_rod = min(state.regulating_rod + 2.5, 100.0)
-            
-            elif event == ButtonEvent.REGULATING_ROD_DOWN:
-                state.regulating_rod = max(state.regulating_rod - 2.5, 0.0)
+            # Rod events are handled by RodController
+            elif event in [ButtonEvent.SAFETY_ROD_UP, ButtonEvent.SAFETY_ROD_DOWN,
+                           ButtonEvent.SHIM_ROD_UP, ButtonEvent.SHIM_ROD_DOWN,
+                           ButtonEvent.REGULATING_ROD_UP, ButtonEvent.REGULATING_ROD_DOWN]:
+                self._rod_controller.process_rod_event(state, event, warning_callback=self._sound_warning)
             
             # Emergency SCRAM
             elif event == ButtonEvent.EMERGENCY:
@@ -304,6 +269,8 @@ class EventProcessor:
                 # Stop auto simulation if running
                 if self._auto_simulator and self._auto_simulator.is_running:
                     self._auto_simulator.cancel()
+                if self._lofa_sequence and self._lofa_sequence.is_running:
+                    self._lofa_sequence.cancel()
                 
                 # Reset state
                 state.reset()

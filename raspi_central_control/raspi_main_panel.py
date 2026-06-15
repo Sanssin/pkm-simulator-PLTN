@@ -14,6 +14,13 @@ import os
 import threading
 import json
 from pathlib import Path
+
+# Add current directory to sys.path to ensure absolute imports work regardless of working directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, current_dir)
+sys.path.insert(0, parent_dir)
+
 from typing import Optional
 from queue import Queue
 
@@ -22,14 +29,15 @@ import raspi_config as config
 from raspi_humidifier_control import HumidifierController
 from raspi_buzzer_alarm import BuzzerAlarm
 from raspi_system_health import SystemHealthMonitor
-import cpu_manager
 
 # Import refactored modules
-from controllers import StateManager, PanelState, InterlockValidator, EventProcessor
+from controllers.cpu_manager import CpuManager
+from controllers import StateManager, PanelState, InterlockValidator, EventProcessor, PumpController
 from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
 from io_handlers import ButtonIOHandler, ButtonEvent
 from controllers.actuator_manager import ActuatorManager
+from pltn_video_display.video_player import VideoPlayer
 
 # Try to import GPIO library
 try:
@@ -77,14 +85,18 @@ class PLTNPanelController:
         # Event queue for button presses
         self.button_event_queue = Queue(maxsize=100)
         
-        # State export file for video display
-        self.state_export_file = Path("/tmp/pltn_state.json")
+
+        from io_handlers.state_exporter import StateExporter
+        self.state_exporter = StateExporter(self.state_manager)
         
         # Initialize hardware components
         self._init_hardware()
         
         # Initialize refactored modules
         self._init_modules()
+        
+        # Initialize video player (Thread 9 concept, non-blocking)
+        self.video_player = VideoPlayer()
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller initialized successfully")
@@ -100,7 +112,7 @@ class PLTNPanelController:
         
         # Initialize buzzer
         try:
-            self.buzzer = BuzzerAlarm(pin=config.BUZZER_PIN if hasattr(config, 'BUZZER_PIN') else 22)
+            self.buzzer = BuzzerAlarm(buzzer_pin=config.BUZZER_PIN if hasattr(config, 'BUZZER_PIN') else 22)
             logger.info("✓ Buzzer alarm initialized")
         except Exception as e:
             logger.warning(f"✗ Buzzer failed: {e}")
@@ -167,6 +179,15 @@ class PLTNPanelController:
         )
         logger.info("✓ AutoSimulator initialized")
         
+        # LOFA Sequence
+        from sequences.lofa_sequence import LOFASequence
+        self.lofa_sequence = LOFASequence(self.state_manager)
+        logger.info("✓ LOFASequence initialized")
+        
+        # Pump controller
+        self.pump_controller = PumpController(transition_time=3.0)
+        logger.info("✓ PumpController initialized")
+        
         # Event processor
         self.event_processor = EventProcessor(
             state_manager=self.state_manager,
@@ -174,6 +195,7 @@ class PLTNPanelController:
             interlock_validator=self.interlock_validator,
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
+            lofa_sequence=self.lofa_sequence,
             buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")
@@ -188,9 +210,14 @@ class PLTNPanelController:
         """Thread for polling touch inputs from /tmp/pltn_input.json (50ms cycle)."""
         logger.info("Touch input polling thread started")
         
-        # CPU-012: Configure Touch affinity (Core 1)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        # Configure Touch affinity natively via psutil if possible
+        try:
+            import psutil
+            if hasattr(os, 'gettid'):
+                p = psutil.Process(os.gettid())
+                if hasattr(p, 'cpu_affinity'): p.cpu_affinity([1])
+        except Exception:
+            pass
         
         touch_input_file = Path("/tmp/pltn_input.json")
         last_processed_timestamp = time.time()  # Ignore old events on startup
@@ -246,6 +273,12 @@ class PLTNPanelController:
                                     button_event = ButtonEvent.REACTOR_RESET
                                 elif evt_type == "EMERGENCY":
                                     button_event = ButtonEvent.EMERGENCY
+                                elif evt_type == "LOFA_SIMULATE":
+                                    if target == "PRIMARY": button_event = ButtonEvent.LOFA_SIMULATE_PRIMARY
+                                    elif target == "SECONDARY": button_event = ButtonEvent.LOFA_SIMULATE_SECONDARY
+                                    elif target == "TERTIARY": button_event = ButtonEvent.LOFA_SIMULATE_TERTIARY
+                                elif evt_type == "LOFA_CANCEL":
+                                    button_event = ButtonEvent.REACTOR_RESET
                                     
                                 if button_event is not None:
                                     self.button_event_queue.put(button_event)
@@ -265,7 +298,7 @@ class PLTNPanelController:
             except Exception as e:
                 logger.debug(f"Touch polling error: {e}")
                 
-            time.sleep(0.01)  # Faster polling for smoother touch response
+            time.sleep(0.05)  # 20 FPS is enough for touch polling
             
         logger.info("Touch input polling thread stopped")
     
@@ -273,9 +306,14 @@ class PLTNPanelController:
         """Thread for control logic (50ms cycle)."""
         logger.info("Control logic thread started")
         
-        # Configure Controller affinity (Core 1)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [1])
+        # Configure Control Logic affinity natively via psutil if possible
+        try:
+            import psutil
+            if hasattr(os, 'gettid'):
+                p = psutil.Process(os.gettid())
+                if hasattr(p, 'cpu_affinity'): p.cpu_affinity([1])
+        except Exception:
+            pass
         
         while self.state_manager.running:
             try:
@@ -297,38 +335,27 @@ class PLTNPanelController:
                         state.humid_ct4_cmd = 1 if ct4 else 0
                     
                     # Update pump transition states
-                    current_time = time.time()
-                    pump_transition_time = 3.0
-                    
-                    for pump_name in ['primary', 'secondary', 'tertiary']:
-                        status_attr = f'pump_{pump_name}_status'
-                        transition_attr = f'pump_{pump_name}_transition_start'
-                        
-                        status = getattr(state, status_attr)
-                        transition_start = getattr(state, transition_attr)
-                        
-                        if status == 1:  # STARTING
-                            if transition_start == 0:
-                                setattr(state, transition_attr, current_time)
-                            elif current_time - transition_start >= pump_transition_time:
-                                setattr(state, status_attr, PUMP_ON)
-                                setattr(state, transition_attr, 0)
-                        elif status == 3:  # SHUTTING_DOWN
-                            if transition_start == 0:
-                                setattr(state, transition_attr, current_time)
-                            elif current_time - transition_start >= pump_transition_time:
-                                setattr(state, status_attr, 0)  # OFF
-                                setattr(state, transition_attr, 0)
+                    self.pump_controller.update(state)
                                 
                     # Update LOFA thermodynamics
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
 
+                    # Manage Video Player
+                    if state.auto_sim_running or state.simulation_mode == 'auto':
+                        if not self.video_player.is_playing():
+                            self.video_player.play(loop=True)
+                    else:
+                        if self.video_player.is_playing():
+                            self.video_player.stop()
+
                     # Primary Physics Simulation (runs every 10ms)
                     if True:
-                        avg_rod = (state.shim_rod + state.regulating_rod) / 2.0
-                        if avg_rod > 10.0:
-                            reactor_thermal_capacity = (avg_rod**2) * 90.0 + (state.shim_rod * 150.0) + (state.regulating_rod * 200.0)
+                        # Shim rod has 80% worth, Regulating rod has 20% worth
+                        effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
+                        
+                        if effective_rod > 10.0:
+                            reactor_thermal_capacity = (effective_rod**2) * 90.0
                             reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
                         else:
                             reactor_thermal_capacity = 0.0
@@ -358,7 +385,7 @@ class PLTNPanelController:
                     # Update hardware actuators
                     self.actuator_manager.update_actuators(state)
                 
-                time.sleep(0.01)  # 10ms logic cycle for smoother simulation
+                time.sleep(0.05)  # 20Hz logic cycle (down from 100Hz) to save huge CPU
                 
             except Exception as e:
                 logger.error(f"Control logic error: {e}")
@@ -366,50 +393,9 @@ class PLTNPanelController:
         
         logger.info("Control logic thread stopped")
     
-    def state_export_thread(self):
-        """Export state to JSON for video display."""
-        logger.info("State export thread started")
-        
-        # CPU-013: Configure System IO affinity (Core 0)
-        if hasattr(os, 'gettid'):
-            cpu_manager.set_cpu_affinity(os.gettid(), [0])
-        
-        while self.state_manager.running:
-            try:
-                with self.state_manager as state:
-                    state_dict = {
-                        "timestamp": time.time(),
-                        "mode": state.simulation_mode,
-                        "auto_running": state.auto_sim_running,
-                        "auto_phase": state.auto_sim_phase,
-                        "pressure": float(state.pressure),
-                        "safety_rod": int(state.safety_rod),
-                        "shim_rod": int(state.shim_rod),
-                        "regulating_rod": int(state.regulating_rod),
-                        "pump_primary": int(state.pump_primary_status),
-                        "pump_secondary": int(state.pump_secondary_status),
-                        "pump_tertiary": int(state.pump_tertiary_status),
-                        "thermal_kw": float(state.thermal_kw),
-                        "temperature_core": float(state.temperature_core),
-                        "temperature_coolant": float(state.temperature_coolant),
-                        "turbine_speed": float(state.turbine_speed),
-                        "emergency": bool(state.emergency_active),
-                        "lofa_primary": bool(state.lofa_primary),
-                        "lofa_secondary": bool(state.lofa_secondary),
-                        "lofa_tertiary": bool(state.lofa_tertiary)
-                    }
-                
-                temp_file = self.state_export_file.with_suffix('.tmp')
-                with open(temp_file, 'w') as f:
-                    json.dump(state_dict, f, indent=2)
-                temp_file.replace(self.state_export_file)
-                
-            except Exception as e:
-                logger.error(f"State export error: {e}")
-            
-            time.sleep(0.1)
-        
-        logger.info("State export thread stopped")
+    # ============================================
+    # Background Threads (Moved to modules)
+    # ============================================
     
     # ============================================
     # Main Loop
@@ -425,9 +411,11 @@ class PLTNPanelController:
         # Start all threads
         threads = [
             threading.Thread(target=self.touch_input_polling_thread, daemon=True, name="TouchInputThread"),
-            threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread"),
-            threading.Thread(target=self.state_export_thread, daemon=True, name="StateExportThread"),
+            threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread")
         ]
+        
+        # Start state exporter natively
+        self.state_exporter.start()
         
         for t in threads:
             t.start()
@@ -461,10 +449,10 @@ class PLTNPanelController:
         self.event_processor.stop()
         
         # Cleanup hardware
-        if self.buzzer:
+        if hasattr(self, 'buzzer') and self.buzzer:
             self.buzzer.cleanup()
         
-        if hasattr(self, "actuator_manager"):
+        if hasattr(self, "actuator_manager") and self.actuator_manager:
             self.actuator_manager.cleanup()
         
         logger.info("=" * 60)
@@ -486,6 +474,9 @@ def main():
     """Main entry point."""
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Optimize CPU for this hardware node (Core 0,1 + High Priority)
+    CpuManager.setup_hardware_node()
     
     try:
         controller = PLTNPanelController()
