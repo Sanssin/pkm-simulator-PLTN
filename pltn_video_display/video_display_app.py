@@ -681,7 +681,7 @@ class VideoDisplayApp:
             
             # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
-            '--hwdec=auto',             # Hardware decode (4K support)
+            '--hwdec=no',               # Hardware decode disabled to avoid VAAPI/CUDA errors on RPi4
         ]
             
         # Use fullscreen directly on the target display instead of X11 WID embedding
@@ -690,8 +690,9 @@ class VideoDisplayApp:
 
         cmd.extend([
             # === AUDIO OUTPUT (HDMI) ===
-            '--ao=pipewire',            # Use PipeWire audio server (modern)
-            '--audio-device=pipewire/alsa_output.platform-fef00700.hdmi.hdmi-stereo',  # HDMI audio
+            '--ao=alsa',                # Use ALSA audio server
+            '--audio-device=alsa/hw:1,0',  # HDMI audio
+            '--audio-fallback-to-null=yes',
             '--audio-channels=stereo',  # Stereo output
             '--volume=100',             # Maximum volume
             
