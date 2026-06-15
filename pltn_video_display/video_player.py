@@ -28,6 +28,8 @@ class VideoPlayer:
                 "mpv",
                 filename,
                 "--fullscreen",
+                "--window-maximized=yes",
+                "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
                 "--vo=gpu",
