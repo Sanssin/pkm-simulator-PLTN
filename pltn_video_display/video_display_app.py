@@ -706,7 +706,7 @@ class VideoDisplayApp:
         # to avoid XDG_RUNTIME_DIR ownership errors
         if os.geteuid() == 0:
             print(f"   Running as root. Dropping privileges to user: {target_user} for mpv")
-            cmd = ['sudo', '-u', target_user] + cmd
+            cmd = ['sudo', '-u', target_user, 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000', 'AUDIODEV=hw:1,0'] + cmd
         
         try:
             # Set environment for mpv

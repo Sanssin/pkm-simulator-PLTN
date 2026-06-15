@@ -49,7 +49,7 @@ class VideoPlayer:
             
             # If running as root (e.g. systemd), drop privileges to user pkm for Wayland access
             if os.geteuid() == 0:
-                cmd = ['sudo', '-u', 'pkm'] + cmd
+                cmd = ['sudo', '-u', 'pkm', 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000'] + cmd
                 
             try:
                 self.process = subprocess.Popen(
