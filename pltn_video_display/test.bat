@@ -2,19 +2,46 @@
 REM PLTN Video Display - Development Mode
 REM Updated with 17-button keyboard controls
 
+REM Pastikan working directory adalah folder script ini
+cd /d "%~dp0"
+
 echo ==========================================
 echo PLTN Video Display - Development Mode
 echo ==========================================
 echo.
 
+REM Cari Python executable (py launcher, python, atau python3)
+set PYTHON=
+where py >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON=py
+    goto :check_pygame
+)
+where python >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON=python
+    goto :check_pygame
+)
+where python3 >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON=python3
+    goto :check_pygame
+)
+
+echo [ERROR] Python tidak ditemukan. Pastikan Python sudah terinstall dan ada di PATH.
+pause
+exit /b 1
+
+:check_pygame
 REM Check pygame atau pygame-ce
-py -c "import pygame" 2>nul
+%PYTHON% -c "import pygame" 2>nul
 if errorlevel 1 (
     echo [ERROR] pygame / pygame-ce not installed
     echo    Install: pip install pygame-ce
     pause
     exit /b 1
 ) else (
+    echo [OK] Python ditemukan: %PYTHON%
     echo [OK] pygame installed
 )
 
@@ -51,4 +78,5 @@ echo.
 echo Press any key to start...
 pause >nul
 
-py video_display_app.py --test --windowed
+%PYTHON% video_display_app.py --test --windowed
+exit /b %errorlevel%
