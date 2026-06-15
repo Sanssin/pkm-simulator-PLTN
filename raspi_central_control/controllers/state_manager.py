@@ -68,6 +68,9 @@ class PanelState:
     # Temperatures
     temperature_core: float = 25.0
     temperature_coolant: float = 25.0
+    temperature_fuel_cladding: float = 25.0
+    temperature_coolant_primary: float = 25.0
+    temperature_coolant_secondary: float = 25.0
     
     # Turbine speed from ESP-BC (%)
     turbine_speed: float = 0.0
@@ -85,6 +88,11 @@ class PanelState:
     
     # Emergency state
     emergency_active: bool = False
+    
+    # LOFA specific mitigation
+    condenser_pressure: float = 0.0
+    relief_valve_open: bool = False
+    spray_active: bool = False
     
     # Interlock satisfied flag
     interlock_satisfied: bool = False
@@ -115,6 +123,9 @@ class PanelState:
         self.thermal_kw = 0.0
         self.temperature_core = 25.0
         self.temperature_coolant = 25.0
+        self.temperature_fuel_cladding = 25.0
+        self.temperature_coolant_primary = 25.0
+        self.temperature_coolant_secondary = 25.0
         self.turbine_speed = 0.0
         self.humid_ct1_cmd = 0
         self.humid_ct2_cmd = 0
@@ -124,6 +135,9 @@ class PanelState:
         self.lofa_secondary = False
         self.lofa_tertiary = False
         self.emergency_active = False
+        self.condenser_pressure = 0.0
+        self.relief_valve_open = False
+        self.spray_active = False
         self.interlock_satisfied = False
 
 
