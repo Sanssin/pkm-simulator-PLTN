@@ -325,8 +325,10 @@ class TouchPanelBaseWindow(QMainWindow):
     def _build_hud(self) -> QWidget:
         hud = QWidget()
         hud.setObjectName("hudWidget")
+        self._hud_widget = hud
         layout = QVBoxLayout(hud)
         layout.setAlignment(Qt.AlignCenter)
+        layout.setContentsMargins(0, 0, 0, 0)
         
         title = QLabel("PLTN Simulator")
         title.setObjectName("hudTitle")
@@ -379,7 +381,7 @@ class TouchPanelBaseWindow(QMainWindow):
                 background-color: #047857;
             }
         """)
-        auto_btn.clicked.connect(self._start_auto_mode)
+        auto_btn.clicked.connect(self._show_auto_mode_overlay)
         
         btn_layout.addWidget(start_btn)
         btn_layout.addWidget(auto_btn)
@@ -389,9 +391,103 @@ class TouchPanelBaseWindow(QMainWindow):
         layout.addWidget(subtitle)
         layout.addLayout(btn_layout)
         layout.addStretch()
-        
+
+        self._auto_overlay = QWidget(hud)
+        self._auto_overlay.setObjectName("autoModeOverlay")
+        self._auto_overlay.setVisible(False)
+        self._auto_overlay.setStyleSheet("background-color: rgba(2, 6, 23, 0.72);")
+        self._auto_overlay.setGeometry(0, 0, hud.width(), hud.height())
+
+        overlay_layout = QVBoxLayout(self._auto_overlay)
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.setAlignment(Qt.AlignCenter)
+
+        overlay_card = QWidget(self._auto_overlay)
+        overlay_card.setObjectName("autoModeCard")
+        overlay_card.setStyleSheet("""
+            QWidget#autoModeCard {
+                background-color: rgba(15, 23, 42, 0.94);
+                border: 1px solid rgba(148, 163, 184, 0.35);
+                border-radius: 24px;
+            }
+        """)
+        overlay_card.setFixedSize(560, 260)
+
+        card_layout = QVBoxLayout(overlay_card)
+        card_layout.setContentsMargins(28, 28, 28, 28)
+        card_layout.setSpacing(16)
+
+        overlay_title = QLabel("Mode Otomatis Dipilih")
+        overlay_title.setObjectName("overlayTitle")
+        overlay_title.setAlignment(Qt.AlignCenter)
+        overlay_title.setStyleSheet("font-size: 26px; font-weight: bold; color: #F8FAFC;")
+
+        overlay_text = QLabel("Layar akan berpindah ke simulasi otomatis. Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
+        overlay_text.setObjectName("overlayText")
+        overlay_text.setAlignment(Qt.AlignCenter)
+        overlay_text.setWordWrap(True)
+        overlay_text.setStyleSheet("font-size: 18px; color: #E2E8F0; line-height: 1.4;")
+
+        button_row = QHBoxLayout()
+        button_row.setSpacing(14)
+        button_row.setAlignment(Qt.AlignCenter)
+
+        continue_btn = QPushButton("Lanjutkan")
+        continue_btn.setFixedSize(180, 58)
+        continue_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #10B981;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover { background-color: #059669; }
+            QPushButton:pressed { background-color: #047857; }
+        """)
+        continue_btn.clicked.connect(self._confirm_auto_mode)
+
+        cancel_btn = QPushButton("Batal")
+        cancel_btn.setFixedSize(180, 58)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #475569;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover { background-color: #334155; }
+            QPushButton:pressed { background-color: #1E293B; }
+        """)
+        cancel_btn.clicked.connect(self._cancel_auto_mode)
+
+        button_row.addWidget(cancel_btn)
+        button_row.addWidget(continue_btn)
+
+        card_layout.addStretch()
+        card_layout.addWidget(overlay_title)
+        card_layout.addWidget(overlay_text)
+        card_layout.addLayout(button_row)
+        card_layout.addStretch()
+        overlay_layout.addWidget(overlay_card, 0, Qt.AlignCenter)
+
         hud.setStyleSheet("background-color: #0F172A;")
         return hud
+
+    def _show_auto_mode_overlay(self) -> None:
+        if hasattr(self, '_auto_overlay') and self._auto_overlay is not None:
+            self._auto_overlay.setGeometry(0, 0, self._hud_widget.width(), self._hud_widget.height())
+            self._auto_overlay.setVisible(True)
+            self._auto_overlay.raise_()
+
+    def _cancel_auto_mode(self) -> None:
+        if hasattr(self, '_auto_overlay') and self._auto_overlay is not None:
+            self._auto_overlay.setVisible(False)
+
+    def _confirm_auto_mode(self) -> None:
+        self._cancel_auto_mode()
+        self._start_auto_mode()
 
     def _start_manual_mode(self) -> None:
         self.stacked_widget.setCurrentIndex(1)
@@ -407,6 +503,11 @@ class TouchPanelBaseWindow(QMainWindow):
     def _start_auto_mode(self) -> None:
         self.stacked_widget.setCurrentIndex(1)
         self._on_button_click("START_AUTO_SIMULATION")
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, '_auto_overlay') and self._auto_overlay is not None and hasattr(self, '_hud_widget'):
+            self._auto_overlay.setGeometry(0, 0, self._hud_widget.width(), self._hud_widget.height())
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
