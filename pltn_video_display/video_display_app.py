@@ -1039,14 +1039,14 @@ class VideoDisplayApp:
         sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
         
         temps = [
-            ("Core", core_temp, 350.0),
-            ("Clad", clad_temp, 350.0),
-            ("Prim", prim_temp, 300.0),
-            ("Sec", sec_temp, 250.0)
+            ("Bahan Bakar", core_temp, 350.0),
+            ("Cladding", clad_temp, 350.0),
+            ("Aliran Primer", prim_temp, 300.0),
+            ("Aliran Sekunder", sec_temp, 250.0)
         ]
         
         temp_content_y = temp_y + int(80*self.scale)
-        temp_content_h = temp_h - int(140*self.scale)
+        temp_content_h = temp_h - int(155*self.scale)
         bar_w = int(40 * self.scale)
         spacing = int((right_col_w - (4 * bar_w)) / 5)
         
@@ -1054,13 +1054,22 @@ class VideoDisplayApp:
             bar_x = right_col_x + spacing + i * (bar_w + spacing)
             self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, val, max_val)
             
-            # Label
-            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
-            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+            # Label (Bisa dua baris jika ada spasi)
+            if " " in name:
+                words = name.split(" ")
+                lbl1 = self.font_caption.render(words[0], True, self.COLOR_TEXT_SECONDARY)
+                lbl2 = self.font_caption.render(words[1], True, self.COLOR_TEXT_SECONDARY)
+                self.screen.blit(lbl1, lbl1.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+                self.screen.blit(lbl2, lbl2.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(30*self.scale))))
+                val_y = temp_content_y + temp_content_h + int(52*self.scale)
+            else:
+                lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+                self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(22*self.scale))))
+                val_y = temp_content_y + temp_content_h + int(52*self.scale)
             
             # Value
             val_txt = self.font_small.render(f"{val:.0f}°C", True, self.COLOR_TEXT)
-            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(40*self.scale))))
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, val_y)))
 
         # === KANAN 2: POSISI BATANG KENDALI ===
         rods_y = temp_y + temp_h + panel_gap
