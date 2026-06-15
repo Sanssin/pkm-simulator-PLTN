@@ -864,22 +864,6 @@ class VideoDisplayApp:
         press_val = state.get("pressure", 0)
         press_cx = start_x + (3 * width) // 4
         self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
-        
-        # Pressurizer Status Indicators (Valve & Spray)
-        relief_open = state.get("relief_valve_open", False)
-        spray_active = state.get("spray_active", False)
-        
-        ind_y = gauge_y - int(40 * self.scale)  # Inside the upper part of the gauge
-        
-        if relief_open:
-            pygame.draw.circle(self.screen, self.COLOR_WARNING, (press_cx - int(35 * self.scale), ind_y), int(8 * self.scale))
-            lbl_v = self.font_caption.render("VALVE", True, self.COLOR_WARNING)
-            self.screen.blit(lbl_v, lbl_v.get_rect(center=(press_cx - int(35 * self.scale), ind_y + int(15 * self.scale))))
-            
-        if spray_active:
-            pygame.draw.circle(self.screen, (0, 255, 255), (press_cx + int(35 * self.scale), ind_y), int(8 * self.scale))
-            lbl_s = self.font_caption.render("SPRAY", True, (0, 255, 255))
-            self.screen.blit(lbl_s, lbl_s.get_rect(center=(press_cx + int(35 * self.scale), ind_y + int(15 * self.scale))))
             
         # 2. Bottom Row: Pump Status (Full Width)
         bottom_y = gauge_y + int(240 * self.scale)
@@ -966,19 +950,20 @@ class VideoDisplayApp:
         
         if current_pressure > 180 or core_temp > 500:
             status_color = self.COLOR_ERROR
-            status_text = "!!! BAHAYA: TEKANAN/SUHU KRITIS !!!"
+            status_text = "BAHAYA: SISTEM KRITIS"
             if blink_on:
                 status_color = (200, 0, 0)
         elif current_pressure > 160 or core_temp > 400:
             status_color = self.COLOR_WARNING
-            status_text = "⚠️ PERINGATAN: TEKANAN/SUHU TINGGI"
+            status_text = "PERINGATAN: SUHU/TEKANAN TINGGI"
             status_text_color = (0, 0, 0)
             
         relief_open = state.get("relief_valve_open", False)
-        spray_active = state.get("spray_active", False)
-        mitigasi_text = f"Valve: {'BUKA' if relief_open else 'TUTUP'} | Spray: {'AKTIF' if spray_active else 'MATI'}"
-        mitigasi_color = self.COLOR_WARNING if (relief_open or spray_active) else self.COLOR_BG_PANEL
-        mitigasi_text_color = (0, 0, 0) if (relief_open or spray_active) else self.COLOR_TEXT
+        mitigasi_text = f"Relief Valve: {'BUKA (AKTIF)' if relief_open else 'TUTUP'}"
+        mitigasi_color = self.COLOR_ERROR if relief_open else self.COLOR_BG_PANEL
+        if relief_open and blink_on:
+            mitigasi_color = (200, 0, 0)
+        mitigasi_text_color = (255, 255, 255) if relief_open else self.COLOR_TEXT
         
         lofa_active = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
         lofa_text = "⚠️ SIMULASI LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
