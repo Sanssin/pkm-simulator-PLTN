@@ -866,7 +866,7 @@ class VideoDisplayApp:
         self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
             
         # 2. Bottom Row: Pump Status (Full Width)
-        bottom_y = gauge_y + int(180 * self.scale)
+        bottom_y = gauge_y + int(240 * self.scale)
         bottom_h = height - (bottom_y - start_y)
         
         box_x = start_x + int(10 * self.scale)
@@ -876,7 +876,7 @@ class VideoDisplayApp:
         pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
         
         pump_title = self.font_medium.render("STATUS POMPA PENDINGIN", True, self.COLOR_TEXT)
-        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(25 * self.scale))))
+        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(35 * self.scale))))
         
         pumps = [
             ("Primer", state.get("pump_primary", 0) > 0),
@@ -885,7 +885,8 @@ class VideoDisplayApp:
         ]
         
         segment_w = box_w // 3
-        item_y = bottom_y + int(120 * self.scale)
+        # Center the pump vertically in the remaining space below the title
+        item_y = bottom_y + int(35 * self.scale) + (bottom_h - int(35 * self.scale)) // 2
         
         for idx, (name, is_on) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2

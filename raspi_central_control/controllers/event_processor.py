@@ -218,16 +218,11 @@ class EventProcessor:
                     
             # LOFA Simulation events
             elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
-                if self._lofa_sequence and not self._lofa_sequence.is_running:
-                    # Reset state first
-                    state.reset()
-                    # Start LOFA auto simulation
-                    self._lofa_sequence.start()
-                    logger.info("Automated LOFA simulation sequence started")
-                elif state.pump_primary_status == PUMP_ON:
-                    # If already in manual run, just shut down the pump directly
+                if state.pump_primary_status == PUMP_ON:
                     state.pump_primary_status = PUMP_SHUTTING_DOWN
                     logger.warning("Simulating Primary LOFA: Pump shutting down manually")
+                else:
+                    logger.warning("Cannot simulate Primary LOFA: Pump is not running")
             
             elif event == ButtonEvent.LOFA_SIMULATE_SECONDARY:
                 if state.pump_secondary_status == PUMP_ON:
