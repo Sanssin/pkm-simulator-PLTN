@@ -33,7 +33,6 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                "--profile=fast",
                 "--vo=gpu",
                 "--hwdec=no",
                 "--ao=alsa",
