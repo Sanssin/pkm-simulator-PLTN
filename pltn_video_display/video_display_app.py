@@ -1015,8 +1015,38 @@ class VideoDisplayApp:
         line_y = header_y + int(120 * self.scale)
         pygame.draw.line(self.screen, self.COLOR_BORDER, (margin_x, line_y), (self.width - margin_x, line_y), max(int(2 * self.scale), 1))
         
+        # === STATUS BANNER (Sistem Normal / Peringatan / Bahaya) ===
+        banner_y = line_y + int(15 * self.scale)
+        banner_h = int(60 * self.scale)
+        content_y = banner_y + banner_h + int(20 * self.scale)
+        
+        current_pressure = state.get("pressure", 0)
+        default_temp = state.get("temperature", (current_pressure / 160.0) * 300.0)
+        core_temp = state.get("temperature_core", default_temp)
+        
+        status_text = "SISTEM PLTN NORMAL"
+        status_color = self.COLOR_SUCCESS
+        status_text_color = (255, 255, 255)
+        
+        if current_pressure > 180 or core_temp > 500:
+            status_color = self.COLOR_ERROR
+            status_text = "!!! BAHAYA: TEKANAN ATAU SUHU KRITIS - SEGERA SCRAM !!!"
+            import time
+            if int(time.time() * 2) % 2 == 0:
+                status_color = (200, 0, 0)
+        elif current_pressure > 160 or core_temp > 400:
+            status_color = self.COLOR_WARNING
+            status_text = "⚠️ PERINGATAN: TEKANAN/SUHU TINGGI - SEGERA TURUNKAN"
+            status_text_color = (0, 0, 0)
+            
+        banner_rect = pygame.Rect(margin_x, banner_y, self.width - 2 * margin_x, banner_h)
+        pygame.draw.rect(self.screen, status_color, banner_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, banner_rect, max(int(2 * self.scale), 1), border_radius=int(8 * self.scale))
+        
+        banner_surface = self.font_large.render(status_text, True, status_text_color)
+        self.screen.blit(banner_surface, banner_surface.get_rect(center=(self.width//2, banner_y + banner_h//2)))
+        
         # === MENGHITUNG GRID LAYOUT (Improved proportions) ===
-        content_y = line_y + int(40 * self.scale)
         panel_gap = int(20 * self.scale)  # Gap antar panel (vertikal dan horizontal sama)
         
         # Better column split dengan gap yang sama
@@ -1111,88 +1141,7 @@ class VideoDisplayApp:
             else:
                 y_offset += int(20 * self.scale)  # Spasi untuk baris kosong
 
-        # === FLOATING PRESSURE WARNING OVERLAY === (drawn last, on top of everything)
-        # This appears as a pop-up without shifting the layout
-        current_pressure = state.get("pressure", 0)
-        if current_pressure > 160:
-            # 1. Semi-transparent dark overlay (full screen)
-            overlay = pygame.Surface((self.width, self.height))
-            overlay.set_alpha(180)  # 70% opacity
-            overlay.fill((0, 0, 0))  # Black
-            self.screen.blit(overlay, (0, 0))
-            
-            # 2. Warning box in center
-            box_width = int(1200 * self.scale)
-            box_height = int(500 * self.scale)
-            box_x = (self.width - box_width) // 2
-            box_y = (self.height - box_height) // 2
-            
-            # Determine color and text based on pressure level
-            if current_pressure > 180:
-                box_color = self.COLOR_ERROR  # Red - Danger!
-                warning_title = "!!! BAHAYA !!!"
-                warning_main = "TEKANAN PRESSURIZER TERLALU TINGGI"
-            else:
-                box_color = self.COLOR_WARNING  # Orange - Warning
-                warning_title = "!!! PERINGATAN !!!"
-                warning_main = "TEKANAN PRESSURIZER TINGGI"
-            
-            # Draw warning box
-            box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
-            border_radius = int(15 * self.scale)
-            pygame.draw.rect(self.screen, (255, 255, 255), box_rect, border_radius=border_radius)
-            
-            #Kartu bagian bawah (warna putih)
-            bg_rect = pygame.Rect(box_x, box_y, box_width, box_height)
-            pygame.draw.rect(self.screen, (255, 255, 255), bg_rect, border_radius=border_radius)
-            
-            #Kartu bagian atas (warna kuning)
-            top_rect = pygame.Rect(box_x, box_y, box_width, int(180 * self.scale))
-            pygame.draw.rect(self.screen, box_color, top_rect, border_radius=border_radius)
-            
-            # 3. Warning icon segitiga
-            icon_cx = box_x + box_width // 2 
-            icon_cy = box_y + box_height // 2 - int(140 * self.scale)
-
-            tri_h = int(120 * self.scale)
-            tri_w = int(130 * self.scale)
-
-            p1 = (icon_cx, icon_cy - tri_h // 2 - int(10*self.scale))
-            p2 = (icon_cx - tri_w // 2, icon_cy + tri_h // 2 - int(10*self.scale))
-            p3 = (icon_cx + tri_w // 2, icon_cy + tri_h // 2 - int(10*self.scale))
-
-            pygame.draw.polygon(self.screen, (255, 255, 255), [p1, p2, p3], width=int(5 * self.scale))
-            
-            # Warning icon text "!"
-            icon_text = self.font_display.render("!", True, (255, 255, 255))
-            icon_text_rect = icon_text.get_rect(center=(icon_cx, icon_cy))
-            self.screen.blit(icon_text, icon_text_rect)
-            
-            # 4. Warning title
-            title_y = box_y + int(240 * self.scale)
-            title_surface = self.font_title.render(warning_title, True, self.COLOR_TEXT)
-            title_rect = title_surface.get_rect(center=(self.width // 2, title_y))
-            self.screen.blit(title_surface, title_rect)
-            
-            # 5. Warning main text
-            main_y = box_y + int(290 * self.scale)
-            main_surface = self.font_large.render(warning_main, True, self.COLOR_TEXT)
-            main_rect = main_surface.get_rect(center=(self.width // 2, main_y))
-            self.screen.blit(main_surface, main_rect)
-            
-            # 6. Instruction text
-            instruction_y = box_y + int(360 * self.scale)
-            instruction_text = "Turunkan tekanan segera! (Tekan tombol TEKANAN TURUN)"
-            instruction_surface = self.font_medium.render(instruction_text, True, self.COLOR_TEXT)
-            instruction_rect = instruction_surface.get_rect(center=(self.width // 2, instruction_y))
-            self.screen.blit(instruction_surface, instruction_rect)
-            
-            # 7. Current pressure value
-            value_y = box_y + int(390 * self.scale)
-            value_text = f"Tekanan saat ini: {current_pressure:.2f} bar"
-            value_surface = self.font_body.render(value_text, True, self.COLOR_TEXT)
-            value_rect = value_surface.get_rect(center=(self.width // 2, value_y))
-            self.screen.blit(value_surface, value_rect)
+        # The old floating pressure warning overlay has been replaced by the Status Banner at the top.
         
         pygame.display.flip()
             
