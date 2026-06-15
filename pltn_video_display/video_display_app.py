@@ -865,15 +865,15 @@ class VideoDisplayApp:
         press_cx = start_x + (3 * width) // 4
         self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar", warn_val=160.0, crit_val=180.0)
             
-        # 2. Bottom Row: Pump Status (Full Width)
-        bottom_y = gauge_y + int(240 * self.scale)
-        bottom_h = height - (bottom_y - start_y)
+        # 2. Middle Row: Pump Status (Full Width)
+        bottom_y = gauge_y + int(160 * self.scale)
+        pump_h = int(220 * self.scale)
         
         box_x = start_x + int(10 * self.scale)
         box_w = width - int(20 * self.scale)
-        box_rect = pygame.Rect(box_x, bottom_y, box_w, bottom_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, box_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
+        pump_rect = pygame.Rect(box_x, bottom_y, box_w, pump_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, pump_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, pump_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
         
         pump_title = self.font_medium.render("STATUS POMPA PENDINGIN", True, self.COLOR_TEXT)
         self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(35 * self.scale))))
@@ -886,7 +886,7 @@ class VideoDisplayApp:
         
         segment_w = box_w // 3
         # Center the pump vertically in the remaining space below the title
-        item_y = bottom_y + int(35 * self.scale) + (bottom_h - int(35 * self.scale)) // 2
+        item_y = bottom_y + int(35 * self.scale) + (pump_h - int(35 * self.scale)) // 2
         
         for idx, (name, is_on) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
@@ -910,6 +910,46 @@ class VideoDisplayApp:
             lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
             self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(95 * self.scale))))
+
+        # 3. Bottom Row: PANDUAN OPERASI
+        inst_y = bottom_y + pump_h + int(15 * self.scale)
+        inst_h = height - (inst_y - start_y)
+        if inst_h < int(100 * self.scale):
+            inst_h = int(100 * self.scale)
+            
+        inst_rect = pygame.Rect(box_x, inst_y, box_w, inst_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, inst_rect, border_radius=int(8*self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, inst_rect, max(int(3 * self.scale), 1), border_radius=int(8*self.scale))
+        
+        header_h = int(50*self.scale)
+        header_rect = pygame.Rect(box_x, inst_y, box_w, header_h)
+        pygame.draw.rect(self.screen, self.COLOR_PRIMARY, header_rect, border_top_left_radius=int(8*self.scale), border_top_right_radius=int(8*self.scale))
+        
+        inst_title = self.font_heading.render("PANDUAN OPERASI", True, (255,255,255))
+        self.screen.blit(inst_title, inst_title.get_rect(center=(box_x + box_w//2, inst_y + header_h//2)))
+        
+        step_text = self.get_current_step_instruction(state)
+        y_offset = inst_y + header_h + int(15 * self.scale)
+        x_margin = box_x + int(25*self.scale)
+        max_text_width = box_w - int(50*self.scale)
+        
+        for i, line in enumerate(step_text):
+            if line:
+                if i == 0:
+                    font_to_use = self.font_medium
+                    color_to_use = self.COLOR_TEXT
+                else:
+                    font_to_use = self.font_body
+                    color_to_use = self.COLOR_TEXT_SECONDARY
+                
+                wrapped_lines = self.wrap_text(line, font_to_use, max_text_width)
+                
+                for wrapped_line in wrapped_lines:
+                    text = font_to_use.render(wrapped_line, True, color_to_use)
+                    self.screen.blit(text, (x_margin, y_offset))
+                    y_offset += int(35 * self.scale)
+            else:
+                y_offset += int(15 * self.scale)
 
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
@@ -1102,47 +1142,6 @@ class VideoDisplayApp:
             # Value
             val_txt = self.font_small.render(f"{val:.0f}%", True, self.COLOR_TEXT)
             self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + rod_bar_w//2, rod_content_y + rod_content_h + int(35*self.scale))))
-
-        # === KANAN 3: PANDUAN OPERASI ===
-        inst_y = rods_y + rods_h + panel_gap
-        inst_h = self.height - inst_y - int(40 * self.scale)
-        inst_rect = pygame.Rect(right_col_x, inst_y, right_col_w, inst_h)
-        
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, inst_rect, border_radius=int(8*self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, inst_rect, max(int(3 * self.scale), 1), border_radius=int(8*self.scale))
-        
-        header_h = int(60*self.scale)
-        header_rect = pygame.Rect(right_col_x, inst_y, right_col_w, header_h)
-        pygame.draw.rect(self.screen, self.COLOR_PRIMARY, header_rect, border_top_left_radius=int(8*self.scale), border_top_right_radius=int(8*self.scale))
-        
-        inst_title = self.font_heading.render("PANDUAN OPERASI", True, (255,255,255))
-        self.screen.blit(inst_title, inst_title.get_rect(center=(right_col_x + right_col_w//2, inst_y + header_h//2)))
-        
-        step_text = self.get_current_step_instruction(state)
-        y_offset = inst_y + header_h + int(15 * self.scale)
-        x_margin = right_col_x + int(25*self.scale)
-        max_text_width = right_col_w - int(50*self.scale)  # Margin kiri & kanan
-        
-        for i, line in enumerate(step_text):
-            if line:
-                # Pilih font berdasarkan baris pertama atau baris lainnya
-                if i == 0:
-                    font_to_use = self.font_medium
-                    color_to_use = self.COLOR_TEXT
-                else:
-                    font_to_use = self.font_body
-                    color_to_use = self.COLOR_TEXT_SECONDARY
-                
-                # Bungkus text agar sesuai dengan lebar panel
-                wrapped_lines = self.wrap_text(line, font_to_use, max_text_width)
-                
-                # Gambar setiap baris wrapped text
-                for wrapped_line in wrapped_lines:
-                    text = font_to_use.render(wrapped_line, True, color_to_use)
-                    self.screen.blit(text, (x_margin, y_offset))
-                    y_offset += int(40 * self.scale)  # Jarak antar baris wrapped text
-            else:
-                y_offset += int(20 * self.scale)  # Spasi untuk baris kosong
 
         # The old floating pressure warning overlay has been replaced by the Status Banner at the top.
         
