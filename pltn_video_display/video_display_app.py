@@ -865,44 +865,8 @@ class VideoDisplayApp:
         press_cx = start_x + (3 * width) // 4
         self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar")
             
-        # 2. Control Rods (Batang Kendali)
-        rods_y = start_y + int(310 * self.scale)
-        lbl_rods = self.font_medium.render("Posisi Batang Kendali", True, self.COLOR_TEXT)
-        self.screen.blit(lbl_rods, lbl_rods.get_rect(center=(start_x + width // 2, rods_y)))
-        
-        rods = [
-            ("Safety", state.get("safety_rod", 0)),
-            ("Shim", state.get("shim_rod", 0)),
-            ("Regulating", state.get("regulating_rod", 0))
-        ]
-        
-        rod_bar_w = width - int(220 * self.scale)
-        rod_bar_x = start_x + int(140 * self.scale)
-        bar_h = int(20 * self.scale)
-        
-        for i, (name, val) in enumerate(rods):
-            ry = rods_y + int(30 * self.scale) + i * int(40 * self.scale)
-            
-            # Label
-            lbl = self.font_body.render(f"{name}", True, self.COLOR_TEXT_SECONDARY)
-            self.screen.blit(lbl, lbl.get_rect(right=rod_bar_x - int(10*self.scale), centery=ry + bar_h//2))
-            
-            # Value text
-            val_lbl = self.font_body.render(f"{val:.0f}%", True, self.COLOR_TEXT)
-            self.screen.blit(val_lbl, val_lbl.get_rect(left=rod_bar_x + rod_bar_w + int(10*self.scale), centery=ry + bar_h//2))
-            
-            # Bar
-            bg_rect = pygame.Rect(rod_bar_x, ry, rod_bar_w, bar_h)
-            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
-            
-            f_ratio = min(max(val / 100.0, 0.0), 1.0)
-            f_w = int((rod_bar_w - 4) * f_ratio)
-            if f_w > 0:
-                f_rect = pygame.Rect(rod_bar_x + 2, ry + 2, f_w, bar_h - 4)
-                pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
-            
-        # 4. Bottom Row: Pump Status (Full Width)
-        bottom_y = rods_y + int(160 * self.scale)
+        # 2. Bottom Row: Pump Status (Full Width)
+        bottom_y = gauge_y + int(180 * self.scale)
         bottom_h = height - (bottom_y - start_y)
         
         box_x = start_x + int(10 * self.scale)
@@ -1042,7 +1006,7 @@ class VideoDisplayApp:
 
         # === KANAN 1: MONITOR SUHU (LOFA) ===
         temp_y = content_y
-        temp_h = int(320 * self.scale)
+        temp_h = int(260 * self.scale)
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
         
         # Read temperatures from state (fallback to calculated if not available)
@@ -1076,8 +1040,49 @@ class VideoDisplayApp:
             val_txt = self.font_small.render(f"{val:.0f}°C", True, self.COLOR_TEXT)
             self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(40*self.scale))))
 
-        # === KANAN 2: PANDUAN OPERASI ===
-        inst_y = temp_y + temp_h + panel_gap
+        # === KANAN 2: POSISI BATANG KENDALI ===
+        rods_y = temp_y + temp_h + panel_gap
+        rods_h = int(240 * self.scale)
+        self.draw_boxed_panel(right_col_x, rods_y, right_col_w, rods_h, "POSISI BATANG KENDALI")
+        
+        rods = [
+            ("Safety", state.get("safety_rod", 0)),
+            ("Shim", state.get("shim_rod", 0)),
+            ("Regulating", state.get("regulating_rod", 0))
+        ]
+        
+        rod_content_y = rods_y + int(80*self.scale)
+        rod_content_h = rods_h - int(130*self.scale)
+        rod_bar_w = int(40 * self.scale)
+        rod_spacing = int((right_col_w - (3 * rod_bar_w)) / 4)
+        
+        for i, (name, val) in enumerate(rods):
+            bar_x = right_col_x + rod_spacing + i * (rod_bar_w + rod_spacing)
+            
+            # Background Bar
+            bg_rect = pygame.Rect(bar_x, rod_content_y, rod_bar_w, rod_content_h)
+            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
+            pygame.draw.rect(self.screen, self.COLOR_BORDER, bg_rect, max(int(1 * self.scale), 1), border_radius=int(6 * self.scale))
+            
+            # Fill Bar (from bottom up)
+            f_ratio = min(max(val / 100.0, 0.0), 1.0)
+            f_h = int((rod_content_h - 4) * f_ratio)
+            if f_h > 0:
+                f_y = bg_rect.bottom - 2 - f_h
+                f_rect = pygame.Rect(bar_x + 2, f_y, rod_bar_w - 4, f_h)
+                fill_color = self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS
+                pygame.draw.rect(self.screen, fill_color, f_rect, border_radius=int(4 * self.scale))
+            
+            # Label
+            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + rod_bar_w//2, rod_content_y + rod_content_h + int(15*self.scale))))
+            
+            # Value
+            val_txt = self.font_small.render(f"{val:.0f}%", True, self.COLOR_TEXT)
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + rod_bar_w//2, rod_content_y + rod_content_h + int(35*self.scale))))
+
+        # === KANAN 3: PANDUAN OPERASI ===
+        inst_y = rods_y + rods_h + panel_gap
         inst_h = self.height - inst_y - int(40 * self.scale)
         inst_rect = pygame.Rect(right_col_x, inst_y, right_col_w, inst_h)
         
