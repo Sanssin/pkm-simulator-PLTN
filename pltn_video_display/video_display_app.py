@@ -117,6 +117,10 @@ class VideoDisplayApp:
             
         pygame.init()
         
+        # Set caption SEBELUM membuat window agar Wayfire rule "on created" bisa mendeteksinya!
+        pygame.display.set_caption("PLTN Simulator - Educational Display")
+        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
+        
         # Cek apakah display yang diminta tersedia
         num_displays = pygame.display.get_num_displays()
         print(f"🔍 Found {num_displays} displays. Target: {display_idx}")
@@ -151,7 +155,6 @@ class VideoDisplayApp:
                 self.screen = pygame.display.set_mode((1280, 720))
         
         self.width, self.height = self.screen.get_size()
-        pygame.display.set_caption("PLTN Simulator - Educational Display")
         
         # Calculate scale factor for 4K displays
         # Base design: 1920x1080, actual: could be 3840x2160
