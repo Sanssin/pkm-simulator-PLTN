@@ -265,6 +265,11 @@ class TouchPanelBaseWindow(QMainWindow):
         self.hold_timers: Dict[str, Tuple[QTimer, int]] = {}
         self._active_holds: Dict[str, float] = {}
         
+        # Tick counter and display state
+        self.tick_counter = 0
+        self.flash_toggle = False
+        self.local_mode = True
+        
     def _init_audio(self) -> None:
         self.audio_enabled = False
         self.current_alarm = None
@@ -325,9 +330,6 @@ class TouchPanelBaseWindow(QMainWindow):
             self._play_alarm("LOFA")
         else:
             self._stop_alarm()
-        self.tick_counter = 0
-        self.flash_toggle = False
-        self.local_mode = True
 
     def _build_window(self) -> None:
         if not _PYQT_AVAILABLE:
