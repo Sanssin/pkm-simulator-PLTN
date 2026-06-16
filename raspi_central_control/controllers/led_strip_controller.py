@@ -52,15 +52,18 @@ class LEDSegment:
 
         for i in range(self.length):
             if i < grad_start:
-                gradient_colors[i] = Color(red[0], red[1], red[2])
+                # Awal: Biru (dingin — air masuk)
+                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             elif i <= grad_end:
+                # Tengah: Blend dari Biru ke Merah
                 t = (i - grad_start) / (max(1, grad_len - 1))
-                r = int(red[0] * (1 - t) + blue[0] * t)
-                g = int(red[1] * (1 - t) + blue[1] * t)
-                b = int(red[2] * (1 - t) + blue[2] * t)
+                r = int(blue[0] * (1 - t) + red[0] * t)
+                g = int(blue[1] * (1 - t) + red[1] * t)
+                b = int(blue[2] * (1 - t) + red[2] * t)
                 gradient_colors[i] = Color(r, g, b)
             else:
-                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+                # Akhir: Merah (panas — air keluar)
+                gradient_colors[i] = Color(red[0], red[1], red[2])
                 
         return gradient_colors
 
