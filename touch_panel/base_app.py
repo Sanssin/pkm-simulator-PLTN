@@ -298,10 +298,11 @@ class TouchPanelBaseWindow(QMainWindow):
         
         self.current_alarm = alarm_type
         
-        if alarm_type == "SCRAM" and self.scram_sound:
-            self.scram_sound.play(loops=-1)
-        elif alarm_type == "LOFA" and self.lofa_sound:
-            self.lofa_sound.play(loops=-1)
+        # Audio alarm ditunda selama development agar tidak mengganggu
+        # if alarm_type == "SCRAM" and self.scram_sound:
+        #     self.scram_sound.play(loops=-1)
+        # elif alarm_type == "LOFA" and self.lofa_sound:
+        #     self.lofa_sound.play(loops=-1)
             
     def _stop_alarm(self) -> None:
         if not self.audio_enabled or self.current_alarm is None:
