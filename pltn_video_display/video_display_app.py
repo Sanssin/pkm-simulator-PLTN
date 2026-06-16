@@ -26,6 +26,11 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
+# Force Wayland driver on Linux so app_id is correctly passed to Wayfire
+if sys.platform.startswith('linux'):
+    os.environ['SDL_VIDEODRIVER'] = 'wayland'
+    os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
+
 # Initialize Pygame
 pygame.init()
 
@@ -119,7 +124,6 @@ class VideoDisplayApp:
         
         # Set caption SEBELUM membuat window agar Wayfire rule "on created" bisa mendeteksinya!
         pygame.display.set_caption("PLTN Simulator - Educational Display")
-        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
         
         # Cek apakah display yang diminta tersedia
         num_displays = pygame.display.get_num_displays()
