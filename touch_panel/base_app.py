@@ -211,7 +211,8 @@ class TouchPanelBaseWindow(QMainWindow):
         self._build_window()
         
         # Initialize Audio
-        self._init_audio()
+        # Ditunda selama development — lihat juga _play_alarm()
+        # self._init_audio()
         
         # Setup polling timer
         if _PYQT_AVAILABLE:
