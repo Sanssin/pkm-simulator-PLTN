@@ -108,29 +108,27 @@ class VideoDisplayApp:
     def __init__(self, test_mode: bool = False, fullscreen: bool = True, display_idx: int = 0):
         """
         Initialize video display app
-        
-        Args:
-            test_mode: Jika True, masuk mode tes
-            fullscreen: Jika True, fullscreen
-            display_idx: Indeks monitor untuk fullscreen
         """
         self.test_mode = test_mode
         self.fullscreen = fullscreen
         self.display_idx = display_idx
-        # Menentukan display yang akan digunakan
+        
+        # Set environment variables BEFORE init
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
+        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
             
         pygame.init()
-        
-        # Set caption SEBELUM membuat window agar Wayfire rule "on created" bisa mendeteksinya!
-        pygame.display.set_caption("PLTN Simulator - Educational Display")
         
         # Cek apakah display yang diminta tersedia
         num_displays = pygame.display.get_num_displays()
         print(f"🔍 Found {num_displays} displays. Target: {display_idx}")
         
-        # Jika display_idx tidak ditemukan, hapus environment variable dan coba atur posisi manual
-        if display_idx >= num_displays and num_displays > 0:
+        # Jika menggunakan Wayland, Wayland menyembunyikan topology monitor (selalu lapor 1 monitor)
+        # Jadi fallback X11 (pygame.quit() dsb) jangan dipanggil jika kita menggunakan Wayland,
+        # karena akan menghilangkan set_caption.
+        is_wayland = os.environ.get('SDL_VIDEODRIVER') == 'wayland'
+        
+        if not is_wayland and display_idx >= num_displays and num_displays > 0:
             print(f"⚠️ Display {display_idx} tidak terdeteksi oleh SDL. Fallback ke windowed borderless offset.")
             pygame.quit()
             del os.environ['SDL_VIDEO_DISPLAY_INDEX']
@@ -140,18 +138,27 @@ class VideoDisplayApp:
             os.environ['SDL_VIDEO_WINDOW_POS'] = f"{offset_x},0"
             pygame.init()
             
+            # SELALU set caption tepat sebelum membuat window agar Wayfire bisa membacanya
+            pygame.display.set_caption("PLTN Simulator - Educational Display")
+            
             if self.fullscreen:
                 print(f"🚀 Membuka fallback di koordinat {offset_x},0 dengan mode NOFRAME.")
-                # Gunakan NOFRAME karena FULLSCREEN sering error di xinerama/spanning
-                # Resolusi diatur ke 1920x1080 (standar) atau biarkan sistem menyesuaikan
                 self.screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
             else:
                 self.screen = pygame.display.set_mode((1280, 720))
         else:
+            # SELALU set caption tepat sebelum membuat window agar Wayfire bisa membacanya
+            pygame.display.set_caption("PLTN Simulator - Educational Display")
+            
             # Fullscreen window atau windowed (untuk testing)
             if self.fullscreen:
                 try:
-                    self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=display_idx)
+                    # Di Wayland, kita serahkan sepenuhnya pada Wayfire rule
+                    # Jika menggunakan display_idx, terkadang SDL XWayland error "Invalid display index"
+                    if is_wayland:
+                        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                    else:
+                        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=display_idx)
                 except Exception as e:
                     print(f"⚠️ Error FULLSCREEN Pygame: {e}. Fallback ke NOFRAME.")
                     self.screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
