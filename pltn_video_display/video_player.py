@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # === CONSTANTS ===
 VIDEO_PATH = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
 TARGET_SCREEN_NAME = "HDMI-A-1" # As seen in wlr-randr for the 4K monitor
-AUDIO_DEVICE = "alsa/hw:1,0"    # Based on aplay -l (card 1: vc4hdmi0) or pulse/alsa_output.platform-fef00700.hdmi.hdmi-stereo
+AUDIO_DEVICE = "alsa/plughw:1,0"    # Based on aplay -l (card 1: vc4hdmi0) or pulse/alsa_output.platform-fef00700.hdmi.hdmi-stereo
 
 class VideoPlayer:
     def __init__(self):
@@ -28,8 +28,14 @@ class VideoPlayer:
                 "mpv",
                 filename,
                 "--fullscreen",
-                "--vo=gpu",
-                "--hwdec=auto",
+                "--no-border",
+                "--window-maximized=yes",
+                "--autofit=100%x100%",
+                f"--fs-screen-name={TARGET_SCREEN_NAME}",
+                "--ontop",
+                "--vo=dmabuf-wayland",
+                "--hwdec=v4l2m2m",
+                "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
                 "--keep-open=yes",
@@ -46,7 +52,7 @@ class VideoPlayer:
             
             # If running as root (e.g. systemd), drop privileges to user pkm for Wayland access
             if os.geteuid() == 0:
-                cmd = ['sudo', '-u', 'pkm'] + cmd
+                cmd = ['sudo', '-u', 'pkm', 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000'] + cmd
                 
             try:
                 self.process = subprocess.Popen(

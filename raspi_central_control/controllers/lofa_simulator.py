@@ -29,6 +29,11 @@ class LOFASimulator:
         self.trigger_scram = trigger_scram_callback
         self.lofa_power_threshold = 50.0  # kW threshold to trigger LOFA if pump fails
         
+        # Track if flow was established to prevent false LOFA on startup
+        self.primary_pump_was_on = False
+        self.secondary_pump_was_on = False
+        self.tertiary_pump_was_on = False
+        
         self.last_update_time = time.time()
         
     def update(self, state: PanelState) -> None:
@@ -42,6 +47,11 @@ class LOFASimulator:
         
         if dt <= 0:
             return
+            
+        # Update flow tracking
+        if state.pump_primary_status == PUMP_ON: self.primary_pump_was_on = True
+        if state.pump_secondary_status == PUMP_ON: self.secondary_pump_was_on = True
+        if state.pump_tertiary_status == PUMP_ON: self.tertiary_pump_was_on = True
             
         # 0. LOFA Mitigation: Pressurizer Relief & Spray
         if state.pressure > 165.0:
@@ -65,6 +75,11 @@ class LOFASimulator:
         # 1. Heat Generation from Core
         # thermal_kw typically reaches up to 300,000 kW in full power simulation.
         heat_generation_rate = state.thermal_kw * 0.00038
+        
+        # Pengaruh Pressurizer ke Suhu: Kompresi adiabatik dan pemanas pressurizer 
+        # memberikan sedikit tambahan energi panas ke sistem.
+        pressure_heating = state.pressure * 0.002  # Faktor kecil
+        heat_generation_rate += pressure_heating
         
         # 2. Cooling from Pumps
         cooling_efficiency = 0.005  # Passive ambient cooling
@@ -114,8 +129,9 @@ class LOFASimulator:
         scram_reason = None
         
         # Only evaluate pump failures if the reactor is actually operating (has some heat)
+        # AND flow was established at least once.
         # Otherwise, starting up with pumps off would immediately trigger LOFA
-        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+        if (state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False)) and self.primary_pump_was_on:
             # Primary Pump Failure -> Overheat check
             if state.pump_primary_status != PUMP_ON:
                 if not state.lofa_primary:
@@ -128,7 +144,10 @@ class LOFASimulator:
                     scram_reason = f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
             else:
                 state.lofa_primary = False
+        else:
+            state.lofa_primary = False
 
+        if (state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False)) and self.secondary_pump_was_on:
             # Secondary Pump Failure -> Overheat check
             if state.pump_secondary_status != PUMP_ON:
                 if not state.lofa_secondary:
@@ -141,11 +160,10 @@ class LOFASimulator:
             else:
                 state.lofa_secondary = False
         else:
-            state.lofa_primary = False
             state.lofa_secondary = False
 
         # Tertiary Pump Failure -> Prolonged effect check
-        if state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False):
+        if (state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False)) and self.tertiary_pump_was_on:
             if state.pump_tertiary_status != PUMP_ON:
                 if not state.lofa_tertiary:
                     state.lofa_tertiary = True
@@ -161,6 +179,10 @@ class LOFASimulator:
         # General Core Overheat
         if state.temperature_core >= self.max_core_temp and not scram_reason:
             scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= {self.max_core_temp}°C"
+            
+        # Overpressure SCRAM
+        if state.pressure >= 200.0 and not scram_reason:
+            scram_reason = f"Overpressure: Pressure {state.pressure:.1f} bar >= 200.0 bar"
 
         # Execute SCRAM if needed
         if scram_reason and not state.emergency_active:

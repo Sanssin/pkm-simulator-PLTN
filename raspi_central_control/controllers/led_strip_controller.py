@@ -186,14 +186,19 @@ class LedStripController:
                             self.strip.setPixelColor(seg.start_idx + i, self.color_black)
                 else:
                     # Mode flow: update offset berdasarkan speed
-                    seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
-                    int_offset = int(seg.offset)
-                    
-                    for i in range(seg.length):
-                        # Pola aliran 5 nyala, 5 mati
-                        if ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                            # Pixel nyala, gunakan warna gradien segmen
-                            self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
+                    if seg.speed <= 0.0:
+                        # Jika pompa mati (speed 0), matikan semua LED di segmen ini
+                        for i in range(seg.length):
+                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                    else:
+                        seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
+                        int_offset = int(seg.offset)
+                        
+                        for i in range(seg.length):
+                            # Pola aliran 5 nyala, 5 mati
+                            if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                # Pixel nyala, gunakan warna gradien segmen
+                                self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:

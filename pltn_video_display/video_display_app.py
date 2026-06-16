@@ -112,11 +112,14 @@ class VideoDisplayApp:
         self.test_mode = test_mode
         self.fullscreen = fullscreen
         self.display_idx = display_idx
-        
         # Menentukan display yang akan digunakan
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
             
         pygame.init()
+        
+        # Set caption SEBELUM membuat window agar Wayfire rule "on created" bisa mendeteksinya!
+        pygame.display.set_caption("PLTN Simulator - Educational Display")
+        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
         
         # Cek apakah display yang diminta tersedia
         num_displays = pygame.display.get_num_displays()
@@ -152,7 +155,6 @@ class VideoDisplayApp:
                 self.screen = pygame.display.set_mode((1280, 720))
         
         self.width, self.height = self.screen.get_size()
-        pygame.display.set_caption("PLTN Simulator - Educational Display")
         
         # Calculate scale factor for 4K displays
         # Base design: 1920x1080, actual: could be 3840x2160
@@ -681,7 +683,7 @@ class VideoDisplayApp:
             
             # === VIDEO OUTPUT ===
             '--vo=gpu',                 # Video output: GPU (Wayland compatible)
-            '--hwdec=auto',             # Hardware decode (4K support)
+            '--hwdec=no',               # Hardware decode disabled to avoid VAAPI/CUDA errors on RPi4
         ]
             
         # Use fullscreen directly on the target display instead of X11 WID embedding
@@ -690,8 +692,9 @@ class VideoDisplayApp:
 
         cmd.extend([
             # === AUDIO OUTPUT (HDMI) ===
-            '--ao=pipewire',            # Use PipeWire audio server (modern)
-            '--audio-device=pipewire/alsa_output.platform-fef00700.hdmi.hdmi-stereo',  # HDMI audio
+            '--ao=alsa',                # Use ALSA audio server
+            '--audio-device=alsa/hw:1,0',  # HDMI audio
+            '--audio-fallback-to-null=yes',
             '--audio-channels=stereo',  # Stereo output
             '--volume=100',             # Maximum volume
             
@@ -705,7 +708,7 @@ class VideoDisplayApp:
         # to avoid XDG_RUNTIME_DIR ownership errors
         if os.geteuid() == 0:
             print(f"   Running as root. Dropping privileges to user: {target_user} for mpv")
-            cmd = ['sudo', '-u', target_user] + cmd
+            cmd = ['sudo', '-u', target_user, 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000', 'AUDIODEV=hw:1,0'] + cmd
         
         try:
             # Set environment for mpv
@@ -851,147 +854,64 @@ class VideoDisplayApp:
     def draw_reactor_diagnostic_displays(self, state: Dict, start_x: int, start_y: int, width: int, height: int):
         """Draw Reactor Diagnostic Displays in a hierarchical layout"""
         
-        # 1. Thermal Power Output (Most Prominent - Top)
+        # 1. Gauges Row (Side-by-Side: Power and Pressure)
+        gauge_y = start_y + int(140 * self.scale)
+        
+        # Left Gauge: Thermal Power
         thermal_mw = state.get("thermal_kw", 0.0) / 1000.0
-        gauge_cx = start_x + width // 2
-        gauge_cy = start_y + int(120 * self.scale)
-        self.draw_gauge(gauge_cx, gauge_cy, thermal_mw, 300.0, "Listrik Dihasilkan", "{:.2f} MW")
+        power_cx = start_x + width // 4
+        self.draw_gauge(power_cx, gauge_y, thermal_mw, 300.0, "Listrik Dihasilkan", "{:.2f} MW")
         
-        # 2. Pressurizer (Below Thermal Power)
+        # Right Gauge: Pressurizer
         press_val = state.get("pressure", 0)
-        press_y = start_y + int(220 * self.scale)
-        
-        lbl_press = self.font_medium.render(f"Tekanan Pressurizer: {press_val:.2f} bar", True, self.COLOR_TEXT)
-        self.screen.blit(lbl_press, lbl_press.get_rect(center=(start_x + width // 2, press_y)))
-        
-        bar_w = width - int(80 * self.scale)
-        bar_x = start_x + (width - bar_w) // 2
-        bar_y = press_y + int(25 * self.scale)
-        bar_h = int(20 * self.scale)
-        
-        bar_rect = pygame.Rect(bar_x, bar_y, bar_w, bar_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(6 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(2 * self.scale), 1), border_radius=int(6 * self.scale))
-        
-        fill_ratio = min(max(press_val / 200.0, 0.0), 1.0)
-        fill_w = int((bar_w - 4) * fill_ratio)
-        if fill_w > 0:
-            fill_rect = pygame.Rect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4)
-            pygame.draw.rect(self.screen, self.COLOR_PRIMARY, fill_rect, border_radius=int(4 * self.scale))
+        press_cx = start_x + (3 * width) // 4
+        self.draw_gauge(press_cx, gauge_y, press_val, 200.0, "Tekanan Pressurizer", "{:.2f} bar", warn_val=160.0, crit_val=180.0)
             
-        # 3. Control Rods (Batang Kendali)
-        rods_y = press_y + int(70 * self.scale)
-        lbl_rods = self.font_medium.render("Posisi Batang Kendali", True, self.COLOR_TEXT)
-        self.screen.blit(lbl_rods, lbl_rods.get_rect(center=(start_x + width // 2, rods_y)))
-        
-        rods = [
-            ("Safety", state.get("safety_rod", 0)),
-            ("Shim", state.get("shim_rod", 0)),
-            ("Regulating", state.get("regulating_rod", 0))
-        ]
-        
-        rod_bar_w = width - int(120 * self.scale)
-        rod_bar_x = start_x + (width - rod_bar_w) // 2 + int(30*self.scale)
-        
-        for i, (name, val) in enumerate(rods):
-            ry = rods_y + int(25 * self.scale) + i * int(30 * self.scale)
-            
-            # Label
-            lbl = self.font_body.render(f"{name}", True, self.COLOR_TEXT_SECONDARY)
-            self.screen.blit(lbl, lbl.get_rect(right=rod_bar_x - int(10*self.scale), centery=ry + bar_h//2))
-            
-            # Value text
-            val_lbl = self.font_body.render(f"{val:.0f}%", True, self.COLOR_TEXT)
-            self.screen.blit(val_lbl, val_lbl.get_rect(left=rod_bar_x + rod_bar_w + int(10*self.scale), centery=ry + bar_h//2))
-            
-            # Bar
-            bg_rect = pygame.Rect(rod_bar_x, ry, rod_bar_w, bar_h)
-            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
-            
-            f_ratio = min(max(val / 100.0, 0.0), 1.0)
-            f_w = int((rod_bar_w - 4) * f_ratio)
-            if f_w > 0:
-                f_rect = pygame.Rect(rod_bar_x + 2, ry + 2, f_w, bar_h - 4)
-                pygame.draw.rect(self.screen, self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS, f_rect, border_radius=int(4 * self.scale))
-            
-        # 4. Bottom Row: Pump Status and Active System Alarm (Side-by-side)
-        bottom_y = rods_y + int(130 * self.scale)
+        # 2. Bottom Row: Pump Status (Full Width)
+        bottom_y = gauge_y + int(240 * self.scale)
         bottom_h = height - (bottom_y - start_y)
-        box_w = (width - int(30 * self.scale)) // 2
         
-        # Sub-panel 3.1: Pump Status (Left)
-        left_box_x = start_x + int(10 * self.scale)
-        left_rect = pygame.Rect(left_box_x, bottom_y, box_w, bottom_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, left_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, left_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
+        box_x = start_x + int(10 * self.scale)
+        box_w = width - int(20 * self.scale)
+        box_rect = pygame.Rect(box_x, bottom_y, box_w, bottom_h)
+        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, box_rect, border_radius=int(8 * self.scale))
+        pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
         
-        # Title of Pump sub-panel
-        pump_title = self.font_medium.render("STATUS POMPA", True, self.COLOR_TEXT)
-        self.screen.blit(pump_title, pump_title.get_rect(center=(left_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
+        pump_title = self.font_medium.render("STATUS POMPA PENDINGIN", True, self.COLOR_TEXT)
+        self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(35 * self.scale))))
         
-        # Draw 3 pumps stacked vertically
         pumps = [
             ("Primer", state.get("pump_primary", 0) > 0),
             ("Sekunder", state.get("pump_secondary", 0) > 0),
             ("Tersier", state.get("pump_tertiary", 0) > 0)
         ]
         
-        item_gap = int(22 * self.scale)
-        start_item_y = bottom_y + int(45 * self.scale)
+        segment_w = box_w // 3
+        # Center the pump vertically in the remaining space below the title
+        item_y = bottom_y + int(35 * self.scale) + (bottom_h - int(35 * self.scale)) // 2
         
         for idx, (name, is_on) in enumerate(pumps):
-            item_y = start_item_y + idx * item_gap
-            # Draw status circle indicator
-            circ_color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
-            pygame.draw.circle(self.screen, circ_color, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale))
-            pygame.draw.circle(self.screen, self.COLOR_BORDER, (left_box_x + int(30 * self.scale), item_y), int(7 * self.scale), max(int(1 * self.scale), 1))
+            center_x = box_x + idx * segment_w + segment_w // 2
             
-            # Draw label
-            status_str = "AKTIF" if is_on else "MATI"
-            lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, self.COLOR_TEXT)
-            self.screen.blit(lbl_pump, (left_box_x + int(50 * self.scale), item_y - int(10 * self.scale)))
+            # Check LOFA status for this pump
+            is_lofa = False
+            if name == "Primer" and state.get("lofa_primary", False): is_lofa = True
+            if name == "Sekunder" and state.get("lofa_secondary", False): is_lofa = True
+            if name == "Tersier" and state.get("lofa_tertiary", False): is_lofa = True
             
-        # Sub-panel 3.2: Active System Alarm (Right)
-        right_box_x = start_x + width - box_w - int(10 * self.scale)
-        right_rect = pygame.Rect(right_box_x, bottom_y, box_w, bottom_h)
-        pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, right_rect, border_radius=int(8 * self.scale))
-        pygame.draw.rect(self.screen, self.COLOR_BORDER, right_rect, max(int(1 * self.scale), 1), border_radius=int(8 * self.scale))
-        
-        # Title of Alarm sub-panel
-        alarm_title = self.font_medium.render("ALARM SISTEM AKTIF", True, self.COLOR_TEXT)
-        self.screen.blit(alarm_title, alarm_title.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(20 * self.scale))))
-        
-        # Determine Alarms
-        alarms = []
-        if state.get("emergency", False):
-            alarms.append("EMERGENCY SHUTDOWN")
-        elif state.get("pressure", 0) >= 180.0:
-            alarms.append("TEKANAN KRITIS")
-        elif state.get("pressure", 0) >= 160.0:
-            alarms.append("TEKANAN TINGGI")
+            import time
+            if is_lofa and int(time.time() * 2) % 2 == 0:
+                # Blink effect behind the pump
+                pygame.draw.circle(self.screen, self.COLOR_ERROR, (center_x, item_y), int(55 * self.scale))
+                
+            # Draw the actual pump icon/image
+            self.draw_centrifugal_pump(center_x, item_y, is_on)
             
-        # Check interlock condition
-        pressure_ok = state.get("pressure", 0) >= 140.0
-        pumps_ok = (state.get("pump_primary", 0) > 0 and 
-                    state.get("pump_secondary", 0) > 0 and 
-                    state.get("pump_tertiary", 0) > 0)
-        rods_moved = (state.get("safety_rod", 0) > 0 or 
-                      state.get("shim_rod", 0) > 0 or 
-                      state.get("regulating_rod", 0) > 0)
-                      
-        if rods_moved and not (pressure_ok and pumps_ok):
-            alarms.append("MELANGGAR INTERLOCK")
-            
-        # Render alarms list
-        if not alarms:
-            # Show "SISTEM NORMAL" in Green
-            lbl_normal = self.font_body.render("SISTEM NORMAL", True, self.COLOR_SUCCESS)
-            self.screen.blit(lbl_normal, lbl_normal.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(60 * self.scale))))
-        else:
-            # Render each alarm in Red/Orange
-            for idx, alarm_msg in enumerate(alarms[:3]):  # Limit to 3 alarms to avoid overflow
-                lbl_alarm = self.font_body.render(alarm_msg, True, self.COLOR_ERROR)
-                self.screen.blit(lbl_alarm, lbl_alarm.get_rect(center=(right_box_x + box_w // 2, bottom_y + int(50 * self.scale) + idx * int(22 * self.scale))))
+            # Draw label below the pump
+            status_str = "AKTIF" if is_on else "MATI (GAGAL)" if is_lofa else "MATI"
+            lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
+            lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
+            self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(95 * self.scale))))
 
     def draw_manual_guide(self, state: Dict):
         """Display SCADA/HMI Light Theme Layout"""
@@ -1014,8 +934,83 @@ class VideoDisplayApp:
         line_y = header_y + int(120 * self.scale)
         pygame.draw.line(self.screen, self.COLOR_BORDER, (margin_x, line_y), (self.width - margin_x, line_y), max(int(2 * self.scale), 1))
         
+        # === STATUS BANNER (Sistem Normal / Peringatan / Bahaya) ===
+        banner_y = line_y + int(15 * self.scale)
+        banner_h = int(60 * self.scale)
+        content_y = banner_y + banner_h + int(20 * self.scale)
+        
+        current_pressure = state.get("pressure", 0)
+        default_temp = state.get("temperature", (current_pressure / 160.0) * 300.0)
+        core_temp = state.get("temperature_core", default_temp)
+        
+        import time
+        blink_on = int(time.time() * 2) % 2 == 0
+        
+        status_text = "SISTEM PLTN NORMAL"
+        status_color = self.COLOR_SUCCESS
+        status_text_color = (255, 255, 255)
+        
+        press_crit = current_pressure > 180
+        temp_crit = core_temp > 500
+        press_warn = current_pressure > 160
+        temp_warn = core_temp > 400
+        
+        if press_crit and temp_crit:
+            status_color = self.COLOR_ERROR
+            status_text = "BAHAYA: SUHU & TEKANAN KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif press_crit:
+            status_color = self.COLOR_ERROR
+            status_text = "BAHAYA: TEKANAN KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif temp_crit:
+            status_color = self.COLOR_ERROR
+            status_text = "BAHAYA: SUHU KRITIS"
+            if blink_on: status_color = (200, 0, 0)
+        elif press_warn and temp_warn:
+            status_color = self.COLOR_WARNING
+            status_text = "PERINGATAN: SUHU & TEKANAN TINGGI"
+            status_text_color = (0, 0, 0)
+        elif press_warn:
+            status_color = self.COLOR_WARNING
+            status_text = "PERINGATAN: TEKANAN TINGGI"
+            status_text_color = (0, 0, 0)
+        elif temp_warn:
+            status_color = self.COLOR_WARNING
+            status_text = "PERINGATAN: SUHU TINGGI"
+            status_text_color = (0, 0, 0)
+            
+        relief_open = state.get("relief_valve_open", False)
+        mitigasi_text = f"Relief Valve: {'BUKA (AKTIF)' if relief_open else 'TUTUP'}"
+        mitigasi_color = self.COLOR_ERROR if relief_open else self.COLOR_BG_PANEL
+        if relief_open and blink_on:
+            mitigasi_color = (200, 0, 0)
+        mitigasi_text_color = (255, 255, 255) if relief_open else self.COLOR_TEXT
+        
+        lofa_active = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
+        lofa_text = "⚠️ SIMULASI LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
+        lofa_color = self.COLOR_ERROR if lofa_active else self.COLOR_BG_PANEL
+        if lofa_active and blink_on:
+            lofa_color = (200, 0, 0)
+        lofa_text_color = (255, 255, 255) if lofa_active else self.COLOR_TEXT
+        
+        box_gap = int(15 * self.scale)
+        box_w = (self.width - 2 * margin_x - 2 * box_gap) // 3
+        
+        boxes = [
+            (margin_x, status_color, status_text, status_text_color),
+            (margin_x + box_w + box_gap, mitigasi_color, mitigasi_text, mitigasi_text_color),
+            (margin_x + 2 * (box_w + box_gap), lofa_color, lofa_text, lofa_text_color)
+        ]
+        
+        for bx, bcolor, btext, btcolor in boxes:
+            brect = pygame.Rect(bx, banner_y, box_w, banner_h)
+            pygame.draw.rect(self.screen, bcolor, brect, border_radius=int(8 * self.scale))
+            pygame.draw.rect(self.screen, self.COLOR_BORDER, brect, max(int(2 * self.scale), 1), border_radius=int(8 * self.scale))
+            bsurf = self.font_medium.render(btext, True, btcolor)
+            self.screen.blit(bsurf, bsurf.get_rect(center=(bx + box_w//2, banner_y + banner_h//2)))
+        
         # === MENGHITUNG GRID LAYOUT (Improved proportions) ===
-        content_y = line_y + int(40 * self.scale)
         panel_gap = int(20 * self.scale)  # Gap antar panel (vertikal dan horizontal sama)
         
         # Better column split dengan gap yang sama
@@ -1035,7 +1030,7 @@ class VideoDisplayApp:
 
         # === KANAN 1: MONITOR SUHU (LOFA) ===
         temp_y = content_y
-        temp_h = int(320 * self.scale)
+        temp_h = int(260 * self.scale)
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
         
         # Read temperatures from state (fallback to calculated if not available)
@@ -1046,14 +1041,14 @@ class VideoDisplayApp:
         sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
         
         temps = [
-            ("Core", core_temp, 350.0),
-            ("Clad", clad_temp, 350.0),
-            ("Prim", prim_temp, 300.0),
-            ("Sec", sec_temp, 250.0)
+            ("Bahan Bakar", core_temp, 350.0),
+            ("Cladding", clad_temp, 350.0),
+            ("Aliran Primer", prim_temp, 300.0),
+            ("Aliran Sekunder", sec_temp, 250.0)
         ]
         
         temp_content_y = temp_y + int(80*self.scale)
-        temp_content_h = temp_h - int(140*self.scale)
+        temp_content_h = temp_h - int(155*self.scale)
         bar_w = int(40 * self.scale)
         spacing = int((right_col_w - (4 * bar_w)) / 5)
         
@@ -1061,16 +1056,66 @@ class VideoDisplayApp:
             bar_x = right_col_x + spacing + i * (bar_w + spacing)
             self.draw_vertical_temperature_bar(bar_x, temp_content_y, bar_w, temp_content_h, val, max_val)
             
-            # Label
-            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
-            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+            # Label (Bisa dua baris jika ada spasi)
+            if " " in name:
+                words = name.split(" ")
+                lbl1 = self.font_caption.render(words[0], True, self.COLOR_TEXT_SECONDARY)
+                lbl2 = self.font_caption.render(words[1], True, self.COLOR_TEXT_SECONDARY)
+                self.screen.blit(lbl1, lbl1.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(15*self.scale))))
+                self.screen.blit(lbl2, lbl2.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(30*self.scale))))
+                val_y = temp_content_y + temp_content_h + int(52*self.scale)
+            else:
+                lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+                self.screen.blit(lbl, lbl.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(22*self.scale))))
+                val_y = temp_content_y + temp_content_h + int(52*self.scale)
             
             # Value
             val_txt = self.font_small.render(f"{val:.0f}°C", True, self.COLOR_TEXT)
-            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, temp_content_y + temp_content_h + int(40*self.scale))))
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + bar_w//2, val_y)))
 
-        # === KANAN 2: PANDUAN OPERASI ===
-        inst_y = temp_y + temp_h + panel_gap
+        # === KANAN 2: POSISI BATANG KENDALI ===
+        rods_y = temp_y + temp_h + panel_gap
+        rods_h = int(240 * self.scale)
+        self.draw_boxed_panel(right_col_x, rods_y, right_col_w, rods_h, "POSISI BATANG KENDALI")
+        
+        rods = [
+            ("Safety", state.get("safety_rod", 0)),
+            ("Shim", state.get("shim_rod", 0)),
+            ("Regulating", state.get("regulating_rod", 0))
+        ]
+        
+        rod_content_y = rods_y + int(80*self.scale)
+        rod_content_h = rods_h - int(130*self.scale)
+        rod_bar_w = int(40 * self.scale)
+        rod_spacing = int((right_col_w - (3 * rod_bar_w)) / 4)
+        
+        for i, (name, val) in enumerate(rods):
+            bar_x = right_col_x + rod_spacing + i * (rod_bar_w + rod_spacing)
+            
+            # Background Bar
+            bg_rect = pygame.Rect(bar_x, rod_content_y, rod_bar_w, rod_content_h)
+            pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bg_rect, border_radius=int(6 * self.scale))
+            pygame.draw.rect(self.screen, self.COLOR_BORDER, bg_rect, max(int(1 * self.scale), 1), border_radius=int(6 * self.scale))
+            
+            # Fill Bar (from bottom up)
+            f_ratio = min(max(val / 100.0, 0.0), 1.0)
+            f_h = int((rod_content_h - 4) * f_ratio)
+            if f_h > 0:
+                f_y = bg_rect.bottom - 2 - f_h
+                f_rect = pygame.Rect(bar_x + 2, f_y, rod_bar_w - 4, f_h)
+                fill_color = self.COLOR_WARNING if name == "Safety" else self.COLOR_SUCCESS
+                pygame.draw.rect(self.screen, fill_color, f_rect, border_radius=int(4 * self.scale))
+            
+            # Label
+            lbl = self.font_caption.render(name, True, self.COLOR_TEXT_SECONDARY)
+            self.screen.blit(lbl, lbl.get_rect(center=(bar_x + rod_bar_w//2, rod_content_y + rod_content_h + int(15*self.scale))))
+            
+            # Value
+            val_txt = self.font_small.render(f"{val:.0f}%", True, self.COLOR_TEXT)
+            self.screen.blit(val_txt, val_txt.get_rect(center=(bar_x + rod_bar_w//2, rod_content_y + rod_content_h + int(35*self.scale))))
+
+        # === KANAN 3: PANDUAN OPERASI ===
+        inst_y = rods_y + rods_h + panel_gap
         inst_h = self.height - inst_y - int(40 * self.scale)
         inst_rect = pygame.Rect(right_col_x, inst_y, right_col_w, inst_h)
         
@@ -1110,88 +1155,7 @@ class VideoDisplayApp:
             else:
                 y_offset += int(20 * self.scale)  # Spasi untuk baris kosong
 
-        # === FLOATING PRESSURE WARNING OVERLAY === (drawn last, on top of everything)
-        # This appears as a pop-up without shifting the layout
-        current_pressure = state.get("pressure", 0)
-        if current_pressure > 160:
-            # 1. Semi-transparent dark overlay (full screen)
-            overlay = pygame.Surface((self.width, self.height))
-            overlay.set_alpha(180)  # 70% opacity
-            overlay.fill((0, 0, 0))  # Black
-            self.screen.blit(overlay, (0, 0))
-            
-            # 2. Warning box in center
-            box_width = int(1200 * self.scale)
-            box_height = int(500 * self.scale)
-            box_x = (self.width - box_width) // 2
-            box_y = (self.height - box_height) // 2
-            
-            # Determine color and text based on pressure level
-            if current_pressure > 180:
-                box_color = self.COLOR_ERROR  # Red - Danger!
-                warning_title = "!!! BAHAYA !!!"
-                warning_main = "TEKANAN PRESSURIZER TERLALU TINGGI"
-            else:
-                box_color = self.COLOR_WARNING  # Orange - Warning
-                warning_title = "!!! PERINGATAN !!!"
-                warning_main = "TEKANAN PRESSURIZER TINGGI"
-            
-            # Draw warning box
-            box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
-            border_radius = int(15 * self.scale)
-            pygame.draw.rect(self.screen, (255, 255, 255), box_rect, border_radius=border_radius)
-            
-            #Kartu bagian bawah (warna putih)
-            bg_rect = pygame.Rect(box_x, box_y, box_width, box_height)
-            pygame.draw.rect(self.screen, (255, 255, 255), bg_rect, border_radius=border_radius)
-            
-            #Kartu bagian atas (warna kuning)
-            top_rect = pygame.Rect(box_x, box_y, box_width, int(180 * self.scale))
-            pygame.draw.rect(self.screen, box_color, top_rect, border_radius=border_radius)
-            
-            # 3. Warning icon segitiga
-            icon_cx = box_x + box_width // 2 
-            icon_cy = box_y + box_height // 2 - int(140 * self.scale)
-
-            tri_h = int(120 * self.scale)
-            tri_w = int(130 * self.scale)
-
-            p1 = (icon_cx, icon_cy - tri_h // 2 - int(10*self.scale))
-            p2 = (icon_cx - tri_w // 2, icon_cy + tri_h // 2 - int(10*self.scale))
-            p3 = (icon_cx + tri_w // 2, icon_cy + tri_h // 2 - int(10*self.scale))
-
-            pygame.draw.polygon(self.screen, (255, 255, 255), [p1, p2, p3], width=int(5 * self.scale))
-            
-            # Warning icon text "!"
-            icon_text = self.font_display.render("!", True, (255, 255, 255))
-            icon_text_rect = icon_text.get_rect(center=(icon_cx, icon_cy))
-            self.screen.blit(icon_text, icon_text_rect)
-            
-            # 4. Warning title
-            title_y = box_y + int(240 * self.scale)
-            title_surface = self.font_title.render(warning_title, True, self.COLOR_TEXT)
-            title_rect = title_surface.get_rect(center=(self.width // 2, title_y))
-            self.screen.blit(title_surface, title_rect)
-            
-            # 5. Warning main text
-            main_y = box_y + int(290 * self.scale)
-            main_surface = self.font_large.render(warning_main, True, self.COLOR_TEXT)
-            main_rect = main_surface.get_rect(center=(self.width // 2, main_y))
-            self.screen.blit(main_surface, main_rect)
-            
-            # 6. Instruction text
-            instruction_y = box_y + int(360 * self.scale)
-            instruction_text = "Turunkan tekanan segera! (Tekan tombol TEKANAN TURUN)"
-            instruction_surface = self.font_medium.render(instruction_text, True, self.COLOR_TEXT)
-            instruction_rect = instruction_surface.get_rect(center=(self.width // 2, instruction_y))
-            self.screen.blit(instruction_surface, instruction_rect)
-            
-            # 7. Current pressure value
-            value_y = box_y + int(390 * self.scale)
-            value_text = f"Tekanan saat ini: {current_pressure:.2f} bar"
-            value_surface = self.font_body.render(value_text, True, self.COLOR_TEXT)
-            value_rect = value_surface.get_rect(center=(self.width // 2, value_y))
-            self.screen.blit(value_surface, value_rect)
+        # The old floating pressure warning overlay has been replaced by the Status Banner at the top.
         
         pygame.display.flip()
             
@@ -1437,7 +1401,7 @@ class VideoDisplayApp:
             pygame.draw.rect(self.screen, fill_color, fill_rect, border_radius=int(8*self.scale))
             pygame.draw.rect(self.screen, self.COLOR_BORDER, fill_rect, max(int(2.7*self.scale), 1), border_radius=int(8*self.scale))
     
-    def draw_gauge(self, center_x: int, center_y: int, value: float, max_val: float, subtitle: str, format_str: str):
+    def draw_gauge(self, center_x: int, center_y: int, value: float, max_val: float, subtitle: str, format_str: str, warn_val: float = None, crit_val: float = None):
         """Gauge Full Circle (360 derajat) dengan isian dari bawah dan Jarum Tepi"""
         import math
         
@@ -1473,8 +1437,12 @@ class VideoDisplayApp:
         
         # 2. Menggambar Isian Warna (Aktif)
         if ratio > 0.01:
-            # Perubahan warna otomatis (Hijau)
+            # Perubahan warna otomatis
             fill_color = self.COLOR_SUCCESS
+            if crit_val is not None and value >= crit_val:
+                fill_color = self.COLOR_ERROR
+            elif warn_val is not None and value >= warn_val:
+                fill_color = self.COLOR_WARNING
             
             for angle_deg in range(135, int(end_angle_deg), 2):
                 angle_rad = math.radians(angle_deg)
@@ -1568,24 +1536,41 @@ class VideoDisplayApp:
     def draw_pump_status(self, state: Dict, center_x: int, start_y: int):
         """Menggambar indikator pompa tanpa judul (judul diurus oleh parent)"""
         pumps = [
-            ("Pompa 1", state.get("pump_primary", 0) > 0),
-            ("Pompa 2", state.get("pump_secondary", 0) > 0),
-            ("Pompa 3", state.get("pump_tertiary", 0) > 0)
+            ("Pompa 1", state.get("pump_primary", 0), state.get("lofa_primary", False)),
+            ("Pompa 2", state.get("pump_secondary", 0), state.get("lofa_secondary", False)),
+            ("Pompa 3", state.get("pump_tertiary", 0), state.get("lofa_tertiary", False))
         ]
         
         spacing = int(160 * self.scale)
         start_x = center_x - spacing
         
-        for i, (name, is_on) in enumerate(pumps):
+        import time
+        blink = int(time.time() * 2) % 2 == 0
+        
+        for i, (name, p_state, lofa) in enumerate(pumps):
             px = start_x + (i * spacing)
             
             lbl_top = self.font_medium.render(name, True, self.COLOR_TEXT)
             self.screen.blit(lbl_top, lbl_top.get_rect(center=(px, start_y)))
             
-            color = self.COLOR_SUCCESS if is_on else self.COLOR_ERROR
+            if lofa:
+                color = self.COLOR_ERROR if blink else self.COLOR_WARNING
+                status_text = "FAILED"
+            elif p_state == 2:
+                color = self.COLOR_SUCCESS
+                status_text = "ON"
+            elif p_state == 1:
+                color = (150, 200, 50) if blink else self.COLOR_SUCCESS
+                status_text = "STARTING"
+            elif p_state == 3:
+                color = self.COLOR_WARNING
+                status_text = "STOPPING"
+            else:
+                color = self.COLOR_ERROR
+                status_text = "OFF"
+                
             pygame.draw.circle(self.screen, color, (px, start_y + int(50 * self.scale)), int(20 * self.scale))
             
-            status_text = "ON" if is_on else "OFF"
             lbl_bot = self.font_medium.render(status_text, True, self.COLOR_TEXT)
             self.screen.blit(lbl_bot, lbl_bot.get_rect(center=(px, start_y + int(100 * self.scale))))
 
@@ -1831,13 +1816,34 @@ class VideoDisplayApp:
         print("🚀 Video Display App running...")
         print("   Press ESC to exit")
         
+        import subprocess
+        check_monitor_timer = 0
+        
         while running:
+            # Pastikan secara absolut HDMI-A-1 masih terhubung. Jika tidak, matikan diri.
+            check_monitor_timer += 1
+            if check_monitor_timer >= 60:  # Cek setiap ~2 detik (30 fps x 2)
+                check_monitor_timer = 0
+                try:
+                    res = subprocess.run(["wlr-randr"], capture_output=True, text=True, timeout=1)
+                    if "HDMI-A-1" not in res.stdout:
+                        print("🚨 Kritis: Monitor HDMI-A-1 tidak ditemukan! Mematikan program agar tidak nyangkut di Touchscreen...")
+                        running = False
+                except Exception:
+                    pass
+            
             # Handle events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
+                        running = False
+                elif event.type == getattr(pygame, 'WINDOWEVENT', None):
+                    if event.event in (getattr(pygame, 'WINDOWEVENT_MINIMIZED', None), 
+                                     getattr(pygame, 'WINDOWEVENT_HIDDEN', None),
+                                     getattr(pygame, 'WINDOWEVENT_DISPLAY_CHANGED', None)):
+                        print("⚠️ Window bermigrasi atau tersembunyi (kabel HDMI mungkin dicabut). Mematikan program agar Watchdog me-restart...")
                         running = False
                 
                 # Handle touch/mouse click to switch from IDLE to MANUAL

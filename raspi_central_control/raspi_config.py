@@ -44,13 +44,14 @@ HUMIDIFIER_PINS = {
 # LED Strip Configuration (WS2812)
 # ============================================
 LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0) - Daisy Chained
-LED_STRIP_COUNT = 592    # Total number of LEDs (21 Pressurizer + 571 Pipa)
+LED_STRIP_COUNT = 638    # Total number of LEDs (21 Press + 46 Kondenser + 571 Pipa)
 
 # Segments: (start_index, length)
 LED_SEGMENT_PRESSURIZER = (0, 21)
-LED_SEGMENT_PRIMER = (21, 190)
-LED_SEGMENT_SEKUNDER = (211, 190)
-LED_SEGMENT_TERSIER = (401, 191)
+LED_SEGMENT_KONDENSER   = (21, 46)
+LED_SEGMENT_PRIMER      = (67, 190)
+LED_SEGMENT_SEKUNDER    = (257, 190)
+LED_SEGMENT_TERSIER     = (447, 191)
 
 # ============================================
 # System Parameters
