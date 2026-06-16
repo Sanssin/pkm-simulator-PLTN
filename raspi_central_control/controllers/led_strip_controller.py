@@ -43,12 +43,24 @@ class LEDSegment:
     def _generate_gradient(self):
         gradient_colors = [Color(0,0,0)] * self.length
         
+        red = (255, 0, 0)
+        blue = (0, 0, 255)
+
+        # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
+        # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
+        # Lampu 24-46 (index 23-45) Merah: setelah mengambil panas uap turbin
+        if self.name == 'kondenser':
+            for i in range(self.length):
+                if i < 23:
+                    gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+                else:
+                    gradient_colors[i] = Color(red[0], red[1], red[2])
+            return gradient_colors
+
+        # Default: Gradien halus untuk segmen lain (primer, sekunder, tersier)
         grad_len = min(71, self.length) # Use 71 or max length
         grad_start = (self.length - grad_len) // 2
         grad_end = grad_start + grad_len - 1
-
-        red = (255, 0, 0)
-        blue = (0, 0, 255)
 
         for i in range(self.length):
             if i < grad_start:
