@@ -275,6 +275,8 @@ class PLTNPanelController:
                                     elif direction == "DOWN": button_event = ButtonEvent.PRESSURE_DOWN
                                 elif evt_type == "START_AUTO":
                                     button_event = ButtonEvent.START_AUTO_SIMULATION
+                                elif evt_type == "START_CINEMATIC_LOFA":
+                                    button_event = ButtonEvent.START_CINEMATIC_LOFA
                                 elif evt_type == "RESET":
                                     button_event = ButtonEvent.REACTOR_RESET
                                 elif evt_type == "EMERGENCY":
