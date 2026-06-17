@@ -82,26 +82,7 @@ class MotorController:
         # Constrain speed between 0 and 100
         speed_percent = max(0.0, min(100.0, float(speed_percent)))
         
-        # Software speed calibration: Cap and map turbine motor to prevent overspeed
-        if motor_name == 'turbine':
-            if speed_percent > 0.0:
-                is_starting = (self.current_speeds.get(motor_name, 0.0) == 0.0)
-                # Minimum viable PWM (di mana turbin bisa berputar konstan) ternyata sekitar 6.5%-7.0%.
-                # Kita set Base 7.0% dan Max 15.0%.
-                speed_percent = 7.0 + (speed_percent / 100.0) * 8.0
-                
-                # Kick-start to overcome static friction (humming) when turning on
-                if is_starting and not self.mock_mode:
-                    try:
-                        import time
-                        pin = self.MOTOR_PINS[motor_name]
-                        self.pi.set_PWM_dutycycle(pin, int(30.0 * 10.0))  # 30% kick untuk mendobrak gesekan
-                        time.sleep(0.1)  # Tahan selama 0.1 detik
-                    except Exception as e:
-                        logger.error(f"Error during kickstart: {e}")
-            else:
-                speed_percent = 0.0
-        
+        # No specific software cap needed; turbine is now a smaller motor safe at 100%
         self.current_speeds[motor_name] = speed_percent
         
         if not self.mock_mode:
