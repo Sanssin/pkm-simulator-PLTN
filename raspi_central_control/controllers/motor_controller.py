@@ -95,7 +95,7 @@ class MotorController:
                     try:
                         import time
                         pin = self.MOTOR_PINS[motor_name]
-                        self.pi.set_PWM_dutycycle(pin, int(25.0 * 10.0))  # 25% kick
+                        self.pi.set_PWM_dutycycle(pin, int(15.0 * 10.0))  # 15% kick
                         time.sleep(0.05)
                     except Exception as e:
                         logger.error(f"Error during kickstart: {e}")
