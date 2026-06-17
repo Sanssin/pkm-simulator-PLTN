@@ -1788,21 +1788,21 @@ class VideoDisplayApp:
         if mode == "auto" and auto_running:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
-                # Use video from assets folder (production ready)
-                import pwd
-                try:
-                    target_home = pwd.getpwuid(1000).pw_dir
-                except Exception:
-                    target_home = "/home/pi"
-                video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
-                # Video is now handled by raspi_main_panel.py subprocess!
-                # self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
             
             # Video is playing via mpv - don't draw anything
             # (mpv handles fullscreen itself)
+            return
+
+        # MODE 2.5: CINEMATIC LOFA - Play video
+        if mode == "cinematic_lofa":
+            if self.display_mode != DisplayMode.AUTO_VIDEO:
+                print(f"🎬 Switching to CINEMATIC LOFA VIDEO mode")
+                self.display_mode = DisplayMode.AUTO_VIDEO
+                self.auto_complete_time = None
+                self.user_has_interacted = False
             return
         
         # MODE 3: MANUAL - Show guide if user interacted or after auto complete
