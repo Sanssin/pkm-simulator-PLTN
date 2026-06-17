@@ -12,7 +12,7 @@ import time
 import logging
 import threading
 from queue import Queue, Empty
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import Callable, Optional, TYPE_CHECKING, Any
 
 from .interlock_validator import InterlockValidator, PUMP_ON, PUMP_OFF, PUMP_STARTING, PUMP_SHUTTING_DOWN
 
