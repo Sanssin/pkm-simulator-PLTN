@@ -992,14 +992,14 @@ class VideoDisplayApp:
             status_text_color = (0, 0, 0)
             
         relief_open = state.get("relief_valve_open", False)
-        mitigasi_text = f"Relief Valve: {'TERBUKA (AKTIF)' if relief_open else 'MENUTUP'}"
+        mitigasi_text = f"Relief Valve: {'TERBUKA' if relief_open else 'MENUTUP'}"
         mitigasi_color = self.COLOR_ERROR if relief_open else self.COLOR_BG_PANEL
         if relief_open and blink_on:
             mitigasi_color = (200, 0, 0)
         mitigasi_text_color = (255, 255, 255) if relief_open else self.COLOR_TEXT
         
         lofa_active = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
-        lofa_text = "[!] SIMULASI LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
+        lofa_text = "PERINGATAN: LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
         lofa_color = self.COLOR_ERROR if lofa_active else self.COLOR_BG_PANEL
         if lofa_active and blink_on:
             lofa_color = (200, 0, 0)
