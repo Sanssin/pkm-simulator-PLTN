@@ -69,7 +69,8 @@ class LEDSegment:
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
-        if self.name == 'tersier_in':
+        # Atau aliran balik sekunder (sekunder_in) dari kondenser: Biru solid (dingin)
+        if self.name in ('tersier_in', 'sekunder_in'):
             for i in range(self.length):
                 gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             return gradient_colors

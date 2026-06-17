@@ -52,9 +52,10 @@ class ActuatorManager:
             self.led_strip.add_segment('tersier_in', getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[0], getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[1], flow_direction=1)
             self.led_strip.add_segment('kondenser', getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[0], getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[1], flow_direction=1)
             self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[1])
-            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (320, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (320, 190))[1])
+            self.led_strip.add_segment('sekunder', config.LED_SEGMENT_SEKUNDER[0], config.LED_SEGMENT_SEKUNDER[1])
             self.led_strip.add_segment('tersier', config.LED_SEGMENT_TERSIER[0], config.LED_SEGMENT_TERSIER[1], flow_direction=1)
             self.led_strip.add_segment('tersier_out', config.LED_SEGMENT_TERSIER_OUT[0], config.LED_SEGMENT_TERSIER_OUT[1], flow_direction=1)
+            self.led_strip.add_segment('sekunder_in', config.LED_SEGMENT_SEKUNDER_IN[0], config.LED_SEGMENT_SEKUNDER_IN[1], flow_direction=1)
             self.led_strip.add_segment('pressurizer', config.LED_SEGMENT_PRESSURIZER[0], config.LED_SEGMENT_PRESSURIZER[1], flow_direction=1)
             
             if self.hardware_active:
@@ -165,6 +166,7 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('kondenser', tert_speed / 100.0)
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
+            self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
@@ -177,6 +179,7 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('kondenser', heat_ratio)
             self.led_strip.set_heat_ratio('primer', heat_ratio)
             self.led_strip.set_heat_ratio('sekunder', heat_ratio)
+            self.led_strip.set_heat_ratio('sekunder_in', heat_ratio)
             self.led_strip.set_heat_ratio('tersier', heat_ratio)
             self.led_strip.set_heat_ratio('tersier_out', heat_ratio)
             
