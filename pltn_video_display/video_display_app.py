@@ -685,32 +685,28 @@ class VideoDisplayApp:
                 print("   💡 Create video file or use placeholder")
             return
         
-        # Build mpv command
+        # Build mpv command optimized for Wayland/Raspberry Pi 4
         cmd = [
-            'mpv',
-            '--no-osd-bar',             # No on-screen display
-            '--no-input-default-bindings',  # Disable keyboard
-            '--really-quiet',           # Minimal output
-            
-            # === VIDEO OUTPUT ===
-            '--vo=gpu',                 # Video output: GPU (Wayland compatible)
-            '--hwdec=no',               # Hardware decode disabled to avoid VAAPI/CUDA errors on RPi4
-        ]
-            
-        # Use fullscreen directly on the target display instead of X11 WID embedding
-        # WID embedding on Wayland/RPi often causes the window to disappear or steal focus incorrectly
-        cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
-
-        cmd.extend([
-            # === AUDIO OUTPUT (HDMI) ===
-            '--ao=alsa',                # Use ALSA audio server
-            '--audio-device=alsa/hw:1,0',  # HDMI audio
-            '--audio-fallback-to-null=yes',
-            '--audio-channels=stereo',  # Stereo output
-            '--volume=100',             # Maximum volume
-            
+            "mpv",
+            "--fullscreen",
+            "--no-border",
+            "--window-maximized=yes",
+            "--autofit=100%x100%",
+            "--fs-screen-name=HDMI-A-1", # As seen in wlr-randr for the 4K monitor
+            "--ontop",
+            "--vo=dmabuf-wayland",
+            "--hwdec=v4l2m2m",
+            "--keep-open=yes",
+            "--no-osd-bar",             
+            "--no-input-default-bindings",  
+            "--really-quiet",
+            "--ao=alsa",
+            "--audio-device=alsa/plughw:1,0",
+            "--audio-fallback-to-null=yes",
+            "--audio-channels=stereo",
+            "--volume=100",
             video_path
-        ])
+        ]
         
         if loop:
             cmd.insert(1, '--loop=inf')
