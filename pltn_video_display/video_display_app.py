@@ -1762,7 +1762,7 @@ class VideoDisplayApp:
             return
         
         # Check if auto simulation just completed
-        if not auto_running and self.display_mode == DisplayMode.AUTO_VIDEO:
+        if not auto_running and mode != "cinematic_lofa" and self.display_mode == DisplayMode.AUTO_VIDEO:
             # Auto simulation just finished - go to MANUAL, not IDLE!
             print("🏁 Auto simulation completed - switching to MANUAL")
             self.stop_video()
