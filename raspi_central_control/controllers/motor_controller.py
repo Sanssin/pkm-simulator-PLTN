@@ -86,8 +86,9 @@ class MotorController:
         # Software speed calibration: Cap and map turbine motor to prevent overspeed
         if motor_name == 'turbine':
             if speed_percent > 0.0:
-                # Map 0-100% input to a narrow 8%-15% PWM output (Adjustable)
-                speed_percent = 8.0 + (speed_percent / 100.0) * 7.0
+                # Map 0-100% input to a narrow 2%-15% PWM output (Adjustable)
+                # Starting at 2% gives a smooth startup effect instead of a sudden kick
+                speed_percent = 2.0 + (speed_percent / 100.0) * 13.0
             else:
                 speed_percent = 0.0
         
