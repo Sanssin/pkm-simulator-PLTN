@@ -1177,16 +1177,16 @@ class VideoDisplayApp:
         """Get instruction text for current step"""
         steps = [
             {
-                "text": ["Naikkan Tekanan ke 45 bar", "Tekan tombol TEKANAN NAIK"],
-                "check": lambda s: s.get("pressure", 0) >= 45
-            },
-            {
                 "text": ["Hidupkan Pompa Tersier", "Tekan tombol POMPA TERSIER ON"],
                 "check": lambda s: s.get("pump_tertiary", 0) >= 1
             },
             {
                 "text": ["Hidupkan Pompa Sekunder", "Tekan tombol POMPA SEKUNDER ON"],
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
+            },
+            {
+                "text": ["Naikkan Tekanan ke 45 bar", "Tekan tombol TEKANAN NAIK"],
+                "check": lambda s: s.get("pressure", 0) >= 45
             },
             {
                 "text": ["Hidupkan Pompa Primer", "Tekan tombol POMPA PRIMER ON"],
