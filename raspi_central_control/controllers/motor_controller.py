@@ -85,9 +85,20 @@ class MotorController:
         # Software speed calibration: Cap and map turbine motor to prevent overspeed
         if motor_name == 'turbine':
             if speed_percent > 0.0:
-                # Map 0-100% input to a narrow 0.5%-10.0% PWM output
-                # Using 0.5% gives an extremely gentle startup
-                speed_percent = 0.5 + (speed_percent / 100.0) * 9.5
+                is_starting = (self.current_speeds.get(motor_name, 0.0) == 0.0)
+                # Map 0-100% input to a narrow 3.0%-10.0% PWM output
+                # Raised base to 3.0% so it doesn't stall, max remains 10.0%
+                speed_percent = 3.0 + (speed_percent / 100.0) * 7.0
+                
+                # Kick-start to overcome static friction (humming) when turning on
+                if is_starting and not self.mock_mode:
+                    try:
+                        import time
+                        pin = self.MOTOR_PINS[motor_name]
+                        self.pi.set_PWM_dutycycle(pin, int(25.0 * 10.0))  # 25% kick
+                        time.sleep(0.05)
+                    except Exception as e:
+                        logger.error(f"Error during kickstart: {e}")
             else:
                 speed_percent = 0.0
         
