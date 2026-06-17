@@ -166,8 +166,10 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             
-            # Update heat ratio berdasarkan pergerakan turbin (0.0 = dingin/biru total, 1.0 = panas/ada merah)
-            heat_ratio = getattr(state, 'turbine_speed', 0.0) / 100.0
+            # Update heat ratio berdasarkan daya termal (0 kW hingga 10.000 kW / 10 MW)
+            # Jika daya melebihi 10 MW, warna akan langsung mentok merah (1.0)
+            thermal_power_kw = getattr(state, 'thermal_kw', 0.0)
+            heat_ratio = thermal_power_kw / 10000.0
             heat_ratio = max(0.0, min(1.0, heat_ratio))
             
             self.led_strip.set_heat_ratio('kondenser', heat_ratio)
