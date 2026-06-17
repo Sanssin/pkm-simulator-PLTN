@@ -51,11 +51,10 @@ class MotorController:
             for name, pin in self.MOTOR_PINS.items():
                 try:
                     self.pi.set_mode(pin, pigpio.OUTPUT)
-                    freq = 100 if name == 'turbine' else self.PWM_FREQUENCY
-                    self.pi.set_PWM_frequency(pin, freq)
-                    self.pi.set_PWM_range(pin, 100)  # 0-100% duty cycle
+                    self.pi.set_PWM_frequency(pin, self.PWM_FREQUENCY)
+                    self.pi.set_PWM_range(pin, 1000)  # 0-1000 for 0.1% resolution
                     self.pi.set_PWM_dutycycle(pin, 0)
-                    logger.info(f"Initialized motor '{name}' on GPIO {pin} at {freq}Hz")
+                    logger.info(f"Initialized motor '{name}' on GPIO {pin}")
                 except Exception as e:
                     logger.error(f"Error initializing motor '{name}' on GPIO {pin}: {e}")
         else:
@@ -86,9 +85,9 @@ class MotorController:
         # Software speed calibration: Cap and map turbine motor to prevent overspeed
         if motor_name == 'turbine':
             if speed_percent > 0.0:
-                # Map 0-100% input to a narrow 2%-15% PWM output (Adjustable)
-                # Starting at 2% gives a smooth startup effect instead of a sudden kick
-                speed_percent = 2.0 + (speed_percent / 100.0) * 13.0
+                # Map 0-100% input to a narrow 0.5%-10.0% PWM output
+                # Using 0.5% gives an extremely gentle startup
+                speed_percent = 0.5 + (speed_percent / 100.0) * 9.5
             else:
                 speed_percent = 0.0
         
@@ -97,8 +96,8 @@ class MotorController:
         if not self.mock_mode:
             try:
                 pin = self.MOTOR_PINS[motor_name]
-                # pigpio range is 0-100 as set during initialization
-                self.pi.set_PWM_dutycycle(pin, int(speed_percent))
+                # pigpio range is 0-1000, so multiply percent by 10
+                self.pi.set_PWM_dutycycle(pin, int(speed_percent * 10.0))
             except Exception as e:
                 logger.error(f"Error setting speed for {motor_name}: {e}")
         else:
