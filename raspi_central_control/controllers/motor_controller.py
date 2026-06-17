@@ -51,10 +51,11 @@ class MotorController:
             for name, pin in self.MOTOR_PINS.items():
                 try:
                     self.pi.set_mode(pin, pigpio.OUTPUT)
-                    self.pi.set_PWM_frequency(pin, self.PWM_FREQUENCY)
+                    freq = 100 if name == 'turbine' else self.PWM_FREQUENCY
+                    self.pi.set_PWM_frequency(pin, freq)
                     self.pi.set_PWM_range(pin, 100)  # 0-100% duty cycle
                     self.pi.set_PWM_dutycycle(pin, 0)
-                    logger.info(f"Initialized motor '{name}' on GPIO {pin}")
+                    logger.info(f"Initialized motor '{name}' on GPIO {pin} at {freq}Hz")
                 except Exception as e:
                     logger.error(f"Error initializing motor '{name}' on GPIO {pin}: {e}")
         else:
@@ -82,9 +83,13 @@ class MotorController:
         # Constrain speed between 0 and 100
         speed_percent = max(0.0, min(100.0, float(speed_percent)))
         
-        # Hardware safety limit: Cap turbine motor to 25% maximum
+        # Software speed calibration: Cap and map turbine motor to prevent overspeed
         if motor_name == 'turbine':
-            speed_percent = speed_percent * 0.25  # Scale 0-100% input to 0-25% hardware output
+            if speed_percent > 0.0:
+                # Map 0-100% input to a narrow 8%-15% PWM output (Adjustable)
+                speed_percent = 8.0 + (speed_percent / 100.0) * 7.0
+            else:
+                speed_percent = 0.0
         
         self.current_speeds[motor_name] = speed_percent
         
