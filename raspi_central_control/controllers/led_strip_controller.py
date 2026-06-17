@@ -219,30 +219,34 @@ class LedStripController:
                     int_offset = int(seg.offset)
 
                     for i in range(seg.length):
-                        if i < lit_count:
-                            # Jika animasi berjalan, buat efek gelembung/pola
-                            if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
-                                # Matikan lampu untuk pola "mati" agar efek gelembung/ombak sangat kontras terlihat
-                                self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                        idx = seg.start_idx + i
+                        if idx < self.count:
+                            if i < lit_count:
+                                # Jika animasi berjalan, buat efek gelembung/pola
+                                if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
+                                    self.strip.setPixelColor(idx, self.color_black)
+                                else:
+                                    self.strip.setPixelColor(idx, seg.fill_color)
                             else:
-                                self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
-                        else:
-                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                                self.strip.setPixelColor(idx, self.color_black)
                 else:
                     # Mode flow: update offset berdasarkan speed
                     if seg.speed <= 0.0:
                         # Jika pompa mati (speed 0), matikan semua LED di segmen ini
                         for i in range(seg.length):
-                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                            idx = seg.start_idx + i
+                            if idx < self.count:
+                                self.strip.setPixelColor(idx, self.color_black)
                     else:
                         seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
                         int_offset = int(seg.offset)
                         
                         for i in range(seg.length):
-                            # Pola aliran 5 nyala, 5 mati
-                            if ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                                # Pixel nyala, gunakan warna gradien segmen
-                                self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
+                            idx = seg.start_idx + i
+                            if idx < self.count:
+                                # Pola aliran 5 nyala, 5 mati
+                                if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                    self.strip.setPixelColor(idx, seg.gradient[i])
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:

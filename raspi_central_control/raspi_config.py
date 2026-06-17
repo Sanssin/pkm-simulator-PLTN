@@ -44,17 +44,19 @@ HUMIDIFIER_PINS = {
 # LED Strip Configuration (WS2812)
 # ============================================
 LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0) - Daisy Chained
-LED_STRIP_COUNT = 743    # Total number of LEDs (724 + 19)
+LED_STRIP_COUNT = 172    # Total number of LEDs yang FISIKNYA SUDAH TERPASANG (84 + 46 + 23 + 19)
 
-# Segments: (start_index, length)
+# Segments: (start_index, length) - Disusun BERURUTAN sesuai fisik kabel
 LED_SEGMENT_TERSIER_IN  = (0, 84)     # Baru: Pipa tersier masuk (Biru)
 LED_SEGMENT_KONDENSER   = (84, 46)    # Kondenser
-LED_SEGMENT_PRIMER      = (130, 190)  # Pipa Primer
-LED_SEGMENT_SEKUNDER    = (320, 190)  # Pipa Sekunder
-LED_SEGMENT_TERSIER     = (510, 191)  # Pipa Tersier Keluar
-LED_SEGMENT_TERSIER_OUT = (701, 23)   # Keluaran kondenser ke cooling tower (Merah)
-LED_SEGMENT_SEKUNDER_IN = (724, 19)   # Baru: Aliran sekunder dari kondenser (Biru)
-LED_SEGMENT_PRESSURIZER = (1000, 21)  # Dummy index (dicopot sementara)
+LED_SEGMENT_TERSIER_OUT = (130, 23)   # Keluaran kondenser ke cooling tower (Merah/Hot)
+LED_SEGMENT_SEKUNDER_IN = (153, 19)   # Baru: Aliran sekunder dari kondenser (Biru)
+
+# Segmen yang BELUM dipasang fisik (dibuat dummy di index 1000 ke atas)
+LED_SEGMENT_PRIMER      = (1000, 190) # Pipa Primer (Belum ada fisik)
+LED_SEGMENT_SEKUNDER    = (1200, 190) # Pipa Sekunder Utama (Belum ada fisik)
+LED_SEGMENT_TERSIER     = (1400, 191) # Pipa Tersier Keluar Utama (Belum ada fisik)
+LED_SEGMENT_PRESSURIZER = (1600, 21)  # Dummy index (dicopot sementara / belum dipakai)
 
 # ============================================
 # System Parameters
