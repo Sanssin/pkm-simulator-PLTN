@@ -1185,8 +1185,8 @@ class VideoDisplayApp:
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
             },
             {
-                "text": ["Tahap 3: Naikkan Tekanan Awal", "Tekan dan tahan tombol 'TEKANAN NAIK' hingga pressurizer mencapai tekanan aman minimal 45 bar."],
-                "check": lambda s: s.get("pressure", 0) >= 45
+                "text": ["Tahap 3: Naikkan Tekanan Awal", "Tekan dan tahan tombol 'TEKANAN NAIK' hingga pressurizer mencapai tekanan aman minimal 40 bar."],
+                "check": lambda s: s.get("pressure", 0) >= 40
             },
             {
                 "text": ["Tahap 4: Nyalakan Pompa Primer", "Tekanan sudah aman! Sekarang tekan tombol 'POMPA PRIMER ON' agar air pendingin reaktor mulai bersirkulasi."],
