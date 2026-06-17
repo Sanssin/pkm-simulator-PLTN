@@ -86,17 +86,17 @@ class MotorController:
         if motor_name == 'turbine':
             if speed_percent > 0.0:
                 is_starting = (self.current_speeds.get(motor_name, 0.0) == 0.0)
-                # Map 0-100% input to a narrow 3.0%-10.0% PWM output
-                # Raised base to 3.0% so it doesn't stall, max remains 10.0%
-                speed_percent = 3.0 + (speed_percent / 100.0) * 7.0
+                # Minimum viable PWM (di mana turbin bisa berputar konstan) ternyata sekitar 6.5%-7.0%.
+                # Kita set Base 7.0% dan Max 15.0%.
+                speed_percent = 7.0 + (speed_percent / 100.0) * 8.0
                 
                 # Kick-start to overcome static friction (humming) when turning on
                 if is_starting and not self.mock_mode:
                     try:
                         import time
                         pin = self.MOTOR_PINS[motor_name]
-                        self.pi.set_PWM_dutycycle(pin, int(15.0 * 10.0))  # 15% kick
-                        time.sleep(0.05)
+                        self.pi.set_PWM_dutycycle(pin, int(30.0 * 10.0))  # 30% kick untuk mendobrak gesekan
+                        time.sleep(0.1)  # Tahan selama 0.1 detik
                     except Exception as e:
                         logger.error(f"Error during kickstart: {e}")
             else:
