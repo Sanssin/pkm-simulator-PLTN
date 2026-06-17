@@ -37,6 +37,7 @@ from controllers.interlock_validator import PUMP_ON
 from sequences import SCRAMSequence, AutoSimulator
 from io_handlers import ButtonIOHandler, ButtonEvent
 from controllers.actuator_manager import ActuatorManager
+from pltn_video_display.video_player import VideoPlayer
 
 
 # Try to import GPIO library
@@ -94,6 +95,9 @@ class PLTNPanelController:
         
         # Initialize refactored modules
         self._init_modules()
+        
+        # Initialize video player (Thread 9 concept, non-blocking)
+        self.video_player = VideoPlayer()
         
         # Initialize video player (Thread 9 concept, non-blocking)
 
@@ -349,7 +353,21 @@ class PLTNPanelController:
                     if hasattr(self, 'lofa_simulator'):
                         self.lofa_simulator.update(state)
 
-                    # Video Player is entirely handled by pltn_video_display/video_display_app.py
+                    # Manage Video Player
+                    if state.auto_sim_running or state.simulation_mode == 'auto':
+                        video_path = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            self.video_player.play(filename=video_path, loop=True)
+                    elif state.simulation_mode == 'cinematic_lofa':
+                        video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
+                        import os
+                        if not os.path.exists(video_path):
+                            video_path = "/pkm/video_pltn/simulasi_lofa.mp4" # Fallback if they put it in root /pkm
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            self.video_player.play(filename=video_path, loop=False)
+                    else:
+                        if hasattr(self, 'video_player') and self.video_player.is_playing():
+                            self.video_player.stop()
 
                     # Primary Physics Simulation (runs every 10ms)
                     if True:
