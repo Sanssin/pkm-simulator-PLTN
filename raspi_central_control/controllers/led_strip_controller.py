@@ -57,6 +57,12 @@ class LEDSegment:
                     gradient_colors[i] = Color(red[0], red[1], red[2])
             return gradient_colors
 
+        # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
+        if self.name == 'tersier_in':
+            for i in range(self.length):
+                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+            return gradient_colors
+
         # Default: Gradien halus untuk segmen lain (primer, sekunder, tersier)
         grad_len = min(71, self.length) # Use 71 or max length
         grad_start = (self.length - grad_len) // 2
