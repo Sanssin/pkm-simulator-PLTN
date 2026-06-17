@@ -74,6 +74,12 @@ class LEDSegment:
                 gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             return gradient_colors
 
+        # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid
+        if self.name == 'tersier_out':
+            for i in range(self.length):
+                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+            return gradient_colors
+
         # Default: Gradien halus untuk segmen lain (primer, sekunder, tersier)
         grad_len = min(71, self.length) # Use 71 or max length
         grad_start = (self.length - grad_len) // 2
