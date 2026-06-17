@@ -184,6 +184,11 @@ class PLTNPanelController:
         self.lofa_sequence = LOFASequence(self.state_manager)
         logger.info("✓ LOFASequence initialized")
         
+        # Cinematic LOFA Sequence
+        from sequences.cinematic_lofa_sequence import CinematicLOFASequence
+        self.cinematic_lofa_sequence = CinematicLOFASequence(self.state_manager)
+        logger.info("✓ CinematicLOFASequence initialized")
+        
         # Pump controller
         self.pump_controller = PumpController(startup_time=5.0, shutdown_time=3.0)
         logger.info("✓ PumpController initialized")
@@ -196,6 +201,7 @@ class PLTNPanelController:
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
             lofa_sequence=self.lofa_sequence,
+            cinematic_lofa_sequence=self.cinematic_lofa_sequence,
             buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")
@@ -343,8 +349,13 @@ class PLTNPanelController:
 
                     # Manage Video Player
                     if state.auto_sim_running or state.simulation_mode == 'auto':
-                        if not self.video_player.is_playing():
-                            self.video_player.play(loop=True)
+                        video_path = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            self.video_player.play(filename=video_path, loop=True)
+                    elif state.simulation_mode == 'cinematic_lofa':
+                        video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            self.video_player.play(filename=video_path, loop=False)
                     else:
                         if self.video_player.is_playing():
                             self.video_player.stop()

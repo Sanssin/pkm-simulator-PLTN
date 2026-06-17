@@ -14,14 +14,20 @@ AUDIO_DEVICE = "alsa/plughw:1,0"    # Based on aplay -l (card 1: vc4hdmi0) or pu
 class VideoPlayer:
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
+        self.current_video: Optional[str] = None
         self._lock = threading.Lock()
 
     def play(self, filename: str = VIDEO_PATH, loop: bool = True):
         """Play video non-blocking via mpv."""
         with self._lock:
-            if self.is_playing():
+            if self.is_playing() and self.current_video == filename:
                 return
             
+            if self.is_playing():
+                # Stop existing video before starting a new one
+                self._stop_internal()
+                
+            self.current_video = filename
             logger.info(f"[VideoPlayer] Starting video playback: {filename}")
             
             cmd = [
@@ -67,14 +73,18 @@ class VideoPlayer:
     def stop(self):
         """Stop video and cleanup process."""
         with self._lock:
-            if self.process:
-                logger.info("[VideoPlayer] Stopping video playback")
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                self.process = None
+            self._stop_internal()
+            
+    def _stop_internal(self):
+        if self.process:
+            logger.info("[VideoPlayer] Stopping video playback")
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+            self.process = None
+            self.current_video = None
 
     def is_playing(self) -> bool:
         """Check if mpv process is still alive."""

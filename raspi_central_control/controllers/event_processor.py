@@ -56,8 +56,9 @@ class EventProcessor:
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
-                 lofa_sequence = None,
-                 buzzer = None):
+                 lofa_sequence: Optional[Any] = None,
+                 cinematic_lofa_sequence: Optional[Any] = None,
+                 buzzer: Optional[Any] = None):
         """
         Initialize EventProcessor.
         
@@ -78,6 +79,7 @@ class EventProcessor:
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
         self._lofa_sequence = lofa_sequence
+        self._cinematic_lofa_sequence = cinematic_lofa_sequence
         self._buzzer = buzzer
         
         self._running = False
@@ -216,6 +218,11 @@ class EventProcessor:
                 if state.pump_tertiary_status == PUMP_ON:
                     state.pump_tertiary_status = PUMP_SHUTTING_DOWN
                     
+            elif event == ButtonEvent.START_CINEMATIC_LOFA:
+                if self._cinematic_lofa_sequence:
+                    self._cinematic_lofa_sequence.start()
+                    logger.info("Cinematic LOFA simulation sequence initiated")
+
             # LOFA Simulation events
             elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
                 if state.pump_primary_status == PUMP_ON:
@@ -262,10 +269,12 @@ class EventProcessor:
             # Reset
             elif event == ButtonEvent.REACTOR_RESET:
                 # Stop auto simulation if running
-                if self._auto_simulator and self._auto_simulator.is_running:
+                if self._auto_simulator:
                     self._auto_simulator.cancel()
-                if self._lofa_sequence and self._lofa_sequence.is_running:
+                if self._lofa_sequence:
                     self._lofa_sequence.cancel()
+                if self._cinematic_lofa_sequence:
+                    self._cinematic_lofa_sequence.cancel()
                 
                 # Reset state
                 state.reset()

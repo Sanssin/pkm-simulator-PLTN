@@ -454,8 +454,29 @@ class TouchPanelBaseWindow(QMainWindow):
         """)
         auto_btn.clicked.connect(self._start_auto_mode)
         
+        lofa_btn = QPushButton("Simulasi LOFA")
+        lofa_btn.setObjectName("hudLofaBtn")
+        lofa_btn.setFixedSize(320, 80)
+        lofa_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #DC2626;
+            }
+            QPushButton:pressed {
+                background-color: #B91C1C;
+            }
+        """)
+        lofa_btn.clicked.connect(self._start_lofa_mode)
+        
         btn_layout.addWidget(start_btn)
         btn_layout.addWidget(auto_btn)
+        btn_layout.addWidget(lofa_btn)
         
         layout.addStretch()
         layout.addWidget(title)
@@ -480,6 +501,10 @@ class TouchPanelBaseWindow(QMainWindow):
     def _start_auto_mode(self) -> None:
         self.stacked_widget.setCurrentIndex(1)
         self._on_button_click("START_AUTO_SIMULATION")
+        
+    def _start_lofa_mode(self) -> None:
+        self.stacked_widget.setCurrentIndex(1)
+        self._on_button_click("START_CINEMATIC_LOFA")
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
@@ -1023,8 +1048,12 @@ class TouchPanelBaseWindow(QMainWindow):
                         
                         # Set mode
                         auto_running = state_data.get("auto_running", False)
+                        json_mode = state_data.get("mode", "")
+                        
                         if self.sim_emergency:
                             self.sim_mode = "SCRAM"
+                        elif json_mode == "cinematic_lofa":
+                            self.sim_mode = "Simulasi LOFA"
                         elif auto_running:
                             self.sim_mode = "Otomatis"
                         else:
