@@ -88,6 +88,7 @@ class PanelState:
     
     # Emergency state
     emergency_active: bool = False
+    reactor_active: bool = False
     
     # LOFA specific mitigation
     condenser_pressure: float = 0.0
@@ -135,6 +136,7 @@ class PanelState:
         self.lofa_secondary = False
         self.lofa_tertiary = False
         self.emergency_active = False
+        self.reactor_active = False
         self.condenser_pressure = 0.0
         self.relief_valve_open = False
         self.spray_active = False

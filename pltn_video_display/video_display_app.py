@@ -1788,6 +1788,13 @@ class VideoDisplayApp:
         if mode == "auto" and auto_running:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
+                import pwd
+                try:
+                    target_home = pwd.getpwuid(1000).pw_dir
+                except Exception:
+                    target_home = "/home/pi"
+                video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
+                self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
@@ -1800,6 +1807,13 @@ class VideoDisplayApp:
         if mode == "cinematic_lofa":
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to CINEMATIC LOFA VIDEO mode")
+                import pwd
+                try:
+                    target_home = pwd.getpwuid(1000).pw_dir
+                except Exception:
+                    target_home = "/home/pi"
+                video_path = str(Path(target_home) / "video_pltn" / "simulasi_lofa.mp4")
+                self.play_video(video_path, loop=False)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None
                 self.user_has_interacted = False
