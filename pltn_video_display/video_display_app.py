@@ -1539,13 +1539,13 @@ class VideoDisplayApp:
 
         # 5. TEKS UTAMA DI TENGAH
         val_text = format_str.format(value)
-        # Menggunakan font_large agar angka MW menjadi BESAR dan mencolok
+        # Teks nilai berada pas di tengah
         val_surface = self.font_heading.render(val_text, True, self.COLOR_TEXT)
-        self.screen.blit(val_surface, val_surface.get_rect(center=(center_x, center_y - int(10 * self.scale))))
+        self.screen.blit(val_surface, val_surface.get_rect(center=(center_x, center_y)))
         
-        # Subtitle
-        lbl_text = self.font_caption.render(subtitle, True, self.COLOR_TEXT_SECONDARY)
-        self.screen.blit(lbl_text, lbl_text.get_rect(center=(center_x, center_y + int(20 * self.scale))))
+        # Subtitle (Teks Label) diletakkan di BAWAH spedometer
+        lbl_text = self.font_body.render(subtitle, True, self.COLOR_TEXT)
+        self.screen.blit(lbl_text, lbl_text.get_rect(center=(center_x, center_y + outer_radius + int(30 * self.scale))))
 
     def draw_pump_status(self, state: Dict, center_x: int, start_y: int):
         """Menggambar indikator pompa tanpa judul (judul diurus oleh parent)"""
