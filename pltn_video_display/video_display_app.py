@@ -1045,11 +1045,14 @@ class VideoDisplayApp:
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
         
         # Read temperatures from state (fallback to calculated if not available)
-        default_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
-        core_temp = state.get("temperature_core", default_temp)
-        clad_temp = state.get("temperature_fuel_cladding", core_temp * 0.95)
-        prim_temp = state.get("temperature_coolant_primary", clad_temp * 0.85)
-        sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
+        ambient_temp = 28.0  # Suhu ruangan normal
+        # Jika belum beroperasi, suhu minimal adalah suhu ruangan
+        default_temp = state.get("temperature", max(ambient_temp, (state.get("pressure", 0) / 160.0) * 300.0))
+        
+        core_temp = max(ambient_temp, state.get("temperature_core", default_temp))
+        clad_temp = max(ambient_temp, state.get("temperature_fuel_cladding", ambient_temp + (core_temp - ambient_temp) * 0.95))
+        prim_temp = max(ambient_temp, state.get("temperature_coolant_primary", ambient_temp + (clad_temp - ambient_temp) * 0.85))
+        sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.70))
         
         temps = [
             ("Bahan Bakar", core_temp, 350.0),
