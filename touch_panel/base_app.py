@@ -488,7 +488,6 @@ class TouchPanelBaseWindow(QMainWindow):
         return hud
 
     def _start_manual_mode(self) -> None:
-        self.stacked_widget.setCurrentIndex(1)
         import sys
         from pathlib import Path
         flag_path = Path("C:/temp/pltn_manual_started") if sys.platform == "win32" else Path("/tmp/pltn_manual_started")
@@ -497,14 +496,30 @@ class TouchPanelBaseWindow(QMainWindow):
             flag_path.touch()
         except Exception as e:
             logger.error("Failed to write manual started flag: %s", e)
+            
+        if _PYQT_AVAILABLE:
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(250, lambda: self.stacked_widget.setCurrentIndex(1))
+        else:
+            self.stacked_widget.setCurrentIndex(1)
 
     def _start_auto_mode(self) -> None:
-        self.stacked_widget.setCurrentIndex(1)
         self._on_button_click("START_AUTO_SIMULATION")
         
+        if _PYQT_AVAILABLE:
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(250, lambda: self.stacked_widget.setCurrentIndex(1))
+        else:
+            self.stacked_widget.setCurrentIndex(1)
+        
     def _start_lofa_mode(self) -> None:
-        self.stacked_widget.setCurrentIndex(1)
         self._on_button_click("START_CINEMATIC_LOFA")
+        
+        if _PYQT_AVAILABLE:
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(250, lambda: self.stacked_widget.setCurrentIndex(1))
+        else:
+            self.stacked_widget.setCurrentIndex(1)
 
     def _center_window(self) -> None:
         if not _PYQT_AVAILABLE:
