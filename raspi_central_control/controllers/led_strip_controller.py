@@ -36,25 +36,36 @@ class LEDSegment:
         self.speed = 0.0 # 0.0 = stopped, >0 = moving
         self.fill_level = -1.0 # -1.0 means flow mode, 0.0-1.0 means fill mode
         self.fill_color = Color(255, 100, 0)
+        self.heat_ratio = 0.0  # 0.0 = cold (full blue), 1.0 = hot (red end)
         
         # Pre-compute gradient for this segment
         self.gradient = self._generate_gradient()
 
+    def update_heat_ratio(self, ratio: float):
+        ratio = max(0.0, min(1.0, ratio))
+        if abs(self.heat_ratio - ratio) > 0.05:
+            self.heat_ratio = ratio
+            self.gradient = self._generate_gradient()
+
     def _generate_gradient(self):
         gradient_colors = [Color(0,0,0)] * self.length
         
-        red = (255, 0, 0)
         blue = (0, 0, 255)
+        # Warna panas bertransisi dari Biru (dingin) ke Merah (panas maksimum)
+        hot_r = int(blue[0] * (1.0 - self.heat_ratio) + 255 * self.heat_ratio)
+        hot_g = int(blue[1] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
+        hot_b = int(blue[2] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
+        hot_color = (hot_r, hot_g, hot_b)
 
         # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
         # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
-        # Lampu 24-46 (index 23-45) Merah: setelah mengambil panas uap turbin
+        # Lampu 24-46 (index 23-45) Merah/Panas: setelah mengambil panas uap turbin
         if self.name == 'kondenser':
             for i in range(self.length):
                 if i < 23:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
                 else:
-                    gradient_colors[i] = Color(red[0], red[1], red[2])
+                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
@@ -73,15 +84,15 @@ class LEDSegment:
                 # Awal: Biru (dingin — air masuk)
                 gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             elif i <= grad_end:
-                # Tengah: Blend dari Biru ke Merah
+                # Tengah: Blend dari Biru ke Warna Panas
                 t = (i - grad_start) / (max(1, grad_len - 1))
-                r = int(blue[0] * (1 - t) + red[0] * t)
-                g = int(blue[1] * (1 - t) + red[1] * t)
-                b = int(blue[2] * (1 - t) + red[2] * t)
+                r = int(blue[0] * (1 - t) + hot_color[0] * t)
+                g = int(blue[1] * (1 - t) + hot_color[1] * t)
+                b = int(blue[2] * (1 - t) + hot_color[2] * t)
                 gradient_colors[i] = Color(r, g, b)
             else:
-                # Akhir: Merah (panas — air keluar)
-                gradient_colors[i] = Color(red[0], red[1], red[2])
+                # Akhir: Warna Panas (dingin/panas — air keluar)
+                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
                 
         return gradient_colors
 
@@ -139,6 +150,11 @@ class LedStripController:
         """Mengatur kecepatan aliran segmen. 0 = berhenti."""
         if name in self.segments:
             self.segments[name].speed = speed
+
+    def set_heat_ratio(self, name: str, ratio: float):
+        """Mengatur rasio panas (0.0 = biru total, 1.0 = ada gradien merah)."""
+        if name in self.segments:
+            self.segments[name].update_heat_ratio(ratio)
 
     def set_fill_level(self, name: str, level: float, r: int, g: int, b: int):
         """Mengatur mode segment sebagai bar level terisi warna tertentu."""

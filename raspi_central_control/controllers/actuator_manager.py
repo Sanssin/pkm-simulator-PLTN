@@ -166,6 +166,15 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             
+            # Update heat ratio berdasarkan pergerakan turbin (0.0 = dingin/biru total, 1.0 = panas/ada merah)
+            heat_ratio = getattr(state, 'turbine_speed', 0.0) / 100.0
+            heat_ratio = max(0.0, min(1.0, heat_ratio))
+            
+            self.led_strip.set_heat_ratio('kondenser', heat_ratio)
+            self.led_strip.set_heat_ratio('primer', heat_ratio)
+            self.led_strip.set_heat_ratio('sekunder', heat_ratio)
+            self.led_strip.set_heat_ratio('tersier', heat_ratio)
+            
         # Update Pressurizer WS2812 Fill Level based on Pressure
         if hasattr(self, 'led_strip') and self.led_strip is not None and 'pressurizer' in self.led_strip.segments:
             pressure_val = getattr(state, 'pressure', 0.0)
