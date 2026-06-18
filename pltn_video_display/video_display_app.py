@@ -222,6 +222,8 @@ class VideoDisplayApp:
         # Dedicated larger fonts for IDLE screen to fill space
         self.font_idle_main = pygame.font.SysFont(font_name, int(base_scale * 1.05))      # Adjusted for longer text
         self.font_idle_sub = pygame.font.SysFont(font_name, int(base_scale * 0.95))       # Larger for subtitle
+        self.font_idle_inst = pygame.font.SysFont(font_name, int(base_scale * 0.75))      # Instruction text
+        self.font_idle_desc = pygame.font.SysFont(font_name, int(base_scale * 0.65))      # Description text
         
        # === LIGHT THEME INDUSTRIAL HMI COLORS ===
         self.COLOR_BG = (245, 248, 250)                 # Abu-abu sangat terang (Latar luar)
@@ -819,21 +821,21 @@ class VideoDisplayApp:
         inst_y = center_y_start + int(360 * self.scale)
         
         # Teks instruksi berkedip (Biru Muda)
-        inst_text = self.font_body.render("Tekan Tombol Untuk Memulai Simulasi", True, self.COLOR_PRIMARY_LIGHT)
+        inst_text = self.font_idle_inst.render("Tekan Tombol Untuk Memulai Simulasi", True, self.COLOR_PRIMARY_LIGHT)
         inst_text.set_alpha(int(self.idle_fade_alpha))  # Efek berkedip
         inst_rect = inst_text.get_rect(center=(self.width//2, inst_y))
         self.screen.blit(inst_text, inst_rect)
         
         # Indikator Mode Test (Warna Merah)
         if self.test_mode:
-            test_y = inst_y + int(50 * self.scale)
-            test_text = self.font_small.render("Test Mode: Tekan I/M/A Untuk Mengganti Mode | ESC Untuk Keluar", 
+            test_y = inst_y + int(70 * self.scale)
+            test_text = self.font_idle_desc.render("Test Mode: Tekan I/M/A Untuk Mengganti Mode | ESC Untuk Keluar", 
                                                True, self.COLOR_ERROR)
             test_rect = test_text.get_rect(center=(self.width//2, test_y))
             self.screen.blit(test_text, test_rect)
         
         # === 5. DESKRIPSI BAWAH ===
-        desc_y_start = self.height - int(150 * self.scale)
+        desc_y_start = self.height - int(180 * self.scale)
         desc_lines = [
             "Simulasi Interaktif Untuk Pembelajaran",
             "Pembangkit Listrik Tenaga Nuklir (PLTN)",
@@ -841,8 +843,8 @@ class VideoDisplayApp:
         ]
         for i, line in enumerate(desc_lines):
             # Menggunakan warna biru muda sesuai mockup
-            desc_text = self.font_small.render(line, True, self.COLOR_PRIMARY)
-            desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(40 * self.scale)))
+            desc_text = self.font_idle_desc.render(line, True, self.COLOR_PRIMARY)
+            desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(60 * self.scale)))
             self.screen.blit(desc_text, desc_rect)
         
         pygame.display.flip()
