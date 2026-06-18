@@ -55,13 +55,16 @@ def run_stress_test(duration=30):
         # Trigger Auto Simulation to measure actual load
         try:
             input_file = "C:/temp/pltn_input.json" if sys.platform == "win32" else "/tmp/pltn_input.json"
-            event = [{
-                "type": "START_AUTO",
-                "data": {},
-                "timestamp": time.time()
-            }]
+            now = time.time()
+            data = {
+                "timestamp": now,
+                "events": [{
+                    "type": "START_AUTO",
+                    "timestamp": now
+                }]
+            }
             with open(input_file, 'w') as f:
-                json.dump(event, f)
+                json.dump(data, f)
             print("-> Triggered Auto Simulation for stress testing.")
             time.sleep(1) # wait for processes to ramp up
         except Exception as e:
