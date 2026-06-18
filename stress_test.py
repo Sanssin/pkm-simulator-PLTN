@@ -49,8 +49,25 @@ def run_stress_test(duration=30):
         p_touch.cpu_percent()
         p_video.cpu_percent()
         
-        print(f"\nMeasuring system CPU load for {duration} seconds...")
+        print(f"\nMeasuring system CPU load for {duration} seconds (UNDER LOAD)...")
         
+        # Trigger Auto Simulation to measure actual load
+        try:
+            import json
+            import time
+            input_file = "C:/temp/pltn_input.json" if sys.platform == "win32" else "/tmp/pltn_input.json"
+            event = [{
+                "type": "START_AUTO",
+                "data": {},
+                "timestamp": time.time()
+            }]
+            with open(input_file, 'w') as f:
+                json.dump(event, f)
+            print("-> Triggered Auto Simulation for stress testing.")
+            time.sleep(1) # wait for processes to ramp up
+        except Exception as e:
+            print(f"Failed to trigger auto sim: {e}")
+            
         metrics = {"backend": [], "touch": [], "video": [], "total_sys": []}
         
         start_time = time.time()
