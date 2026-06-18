@@ -1029,10 +1029,10 @@ class VideoDisplayApp:
         diag_content_h = diag_h - int(100 * self.scale)
         self.draw_reactor_diagnostic_displays(state, margin_x, diag_content_y, left_col_w, diag_content_h)
 
-        # === KANAN 1: MONITOR SUHU (LOFA) ===
+        # === KANAN 1: MONITORING SUHU ===
         temp_y = content_y
         temp_h = int(260 * self.scale)
-        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
+        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITORING SUHU")
         
         # Read temperatures from state (fallback to calculated if not available)
         ambient_temp = 28.0  # Suhu ruangan normal
