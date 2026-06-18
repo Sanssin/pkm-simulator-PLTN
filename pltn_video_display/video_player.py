@@ -17,8 +17,15 @@ class VideoPlayer:
         self.current_video: Optional[str] = None
         self._lock = threading.Lock()
 
-    def play(self, filename: str = VIDEO_PATH, loop: bool = True):
-        """Play video non-blocking via mpv."""
+    def play(self, filename: str = VIDEO_PATH, loop: bool = True, extra_mpv_args: list = None):
+        """Play video non-blocking via mpv.
+        
+        Args:
+            filename: Path to video file
+            loop: If True, loop the video indefinitely
+            extra_mpv_args: Additional mpv arguments to override defaults
+                            (e.g. ['--vo=gpu', '--gpu-api=opengl', '--hwdec=no'] for HEVC 10-bit)
+        """
         with self._lock:
             if self.is_playing() and self.current_video == filename:
                 return
@@ -35,6 +42,7 @@ class VideoPlayer:
             log_suffix = os.path.basename(filename).replace('.', '_')
             log_path = f"/tmp/mpv_{log_suffix}.log"
             
+            # Base command — flags default yang bekerja untuk H.264 dengan hardware decode
             cmd = [
                 "mpv",
                 filename,
@@ -44,20 +52,24 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                "--vo=gpu",
-                # force software decode - RPi4 v4l2m2m tidak support HEVC 10-bit
-                "--hwdec=no",
-                # no-pause: pastikan langsung play, tidak stuck di frame pertama
-                "--no-pause",
+                "--vo=dmabuf-wayland",   # default: hardware decode via DMA-BUF (H.264)
+                "--hwdec=v4l2m2m",       # hardware decode RPi4 untuk H.264
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
+                "--no-pause",
                 f"--log-file={log_path}"
             ]
             
+            # Override flags jika disediakan (misal untuk HEVC 10-bit yang butuh software decode)
+            if extra_mpv_args:
+                # Hapus default vo/hwdec dari base command, ganti dengan yang disediakan
+                cmd = [c for c in cmd if not c.startswith("--vo=") and not c.startswith("--hwdec=")]
+                cmd.extend(extra_mpv_args)
+            
             if loop:
                 cmd.append("--loop-file=inf")
-                cmd.append("--keep-open=yes")  # Hanya untuk loop agar layar tidak blank setelah loop
+                cmd.append("--keep-open=yes")
                 
             import os
             env = os.environ.copy()

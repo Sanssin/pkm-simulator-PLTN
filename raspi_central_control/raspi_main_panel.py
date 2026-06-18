@@ -357,13 +357,20 @@ class PLTNPanelController:
                     # PENTING: cek cinematic_lofa DULU sebelum auto_sim_running
                     # agar video LOFA tidak tertimpa oleh video tutorial
                     if state.simulation_mode == 'cinematic_lofa':
-                        # Video HEVC Main 10 bisa diputar dengan software decode via --vo=gpu
                         video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
                         import os
                         if not os.path.exists(video_path):
                             logger.error(f"[VideoPlayer] File video LOFA tidak ditemukan: {video_path}")
                         elif not self.video_player.is_playing() or self.video_player.current_video != video_path:
-                            self.video_player.play(filename=video_path, loop=False)
+                            # HEVC Main 10 (10-bit) perlu software decode + OpenGL (bukan Vulkan/libplacebo)
+                            # --vo=gpu --gpu-api=opengl: paksa OpenGL, hindari Vulkan yang menyebabkan stuck
+                            # --hwdec=no: software decode karena v4l2m2m RPi4 tidak support HEVC 10-bit
+                            lofa_args = [
+                                "--vo=gpu",
+                                "--gpu-api=opengl",
+                                "--hwdec=no",
+                            ]
+                            self.video_player.play(filename=video_path, loop=False, extra_mpv_args=lofa_args)
                     elif state.auto_sim_running or state.simulation_mode == 'auto':
                         video_path = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
                         if not self.video_player.is_playing() or self.video_player.current_video != video_path:
