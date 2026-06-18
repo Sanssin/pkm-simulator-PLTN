@@ -219,6 +219,10 @@ class VideoDisplayApp:
         self.font_small = pygame.font.SysFont(font_name, int(base_scale * 0.44))          # Small text (35)
         self.font_caption = pygame.font.SysFont(font_name, int(base_scale * 0.38))        # Caption/tiny (30)
         
+        # Dedicated larger fonts for IDLE screen to fill space
+        self.font_idle_main = pygame.font.SysFont(font_name, int(base_scale * 1.3))       # Even larger for main title
+        self.font_idle_sub = pygame.font.SysFont(font_name, int(base_scale * 1.0))        # Larger for subtitle
+        
        # === LIGHT THEME INDUSTRIAL HMI COLORS ===
         self.COLOR_BG = (245, 248, 250)                 # Abu-abu sangat terang (Latar luar)
         self.COLOR_BG_PANEL = (255, 255, 255)           # Putih bersih (Dalam kotak)
@@ -791,24 +795,18 @@ class VideoDisplayApp:
         pygame.draw.line(self.screen, self.COLOR_TEXT_TERTIARY, (margin_x, line_y), (self.width - margin_x, line_y), max(int(3* self.scale), 1))
         
         # === 2. BAGIAN TENGAH (Judul Utama) ===
-        center_y_start = self.height // 2 - int(180 * self.scale)
+        center_y_start = self.height // 2 - int(150 * self.scale)
         
         # Baris 1: ALAT PERAGA PLTN TIPE PWR (Warna Emas/Orange)
         title1_text = "ALAT PERAGA PLTN TIPE PWR"
-        title1 = self.font_display.render(title1_text, True, self.COLOR_PRIMARY_BRIGHT)
+        title1 = self.font_idle_main.render(title1_text, True, self.COLOR_PRIMARY_BRIGHT)
         title1_rect = title1.get_rect(center=(self.width//2, center_y_start))
         self.screen.blit(title1, title1_rect)
         
-        # Baris 2: BERBASIS MIKROKONTROLLER (Warna Putih)
-        title2_text = "BERBASIS MIKROKONTROLLER"
-        title2 = self.font_title.render(title2_text, True, self.COLOR_TEXT)
-        title2_rect = title2.get_rect(center=(self.width//2, center_y_start + int(80 * self.scale)))
-        self.screen.blit(title2, title2_rect)
-        
-        # Baris 3: Nama Institusi (Warna Biru Muda)
+        # Baris 2: Nama Institusi (Warna Biru Muda)
         title3_text = "POLITEKNIK TEKNOLOGI NUKLIR INDONESIA"
-        title3 = self.font_subtitle.render(title3_text, True, self.COLOR_TEXT_TERTIARY)
-        title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(150 * self.scale)))
+        title3 = self.font_idle_sub.render(title3_text, True, self.COLOR_TEXT_TERTIARY)
+        title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(100 * self.scale)))
         self.screen.blit(title3, title3_rect)
         
         # === 3. BAGIAN TOMBOL / BADGE "SIMULASI SIAP" ===
