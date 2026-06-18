@@ -46,7 +46,7 @@ class VideoPlayer:
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
                 "--vo=dmabuf-wayland",
-                "--hwdec=v4l2m2m",
+                "--hwdec=auto",          # auto: coba v4l2m2m, fallback ke software jika codec tidak kompatibel
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
