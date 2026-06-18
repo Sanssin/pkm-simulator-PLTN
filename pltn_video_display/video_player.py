@@ -31,7 +31,6 @@ class VideoPlayer:
             logger.info(f"[VideoPlayer] Starting video playback: {filename}")
             
             import os
-            import hashlib
             # Gunakan nama file video sebagai suffix log agar tidak bentrok
             log_suffix = os.path.basename(filename).replace('.', '_')
             log_path = f"/tmp/mpv_{log_suffix}.log"
@@ -45,8 +44,10 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                "--vo=dmabuf-wayland",
-                "--hwdec=auto",          # auto: coba v4l2m2m, fallback ke software jika codec tidak kompatibel
+                # --vo=gpu mendukung SEMUA codec: H.264 (hwdec), HEVC 10-bit (swdec), dll
+                # Lebih fleksibel dari dmabuf-wayland yang hanya bekerja dengan hardware decoder
+                "--vo=gpu",
+                "--hwdec=auto",          # coba hardware decode dulu, fallback ke software otomatis
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",

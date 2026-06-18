@@ -359,15 +359,12 @@ class PLTNPanelController:
                         if not self.video_player.is_playing() or self.video_player.current_video != video_path:
                             self.video_player.play(filename=video_path, loop=True)
                     elif state.simulation_mode == 'cinematic_lofa':
-                        # Gunakan versi H.264 agar kompatibel dengan hardware decoder RPi4 (v4l2m2m)
-                        # Video HEVC Main 10 (10-bit) tidak didukung oleh v4l2m2m RPi4
-                        video_path = "/home/pkm/video_pltn/simulasi_lofa_h264.mp4"
+                        # Video HEVC Main 10 bisa diputar dengan software decode via --vo=gpu
+                        video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
                         import os
                         if not os.path.exists(video_path):
-                            # Fallback ke versi asli jika h264 belum tersedia
-                            video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
-                            logger.warning("[VideoPlayer] simulasi_lofa_h264.mp4 tidak ditemukan, menggunakan versi asli (mungkin tidak kompatibel)")
-                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            logger.error(f"[VideoPlayer] File video LOFA tidak ditemukan: {video_path}")
+                        elif not self.video_player.is_playing() or self.video_player.current_video != video_path:
                             self.video_player.play(filename=video_path, loop=False)
                     else:
                         if hasattr(self, 'video_player') and self.video_player.is_playing():
