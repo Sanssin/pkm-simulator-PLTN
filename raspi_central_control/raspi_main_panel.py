@@ -369,6 +369,10 @@ class PLTNPanelController:
                                 "--vo=gpu",
                                 "--gpu-api=opengl",
                                 "--hwdec=no",
+                                # Optimasi software decode agar tidak patah-patah di RPi4:
+                                "--vd-lavc-fast",
+                                "--vd-lavc-skiploopfilter=all",
+                                "--vd-lavc-threads=4"
                             ]
                             self.video_player.play(filename=video_path, loop=False, extra_mpv_args=lofa_args)
                     elif state.auto_sim_running or state.simulation_mode == 'auto':
