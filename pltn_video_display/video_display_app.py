@@ -926,8 +926,11 @@ class VideoDisplayApp:
             logo_small_poltek = pygame.transform.smoothscale(self.logo_poltek, self.logo_size_small)
             self.screen.blit(logo_small_poltek, (self.width - self.logo_size_small[0] - margin_x, header_y))
         
-        header_title = self.font_title.render("ALAT PERAGA PLTN TIPE PWR", True, self.COLOR_TEXT)
-        self.screen.blit(header_title, header_title.get_rect(center=(self.width//2, header_y + int(40 * self.scale))))
+        header_title1 = self.font_large.render("ALAT PERAGA PEMBANGKIT LISTRIK TENAGA NUKLIR", True, self.COLOR_TEXT)
+        self.screen.blit(header_title1, header_title1.get_rect(center=(self.width//2, header_y + int(25 * self.scale))))
+        
+        header_title2 = self.font_large.render("TIPE PRESSURIZED WATER REACTOR", True, self.COLOR_TEXT)
+        self.screen.blit(header_title2, header_title2.get_rect(center=(self.width//2, header_y + int(75 * self.scale))))
         
         line_y = header_y + int(120 * self.scale)
         pygame.draw.line(self.screen, self.COLOR_BORDER, (margin_x, line_y), (self.width - margin_x, line_y), max(int(2 * self.scale), 1))
