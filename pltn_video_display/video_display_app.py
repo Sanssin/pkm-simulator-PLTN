@@ -815,23 +815,8 @@ class VideoDisplayApp:
         title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(180 * self.scale)))
         self.screen.blit(title3, title3_rect)
         
-        # === 3. BAGIAN TOMBOL / BADGE "SIMULASI SIAP" ===
-        badge_y = center_y_start + int(310 * self.scale)
-        badge_width = int(450 * self.scale)
-        badge_height = int(90 * self.scale)
-        badge_rect = pygame.Rect(0, 0, badge_width, badge_height)
-        badge_rect.center = (self.width//2, badge_y)
-        
-        # Latar belakang tombol (Warna Emas/Orange dengan sudut melengkung)
-        pygame.draw.rect(self.screen, self.COLOR_WARNING, badge_rect, border_radius=int(10 * self.scale))
-        
-        # Teks dalam tombol (Warna Gelap/Background agar kontras)
-        badge_text = self.font_subtitle.render("SIMULASI SIAP", True, self.COLOR_DARK_NAVY)
-        badge_text_rect = badge_text.get_rect(center=badge_rect.center)
-        self.screen.blit(badge_text, badge_text_rect)
-        
-        # === 4. INSTRUKSI & MODE TEST ===
-        inst_y = badge_y + int(80 * self.scale)
+        # === 3. INSTRUKSI & MODE TEST ===
+        inst_y = center_y_start + int(360 * self.scale)
         
         # Teks instruksi berkedip (Biru Muda)
         inst_text = self.font_body.render("Tekan Tombol Untuk Memulai Simulasi", True, self.COLOR_PRIMARY_LIGHT)
