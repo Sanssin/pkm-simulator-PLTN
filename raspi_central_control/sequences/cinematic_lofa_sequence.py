@@ -64,54 +64,51 @@ class CinematicLOFASequence:
                     time.sleep(0.1)
                 return True
 
-            # 1. 00:00 - 00:16 (Opening: Startup Bertahap Menuju Operasi Normal)
-            # Fase ini meniru urutan startup AutoSimulator:
-            # Tekanan naik → Pompa Tersier ON → Pompa Sekunder ON → Pompa Primer ON
-            # → Parameter naik ke nilai normal
+            # 1. 00:00 - 00:28 (Opening: Startup Bertahap Menuju Operasi Normal)
+            # Fase ini meniru urutan startup AutoSimulator
             
-            # 1a. t=0~3s: Naikkan tekanan awal (pre-pressurize)
+            # 1a. t=0~5s: Naikkan tekanan awal (pre-pressurize)
             logger.info("--- 00:00 OPENING: Pre-pressurize ---")
             with self._state_manager as state:
                 state.auto_sim_phase = "Startup: Menaikkan Tekanan..."
                 state.reactor_active = True
-            while time.time() - start_time < 3.0:
+            while time.time() - start_time < 5.0:
                 if self._cancelled: return
                 elapsed = time.time() - start_time
-                progress = min(elapsed / 3.0, 1.0)
+                progress = min(elapsed / 5.0, 1.0)
                 with self._state_manager as state:
                     state.pressure = 45.0 * progress
                 time.sleep(0.1)
 
-            # 1b. t=3s: Pompa Tersier ON (pertama)
-            logger.info("--- 00:03 Pompa Tersier ON ---")
+            # 1b. t=5s: Pompa Tersier ON
+            logger.info("--- 00:05 Pompa Tersier ON ---")
             with self._state_manager as state:
                 state.pump_tertiary_status = PUMP_ON
                 state.auto_sim_phase = "Startup: Pompa Tersier Aktif"
-            if not wait_until(6.0): return
+            if not wait_until(10.0): return
 
-            # 1c. t=6s: Pompa Sekunder ON
-            logger.info("--- 00:06 Pompa Sekunder ON ---")
+            # 1c. t=10s: Pompa Sekunder ON
+            logger.info("--- 00:10 Pompa Sekunder ON ---")
             with self._state_manager as state:
                 state.pump_secondary_status = PUMP_ON
                 state.auto_sim_phase = "Startup: Pompa Sekunder Aktif"
-            if not wait_until(9.0): return
+            if not wait_until(15.0): return
 
-            # 1d. t=9s: Pompa Primer ON
-            logger.info("--- 00:09 Pompa Primer ON ---")
+            # 1d. t=15s: Pompa Primer ON
+            logger.info("--- 00:15 Pompa Primer ON ---")
             with self._state_manager as state:
                 state.pump_primary_status = PUMP_ON
                 state.auto_sim_phase = "Startup: Pompa Primer Aktif"
-            if not wait_until(11.0): return
+            if not wait_until(18.0): return
 
-            # 1e. t=11~16s: Ramp semua parameter ke kondisi operasi normal
-            logger.info("--- 00:11 Ramping to full power ---")
+            # 1e. t=18~28s: Ramp semua parameter ke kondisi operasi normal (10 detik)
+            logger.info("--- 00:18 Ramping to full power ---")
             with self._state_manager as state:
                 state.auto_sim_phase = "Startup: Menuju Operasi Normal..."
-            while time.time() - start_time < 16.0:
+            while time.time() - start_time < 28.0:
                 if self._cancelled: return
                 elapsed = time.time() - start_time
-                # progress 0→1 selama 11~16 detik
-                progress = min((elapsed - 11.0) / 5.0, 1.0)
+                progress = min((elapsed - 18.0) / 10.0, 1.0)
                 with self._state_manager as state:
                     state.pressure = 45.0 + (150.0 - 45.0) * progress
                     state.safety_rod = 100.0 * progress
@@ -123,43 +120,54 @@ class CinematicLOFASequence:
                     state.turbine_speed = 100.0 * progress
                 time.sleep(0.1)
 
-            if not wait_until(17.0): return
+            if not wait_until(29.0): return
 
-            # 2. 00:17 - Mulai LOFA (Primary Pump fails)
-            # NOTE: Kita TIDAK men-set emergency_active = True di sini karena
-            # itu akan menyebabkan display app beralih dari mode VIDEO ke MANUAL.
-            # Biarkan video selesai terlebih dahulu (sampai t=209s).
-            logger.warning("--- 00:17 LOFA TRIGGERED ---")
+            # 2. 00:29 - Mulai LOFA (Primary Pump fails)
+            logger.warning("--- 00:29 LOFA TRIGGERED ---")
             with self._state_manager as state:
                 state.pump_primary_status = PUMP_OFF
                 state.lofa_primary = True    # Flag LOFA aktif untuk indikator LED/display
                 state.auto_sim_phase = "LOFA: Kegagalan Pompa Primer!"
                 
-            # Biarkan fisika LOFA berjalan alami, tapi JANGAN trigger SCRAM/emergency
-            # sampai video hampir selesai (mendekati akhir video 3:29).
-            # Kita simulasikan panas naik perlahan untuk animasi LED.
+            if not wait_until(120.0): return
+
+            # 3. 02:00 - Batang Kendali Turun (SCRAM internal)
+            logger.warning("--- 02:00 SCRAM: Batang Kendali Turun ---")
+            with self._state_manager as state:
+                state.auto_sim_phase = "LOFA: Batang Kendali Turun (SCRAM)"
+            
+            # Animasi drop rod & power secara cepat selama 3 detik
+            scram_start = time.time()
+            while time.time() - scram_start < 3.0:
+                if self._cancelled: return
+                elapsed = time.time() - scram_start
+                progress = min(elapsed / 3.0, 1.0)
+                with self._state_manager as state:
+                    state.safety_rod = 100.0 * (1.0 - progress)
+                    state.shim_rod = 100.0 * (1.0 - progress)
+                    state.regulating_rod = 100.0 * (1.0 - progress)
+                    state.thermal_kw = 300000.0 * (1.0 - progress)
+                    state.turbine_speed = 100.0 * (1.0 - progress)
+                time.sleep(0.1)
+
             if not wait_until(185.0): return
 
-            # 3. 03:05 - Mulai menutup (pump sekunder & tersier mati)
-            # Masih dalam mode cinematic_lofa, BELUM ubah ke emergency
+            # 4. 03:05 - Selesai LOFA (pump sekunder & tersier mati)
             logger.warning("--- 03:05 SHUTDOWN SEQUENCE ---")
             with self._state_manager as state:
                 state.pump_secondary_status = PUMP_OFF
                 state.pump_tertiary_status = PUMP_OFF
-                state.auto_sim_phase = "LOFA: Shutdown Sistem..."
+                state.auto_sim_phase = "LOFA: Selesai"
 
-            # 4. Tunggu hingga video benar-benar selesai di 03:29 (209s)
+            # 5. 03:06-03:29 - Closing (Tunggu video habis)
             if not wait_until(209.0): return
             
             logger.info("--- 03:29 CINEMATIC LOFA ENDED ---")
             
-            # 5. Setelah video selesai, baru trigger SCRAM dan pindah ke manual
+            # Setelah video selesai, baru trigger SCRAM secara sistem (agar lampu sirine nyala)
             with self._state_manager as state:
                 state.emergency_active = True
-                state.auto_sim_phase = "LOFA Selesai: SCRAM Darurat"
-            
-            # Beri waktu 1 detik agar display sempat mendeteksi emergency sebelum reset
-            time.sleep(1.0)
+                state.auto_sim_phase = "Simulasi Selesai"
             
         except Exception as e:
             logger.error(f"Cinematic LOFA Sequence error: {e}")
