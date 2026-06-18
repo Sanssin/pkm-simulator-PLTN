@@ -3,6 +3,7 @@ import time
 import subprocess
 import os
 import sys
+import json
 
 def run_stress_test(duration=30):
     print("=" * 60)
@@ -53,8 +54,6 @@ def run_stress_test(duration=30):
         
         # Trigger Auto Simulation to measure actual load
         try:
-            import json
-            import time
             input_file = "C:/temp/pltn_input.json" if sys.platform == "win32" else "/tmp/pltn_input.json"
             event = [{
                 "type": "START_AUTO",
