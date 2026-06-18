@@ -52,8 +52,7 @@ class CinematicLOFASequence:
                 state.reset()
                 state.simulation_mode = 'cinematic_lofa'
                 state.auto_sim_phase = "Opening..."
-                # Mark as running so display knows not to return to IDLE
-                state.auto_sim_running = True
+                # JANGAN set auto_sim_running=True di sini - itu akan memicu video tutorial!
                 state.pump_tertiary_status = PUMP_ON
                 state.pump_secondary_status = PUMP_ON
                 state.pump_primary_status = PUMP_ON
