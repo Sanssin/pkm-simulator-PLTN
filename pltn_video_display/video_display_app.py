@@ -1020,9 +1020,9 @@ class VideoDisplayApp:
         right_col_w = int((self.width - 2 * margin_x - col_gap) * 0.37)
         right_col_x = margin_x + left_col_w + col_gap
         
-        # === KIRI: REACTOR DIAGNOSTIC DISPLAYS ===
+        # === KIRI: PARAMETER REAKTOR NUKLIR ===
         diag_h = self.height - content_y - int(40 * self.scale)
-        self.draw_boxed_panel(margin_x, content_y, left_col_w, diag_h, "REACTOR DIAGNOSTIC DISPLAYS")
+        self.draw_boxed_panel(margin_x, content_y, left_col_w, diag_h, "PARAMETER REAKTOR NUKLIR")
         
         # Content area setelah judul (80px reserved untuk judul + garis)
         diag_content_y = content_y + int(80 * self.scale)
