@@ -44,10 +44,13 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                # --vo=gpu mendukung SEMUA codec: H.264 (hwdec), HEVC 10-bit (swdec), dll
-                # Lebih fleksibel dari dmabuf-wayland yang hanya bekerja dengan hardware decoder
+                # --vo=gpu bekerja dengan software dan hardware decoder
                 "--vo=gpu",
-                "--hwdec=auto",          # coba hardware decode dulu, fallback ke software otomatis
+                # --hwdec=no: force software decode agar HEVC 10-bit (yuv420p10le) tidak bluescreen
+                # RPi4 v4l2m2m hanya support H.264 dan HEVC 8-bit via hardware
+                "--hwdec=no",
+                # Konversi 10-bit ke 8-bit sebelum output ke GPU agar warna benar
+                "--vf=format=yuv420p",
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",

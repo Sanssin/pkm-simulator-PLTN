@@ -169,7 +169,6 @@ class CinematicLOFASequence:
                 state.reset()
                 # Set mode ke manual agar tampilan kembali ke menu utama
                 state.simulation_mode = 'manual'
-                state.user_interacted = True   # Cegah display kembali ke IDLE
                 # Clear emergency agar UI tidak terjebak di status bahaya
                 state.emergency_active = False
                 state.auto_sim_phase = ""

@@ -1745,9 +1745,8 @@ class VideoDisplayApp:
         is_manual_started = hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists()
 
         # Jangan pernah kembali ke IDLE saat mode cinematic_lofa aktif
-        # atau saat user sudah pernah berinteraksi (misal selesai dari LOFA)
         lofa_mode_active = (mode == "cinematic_lofa")
-        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active and not self.user_has_interacted:
+        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active:
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
