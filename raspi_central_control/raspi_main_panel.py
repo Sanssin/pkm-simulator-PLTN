@@ -375,8 +375,8 @@ class PLTNPanelController:
                         if hasattr(self, 'video_player') and self.video_player.is_playing():
                             self.video_player.stop()
 
-                    # Primary Physics Simulation (runs every 10ms)
-                    if True:
+                    # Primary Physics Simulation (hanya berjalan saat mode manual, agar tidak bertabrakan dengan animasi auto/lofa)
+                    if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
                         # Shim rod has 80% worth, Regulating rod has 20% worth
                         effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
                         

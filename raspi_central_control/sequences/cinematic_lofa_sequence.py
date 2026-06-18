@@ -115,9 +115,9 @@ class CinematicLOFASequence:
                 with self._state_manager as state:
                     state.pressure = 45.0 + (150.0 - 45.0) * progress
                     state.safety_rod = 100.0 * progress
-                    state.shim_rod = 50.0 * progress
-                    state.regulating_rod = 50.0 * progress
-                    state.thermal_kw = 250000.0 * progress
+                    state.shim_rod = 100.0 * progress
+                    state.regulating_rod = 100.0 * progress
+                    state.thermal_kw = 300000.0 * progress
                     state.temperature_core = 25.0 + (280.0 - 25.0) * progress
                     state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * progress
                     state.turbine_speed = 100.0 * progress
