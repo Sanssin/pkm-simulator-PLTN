@@ -69,10 +69,20 @@ class LEDSegment:
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
-        # Atau aliran balik sekunder (sekunder_in) dari kondenser: Biru solid (dingin)
-        if self.name in ('tersier_in', 'sekunder_in'):
+        if self.name == 'tersier_in':
             for i in range(self.length):
                 gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+            return gradient_colors
+
+        # Aliran balik sekunder (sekunder_in) dari kondenser: Hangat (sedikit merah) saat reaktor aktif
+        if self.name == 'sekunder_in':
+            # Buat rasionya lebih kecil dari heat_ratio utama agar warnanya hanya "hangat", bukan mendidih
+            warm_ratio = self.heat_ratio * 0.4 
+            warm_r = int(blue[0] * (1.0 - warm_ratio) + 255 * warm_ratio)
+            warm_g = int(blue[1] * (1.0 - warm_ratio) + 0 * warm_ratio)
+            warm_b = int(blue[2] * (1.0 - warm_ratio) + 0 * warm_ratio)
+            for i in range(self.length):
+                gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
 
         # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid
