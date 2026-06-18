@@ -1722,6 +1722,10 @@ class VideoDisplayApp:
         auto_running = state.get("auto_running", False)
         emergency = state.get("emergency", False)
         
+        # Sinkronisasi user_has_interacted dari state (misal setelah LOFA selesai)
+        if state.get("user_interacted", False) and not self.user_has_interacted:
+            self.user_has_interacted = True
+        
         # Check if simulation was RESET (pressure back to 0, all parameters reset)
         current_pressure = state.get("pressure", 0)
         current_rods = (state.get("safety_rod", 0) + 
@@ -1740,7 +1744,10 @@ class VideoDisplayApp:
 
         is_manual_started = hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists()
 
-        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started:
+        # Jangan pernah kembali ke IDLE saat mode cinematic_lofa aktif
+        # atau saat user sudah pernah berinteraksi (misal selesai dari LOFA)
+        lofa_mode_active = (mode == "cinematic_lofa")
+        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active and not self.user_has_interacted:
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
@@ -1793,6 +1800,7 @@ class VideoDisplayApp:
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None
                 self.user_has_interacted = False
+            # Video berjalan via mpv - tidak ada yang perlu digambar
             return
         
         # MODE 3: MANUAL - Show guide if user interacted or after auto complete

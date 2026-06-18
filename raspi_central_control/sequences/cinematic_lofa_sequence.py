@@ -52,6 +52,8 @@ class CinematicLOFASequence:
                 state.reset()
                 state.simulation_mode = 'cinematic_lofa'
                 state.auto_sim_phase = "Opening..."
+                # Mark as running so display knows not to return to IDLE
+                state.auto_sim_running = True
                 state.pump_tertiary_status = PUMP_ON
                 state.pump_secondary_status = PUMP_ON
                 state.pump_primary_status = PUMP_ON
@@ -85,33 +87,40 @@ class CinematicLOFASequence:
             if not wait_until(17.0): return
 
             # 2. 00:17 - Mulai LOFA (Primary Pump fails)
+            # NOTE: Kita TIDAK men-set emergency_active = True di sini karena
+            # itu akan menyebabkan display app beralih dari mode VIDEO ke MANUAL.
+            # Biarkan video selesai terlebih dahulu (sampai t=209s).
             logger.warning("--- 00:17 LOFA TRIGGERED ---")
             with self._state_manager as state:
                 state.pump_primary_status = PUMP_OFF
+                state.lofa_primary = True    # Flag LOFA aktif untuk indikator LED/display
                 state.auto_sim_phase = "LOFA: Kegagalan Pompa Primer!"
                 
-            # Physics are driven naturally by lofa_simulator.py, but we might need to 
-            # ensure it doesn't SCRAM too early before 03:05 (185s).
-            # We'll just let nature take its course until 185s, but we will force the SCRAM at 185s.
+            # Biarkan fisika LOFA berjalan alami, tapi JANGAN trigger SCRAM/emergency
+            # sampai video hampir selesai (mendekati akhir video 3:29).
+            # Kita simulasikan panas naik perlahan untuk animasi LED.
             if not wait_until(185.0): return
 
-            # 3. 03:05 - Selesai LOFA (SCRAM)
-            logger.warning("--- 03:05 SCRAM TRIGGERED ---")
-            with self._state_manager as state:
-                state.emergency_active = True
-                state.auto_sim_phase = "LOFA Selesai: SCRAM Darurat"
-
-            if not wait_until(186.0): return
-
-            # 4. 03:06 - 03:29 Closing (Turn off other pumps)
+            # 3. 03:05 - Mulai menutup (pump sekunder & tersier mati)
+            # Masih dalam mode cinematic_lofa, BELUM ubah ke emergency
+            logger.warning("--- 03:05 SHUTDOWN SEQUENCE ---")
             with self._state_manager as state:
                 state.pump_secondary_status = PUMP_OFF
                 state.pump_tertiary_status = PUMP_OFF
-                state.auto_sim_phase = "Closing: Shutdown Sistem..."
-                
+                state.auto_sim_phase = "LOFA: Shutdown Sistem..."
+
+            # 4. Tunggu hingga video benar-benar selesai di 03:29 (209s)
             if not wait_until(209.0): return
             
             logger.info("--- 03:29 CINEMATIC LOFA ENDED ---")
+            
+            # 5. Setelah video selesai, baru trigger SCRAM dan pindah ke manual
+            with self._state_manager as state:
+                state.emergency_active = True
+                state.auto_sim_phase = "LOFA Selesai: SCRAM Darurat"
+            
+            # Beri waktu 1 detik agar display sempat mendeteksi emergency sebelum reset
+            time.sleep(1.0)
             
         except Exception as e:
             logger.error(f"Cinematic LOFA Sequence error: {e}")
@@ -119,8 +128,10 @@ class CinematicLOFASequence:
             self._running = False
             with self._state_manager as state:
                 state.reset()
-                # Set mode to manual at the end so it returns to main menu
+                # Set mode ke manual agar tampilan kembali ke menu utama
                 state.simulation_mode = 'manual'
-                # Clear emergency to reset UI
+                state.user_interacted = True   # Cegah display kembali ke IDLE
+                # Clear emergency agar UI tidak terjebak di status bahaya
                 state.emergency_active = False
                 state.auto_sim_phase = ""
+

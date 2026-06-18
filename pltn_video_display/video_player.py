@@ -30,6 +30,12 @@ class VideoPlayer:
             self.current_video = filename
             logger.info(f"[VideoPlayer] Starting video playback: {filename}")
             
+            import os
+            import hashlib
+            # Gunakan nama file video sebagai suffix log agar tidak bentrok
+            log_suffix = os.path.basename(filename).replace('.', '_')
+            log_path = f"/tmp/mpv_{log_suffix}.log"
+            
             cmd = [
                 "mpv",
                 filename,
@@ -45,7 +51,7 @@ class VideoPlayer:
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
                 "--keep-open=yes",
-                "--log-file=/tmp/mpv.log"
+                f"--log-file={log_path}"
             ]
             
             if loop:
