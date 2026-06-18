@@ -44,22 +44,20 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                # --vo=gpu bekerja dengan software dan hardware decoder
                 "--vo=gpu",
-                # --hwdec=no: force software decode agar HEVC 10-bit (yuv420p10le) tidak bluescreen
-                # RPi4 v4l2m2m hanya support H.264 dan HEVC 8-bit via hardware
+                # force software decode - RPi4 v4l2m2m tidak support HEVC 10-bit
                 "--hwdec=no",
-                # Konversi 10-bit ke 8-bit sebelum output ke GPU agar warna benar
-                "--vf=format=yuv420p",
+                # no-pause: pastikan langsung play, tidak stuck di frame pertama
+                "--no-pause",
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--audio-fallback-to-null=yes",
-                "--keep-open=yes",
                 f"--log-file={log_path}"
             ]
             
             if loop:
                 cmd.append("--loop-file=inf")
+                cmd.append("--keep-open=yes")  # Hanya untuk loop agar layar tidak blank setelah loop
                 
             import os
             env = os.environ.copy()
