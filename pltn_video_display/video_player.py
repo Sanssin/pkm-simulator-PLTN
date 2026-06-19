@@ -42,7 +42,7 @@ class VideoPlayer:
             log_suffix = os.path.basename(filename).replace('.', '_')
             log_path = f"/tmp/mpv_{log_suffix}.log"
             
-            # Base command — flags default yang bekerja untuk H.264 dengan hardware decode
+            # Base command — biarkan mpv auto-detect hwdec dan audio output seperti saat dibuka manual
             cmd = [
                 "mpv",
                 filename,
@@ -52,10 +52,7 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
-                "--vo=dmabuf-wayland",   # default: hardware decode via DMA-BUF (H.264)
-                "--hwdec=v4l2m2m",       # hardware decode RPi4 untuk H.264
                 "--no-pause",
-                "--ao=alsa",             # Paksa output audio via ALSA langsung
                 f"--log-file={log_path}"
             ]
             
@@ -73,10 +70,11 @@ class VideoPlayer:
             env = os.environ.copy()
             env["XDG_RUNTIME_DIR"] = "/run/user/1000"
             env["WAYLAND_DISPLAY"] = "wayland-0" # changed from wayland-1 as it's more common
+            env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
             
             # If running as root (e.g. systemd), drop privileges to user pkm for Wayland access
             if os.geteuid() == 0:
-                cmd = ['sudo', '-u', 'pkm', 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000'] + cmd
+                cmd = ['sudo', '-u', 'pkm', 'env', 'WAYLAND_DISPLAY=wayland-0', 'XDG_RUNTIME_DIR=/run/user/1000', 'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus'] + cmd
                 
             try:
                 self.process = subprocess.Popen(
