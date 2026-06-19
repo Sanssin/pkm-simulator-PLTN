@@ -358,12 +358,12 @@ class PLTNPanelController:
                     # agar video LOFA tidak tertimpa oleh video tutorial
                     if state.simulation_mode == 'cinematic_lofa':
                         # Gunakan versi H.264 agar bisa hardware decode (v4l2m2m) dengan mulus
-                        video_path = "/home/pkm/video_pltn/simulasi_lofa_h264.mp4"
+                        video_path = "/home/pkm/video_pltn/simulsi_lofa_720.mp4"
                         import os
                         if not os.path.exists(video_path):
                             # Fallback ke versi asli jika file baru tidak ditemukan
                             video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
-                            logger.warning("[VideoPlayer] simulasi_lofa_h264.mp4 tidak ditemukan, menggunakan versi asli")
+                            logger.warning(f"[VideoPlayer] {video_path} tidak ditemukan, menggunakan versi asli")
                         if not self.video_player.is_playing() or self.video_player.current_video != video_path:
                             # Hapus extra_mpv_args agar menggunakan default dmabuf-wayland hwdec
                             self.video_player.play(filename=video_path, loop=False)
