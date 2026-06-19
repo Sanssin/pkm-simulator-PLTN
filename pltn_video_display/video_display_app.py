@@ -879,16 +879,16 @@ class VideoDisplayApp:
         self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(35 * self.scale))))
         
         pumps = [
-            ("Primer", state.get("pump_primary", 0) > 0),
-            ("Sekunder", state.get("pump_secondary", 0) > 0),
-            ("Tersier", state.get("pump_tertiary", 0) > 0)
+            ("Primer", int(state.get("pump_primary", 0))),
+            ("Sekunder", int(state.get("pump_secondary", 0))),
+            ("Tersier", int(state.get("pump_tertiary", 0)))
         ]
         
         segment_w = box_w // 3
         # Center the pump vertically in the remaining space below the title
         item_y = bottom_y + int(35 * self.scale) + (bottom_h - int(35 * self.scale)) // 2
         
-        for idx, (name, is_on) in enumerate(pumps):
+        for idx, (name, status_int) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
             
             # Check LOFA status for this pump
@@ -903,11 +903,26 @@ class VideoDisplayApp:
                 pygame.draw.circle(self.screen, self.COLOR_ERROR, (center_x, item_y), int(55 * self.scale))
                 
             # Draw the actual pump icon/image
-            self.draw_centrifugal_pump(center_x, item_y, is_on)
+            is_active_visually = (status_int > 0)
+            self.draw_centrifugal_pump(center_x, item_y, is_active_visually)
             
             # Draw label below the pump
-            status_str = "AKTIF" if is_on else "MATI (GAGAL)" if is_lofa else "MATI"
-            lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
+            if is_lofa:
+                status_str = "MATI (GAGAL)"
+                lbl_color = self.COLOR_ERROR
+            elif status_int == 1:
+                status_str = "START UP"
+                lbl_color = self.COLOR_WARNING
+            elif status_int == 2:
+                status_str = "AKTIF"
+                lbl_color = self.COLOR_SUCCESS
+            elif status_int == 3:
+                status_str = "SHUT DOWN"
+                lbl_color = self.COLOR_WARNING
+            else:
+                status_str = "MATI"
+                lbl_color = self.COLOR_TEXT
+                
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
             self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(95 * self.scale))))
 
