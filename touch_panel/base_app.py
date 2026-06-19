@@ -718,22 +718,30 @@ class TouchPanelBaseWindow(QMainWindow):
     def _build_status_dashboard(self) -> QWidget:
         widget = QWidget()
         layout = QGridLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(30, 40, 30, 40)
+        layout.setSpacing(30)
 
-        # 1. Status Pompa
-        self.lbl_dash_pump1 = QLabel("P1: OFF")
-        self.lbl_dash_pump2 = QLabel("P2: OFF")
-        self.lbl_dash_pump3 = QLabel("P3: OFF")
+        # 1. Parameter Termal (Left Column)
+        self.lbl_dash_power = QLabel("0 kW")
+        self.lbl_dash_pressure = QLabel("0 bar")
+        self.lbl_dash_temp_pri = QLabel("0 °C")
+        self.lbl_dash_temp_sec = QLabel("0 °C")
         
-        pump_group = QGroupBox("Status Pompa Pendingin")
-        pump_layout = QVBoxLayout(pump_group)
-        pump_layout.addWidget(self.lbl_dash_pump1)
-        pump_layout.addWidget(self.lbl_dash_pump2)
-        pump_layout.addWidget(self.lbl_dash_pump3)
-        layout.addWidget(pump_group, 0, 0)
-        
-        # 2. Batang Kendali
+        param_group = QGroupBox("Parameter Utama")
+        param_layout = QVBoxLayout(param_group)
+        param_layout.setSpacing(15)
+        param_layout.addWidget(QLabel("Daya Output Termal:"))
+        param_layout.addWidget(self.lbl_dash_power)
+        param_layout.addWidget(QLabel("Tekanan Pressurizer:"))
+        param_layout.addWidget(self.lbl_dash_pressure)
+        param_layout.addWidget(QLabel("Suhu Pendingin Primer:"))
+        param_layout.addWidget(self.lbl_dash_temp_pri)
+        param_layout.addWidget(QLabel("Suhu Pendingin Sekunder:"))
+        param_layout.addWidget(self.lbl_dash_temp_sec)
+        param_layout.addStretch()
+        layout.addWidget(param_group, 0, 0)
+
+        # 2. Batang Kendali (Middle Column)
         self.bar_safety = QProgressBar()
         self.bar_shim = QProgressBar()
         self.bar_reg = QProgressBar()
@@ -745,64 +753,79 @@ class TouchPanelBaseWindow(QMainWindow):
         
         rod_group = QGroupBox("Posisi Batang Kendali")
         rod_layout = QVBoxLayout(rod_group)
-        rod_layout.addWidget(QLabel("Pengaman"))
+        rod_layout.setSpacing(15)
+        rod_layout.addWidget(QLabel("Pengaman (Safety)"))
         rod_layout.addWidget(self.bar_safety)
-        rod_layout.addWidget(QLabel("Shim"))
+        rod_layout.addWidget(QLabel("Kasar (Shim)"))
         rod_layout.addWidget(self.bar_shim)
-        rod_layout.addWidget(QLabel("Pengatur"))
+        rod_layout.addWidget(QLabel("Halus (Regulating)"))
         rod_layout.addWidget(self.bar_reg)
+        rod_layout.addStretch()
         layout.addWidget(rod_group, 0, 1)
 
-        # 3. Parameter Termal
-        self.lbl_dash_power = QLabel("0 kW")
-        self.lbl_dash_pressure = QLabel("0 bar")
-        self.lbl_dash_temp_pri = QLabel("0 °C")
-        self.lbl_dash_temp_sec = QLabel("0 °C")
+        # 3. Status Pompa (Right Column)
+        self.lbl_dash_pump1 = QLabel("Primer: OFF")
+        self.lbl_dash_pump2 = QLabel("Sekunder: OFF")
+        self.lbl_dash_pump3 = QLabel("Tersier: OFF")
         
-        param_group = QGroupBox("Parameter Utama")
-        param_layout = QVBoxLayout(param_group)
-        param_layout.addWidget(QLabel("Daya Output Termal:"))
-        param_layout.addWidget(self.lbl_dash_power)
-        param_layout.addWidget(QLabel("Tekanan Pressurizer:"))
-        param_layout.addWidget(self.lbl_dash_pressure)
-        param_layout.addWidget(QLabel("Suhu Pendingin Primer:"))
-        param_layout.addWidget(self.lbl_dash_temp_pri)
-        param_layout.addWidget(QLabel("Suhu Pendingin Sekunder:"))
-        param_layout.addWidget(self.lbl_dash_temp_sec)
-        layout.addWidget(param_group, 1, 0, 1, 2)
+        for lbl in [self.lbl_dash_pump1, self.lbl_dash_pump2, self.lbl_dash_pump3]:
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setProperty("is_pump", True)
+            
+        pump_group = QGroupBox("Status Pompa Pendingin")
+        pump_layout = QVBoxLayout(pump_group)
+        pump_layout.setSpacing(20)
+        pump_layout.addWidget(self.lbl_dash_pump1)
+        pump_layout.addWidget(self.lbl_dash_pump2)
+        pump_layout.addWidget(self.lbl_dash_pump3)
+        pump_layout.addStretch()
+        layout.addWidget(pump_group, 0, 2)
         
-        # Style
+        # Style (Dark Theme ala Pygame Display)
         widget.setStyleSheet("""
+            QWidget {
+                background-color: #0F172A;
+            }
             QGroupBox {
-                font-size: 20px;
+                font-size: 22px;
                 font-weight: bold;
-                border: 2px solid #cbd5e1;
+                border: 2px solid #1E293B;
                 border-radius: 12px;
-                margin-top: 24px;
-                padding: 10px;
+                margin-top: 30px;
+                padding: 20px;
+                background-color: #1E293B;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                subcontrol-position: top center;
+                subcontrol-position: top left;
                 padding: 0 10px;
-                color: #334155;
+                color: #06B6D4; /* Cyan accent */
+                background-color: transparent;
             }
             QLabel {
                 font-size: 24px;
-                color: #0f172a;
+                color: #F8FAFC;
                 font-weight: bold;
             }
+            QLabel[is_pump="true"] {
+                font-size: 26px;
+                color: #FFFFFF;
+                background-color: #334155;
+                padding: 15px;
+                border-radius: 8px;
+            }
             QProgressBar {
-                border: 1px solid #94a3b8;
+                border: 1px solid #475569;
                 border-radius: 8px;
                 text-align: center;
-                height: 30px;
-                font-size: 18px;
-                background-color: #f1f5f9;
-                color: #000000;
+                height: 40px;
+                font-size: 20px;
+                background-color: #0F172A;
+                color: #FFFFFF;
+                font-weight: bold;
             }
             QProgressBar::chunk {
-                background-color: #3b82f6;
+                background-color: #3B82F6;
                 border-radius: 7px;
             }
         """)
@@ -1422,13 +1445,23 @@ class TouchPanelBaseWindow(QMainWindow):
                 else: return "OFF"
                 
             if hasattr(self, 'lbl_dash_pump1'):
-                p1 = "FAILED" if getattr(self, "Primer_failed", False) else pump_status_str(self.sim_pump_primary)
-                p2 = "FAILED" if getattr(self, "Sekunder_failed", False) else pump_status_str(self.sim_pump_secondary)
-                p3 = "FAILED" if getattr(self, "Tersier_failed", False) else pump_status_str(self.sim_pump_tertiary)
+                p1_str = "FAILED" if getattr(self, "Primer_failed", False) else pump_status_str(self.sim_pump_primary)
+                p2_str = "FAILED" if getattr(self, "Sekunder_failed", False) else pump_status_str(self.sim_pump_secondary)
+                p3_str = "FAILED" if getattr(self, "Tersier_failed", False) else pump_status_str(self.sim_pump_tertiary)
                 
-                self.lbl_dash_pump1.setText(f"Primer: {p1}")
-                self.lbl_dash_pump2.setText(f"Sekunder: {p2}")
-                self.lbl_dash_pump3.setText(f"Tersier: {p3}")
+                self.lbl_dash_pump1.setText(f"Primer: {p1_str}")
+                self.lbl_dash_pump2.setText(f"Sekunder: {p2_str}")
+                self.lbl_dash_pump3.setText(f"Tersier: {p3_str}")
+                
+                def get_pump_color(status_str):
+                    if status_str == "ON": return "#16A34A" # Green
+                    if status_str == "FAILED": return "#DC2626" # Red
+                    if status_str in ["STARTING", "STOPPING"]: return "#D97706" # Orange/Yellow
+                    return "#475569" # Gray for OFF
+                    
+                self.lbl_dash_pump1.setStyleSheet(f"background-color: {get_pump_color(p1_str)};")
+                self.lbl_dash_pump2.setStyleSheet(f"background-color: {get_pump_color(p2_str)};")
+                self.lbl_dash_pump3.setStyleSheet(f"background-color: {get_pump_color(p3_str)};")
                 
                 self.bar_safety.setValue(int(self.sim_safety_rod))
                 self.bar_shim.setValue(int(self.sim_shim_rod))
