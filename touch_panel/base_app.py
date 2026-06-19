@@ -1262,9 +1262,9 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _update_ui_displays(self) -> None:
         # 1. Update Pumps Control buttons active styles
-        self._apply_pump_state(self.btn_pump_p1_on, self.btn_pump_p1_off, self.sim_pump_primary)
-        self._apply_pump_state(self.btn_pump_p2_on, self.btn_pump_p2_off, self.sim_pump_secondary)
-        self._apply_pump_state(self.btn_pump_p3_on, self.btn_pump_p3_off, self.sim_pump_tertiary)
+        self._apply_pump_state("Primer", self.btn_pump_p1_on, self.btn_pump_p1_off, self.sim_pump_primary, self.target_pump_primary)
+        self._apply_pump_state("Sekunder", self.btn_pump_p2_on, self.btn_pump_p2_off, self.sim_pump_secondary, self.target_pump_secondary)
+        self._apply_pump_state("Tersier", self.btn_pump_p3_on, self.btn_pump_p3_off, self.sim_pump_tertiary, self.target_pump_tertiary)
 
         # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")
@@ -1287,31 +1287,91 @@ class TouchPanelBaseWindow(QMainWindow):
             self.badge_status.setText("SISTEM NORMAL")
             self.badge_status.setStyleSheet("background-color: #298ed8; border: 2px solid #1e6fa8; color: #ffffff;")
 
-    def _apply_pump_state(self, btn_on: QPushButton, btn_off: QPushButton, state_val: float) -> None:
+    def _apply_pump_state(self, pump_name: str, btn_on: QPushButton, btn_off: QPushButton, state_val: float, target_val: float) -> None:
         if not _PYQT_AVAILABLE:
             return
             
-        if state_val <= 0.0:  # STOPPED
+        if not hasattr(self, 'last_pump_states'):
+            self.last_pump_states = {}
+            
+        last_state = self.last_pump_states.get(pump_name, 0.0)
+        self.last_pump_states[pump_name] = state_val
+        
+        # Determine logical status
+        # Backend values: 0=OFF, 1=STARTING, 2=ON, 3=SHUTTING_DOWN
+        is_starting = (state_val == 1) or (0.0 < state_val < 1.0 and target_val > state_val)
+        is_shutting_down = (state_val == 3) or (0.0 < state_val < 1.0 and target_val < state_val)
+        is_on = (state_val == 2) or (state_val >= 1.0 and not is_starting)
+        is_off = (state_val == 0) or (state_val <= 0.0)
+        
+        # Determine if pump failed (went from ON/STARTING directly to OFF without SHUTTING_DOWN)
+        pump_failed = False
+        if is_off and (last_state == 2 or last_state == 1 or (last_state > 0.0 and last_state < 1.0 and target_val >= 1.0)):
+            pump_failed = True
+            
+        failed_attr = f"{pump_name}_failed"
+        if pump_failed:
+            setattr(self, failed_attr, True)
+        if is_starting or is_on or is_shutting_down:
+            setattr(self, failed_attr, False)
+            
+        is_failed = getattr(self, failed_attr, False)
+
+        # Update Text
+        base_name = f"POMPA {pump_name.upper()}"
+        if is_failed:
+            btn_on.setText(f"{base_name} (GAGAL)")
+            btn_off.setText(f"{base_name} OFF")
+        elif is_starting:
+            btn_on.setText(f"{base_name} (START UP)")
+            btn_off.setText(f"{base_name} OFF")
+        elif is_shutting_down:
+            btn_on.setText(f"{base_name} ON")
+            btn_off.setText(f"{base_name} (SHUT DOWN)")
+        elif is_on:
+            btn_on.setText(f"{base_name} ON")
+            btn_off.setText(f"{base_name} OFF")
+        else: # OFF
+            btn_on.setText(f"{base_name} ON")
+            btn_off.setText(f"{base_name} OFF")
+
+        if is_off:
             btn_on.setProperty("active", "false")
             btn_on.setProperty("active_starting", "false")
             btn_on.setEnabled(True)
             
-            btn_off.setProperty("active_off", "true")
+            btn_off.setProperty("active_off", "true" if not is_failed else "false")
             btn_off.setEnabled(False)
-        elif state_val >= 1.0:  # RUNNING
+            
+            if is_failed:
+                btn_on.setProperty("active_off", "true" if self.flash_toggle else "false") # Flash red on failure!
+            else:
+                btn_on.setProperty("active_off", "false")
+                
+        elif is_on:
             btn_on.setProperty("active", "true")
             btn_on.setProperty("active_starting", "false")
             btn_on.setEnabled(False)
             
             btn_off.setProperty("active_off", "false")
             btn_off.setEnabled(True)
-        else:  # STARTING
+            btn_on.setProperty("active_off", "false")
+        elif is_starting:
             btn_on.setProperty("active", "false")
             btn_on.setProperty("active_starting", "true" if self.flash_toggle else "false")
             btn_on.setEnabled(False)
             
             btn_off.setProperty("active_off", "false")
             btn_off.setEnabled(False)
+            btn_on.setProperty("active_off", "false")
+        elif is_shutting_down:
+            btn_on.setProperty("active", "false")
+            btn_on.setProperty("active_starting", "false")
+            btn_on.setEnabled(False)
+            
+            btn_off.setProperty("active_off", "true" if self.flash_toggle else "false")
+            btn_off.setEnabled(False)
+            btn_on.setProperty("active_off", "false")
             
         btn_on.style().unpolish(btn_on)
         btn_on.style().polish(btn_on)
