@@ -1041,7 +1041,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._hidden_reset_timer.stop()
 
     def _is_auto_running(self) -> bool:
-        return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"]
+        return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"] or getattr(self, 'last_auto_running', False)
 
     def _on_button_click(self, action: str) -> None:
         if self._is_auto_running():
