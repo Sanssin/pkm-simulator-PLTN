@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Callable, Dict
 
 if TYPE_CHECKING:  # pragma: no cover
-    from PyQt5.QtCore import Qt, QTimer
+    from PyQt5.QtCore import Qt, QTimer, pyqtSignal
     from PyQt5.QtWidgets import (
         QApplication,
         QFrame,
@@ -43,7 +43,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency
-    from PyQt5.QtCore import Qt, QTimer
+    from PyQt5.QtCore import Qt, QTimer, pyqtSignal
     from PyQt5.QtWidgets import (
         QApplication,
         QFrame,
