@@ -145,7 +145,7 @@ class ActuatorManager:
         self.servos.set_rods(state.safety_rod, state.shim_rod, state.regulating_rod)
         
         # Motors are also managed by pigpio
-        # Calculate smooth speed during transition (3.0 seconds duration, as in raspi_main_panel)
+        # Calculate smooth speed during transition (7.0 seconds duration)
         def calc_speed(status, transition_start):
             if status == 0:  # OFF
                 return 0.0
@@ -157,7 +157,7 @@ class ActuatorManager:
             if transition_start == 0:
                 return 0.0 if status == 1 else 100.0
                 
-            progress = (current_time - transition_start) / 3.0
+            progress = (current_time - transition_start) / 7.0
             progress = max(0.0, min(1.0, progress))
             
             if status == 1:  # STARTING: 0 to 100%

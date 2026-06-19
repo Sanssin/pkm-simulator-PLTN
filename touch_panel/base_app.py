@@ -1066,9 +1066,9 @@ class TouchPanelBaseWindow(QMainWindow):
             current = getattr(self, pump_attr, 0.0)
             target = getattr(self, target_attr, 0.0)
             if current < target:
-                setattr(self, pump_attr, min(target, current + 0.1))
+                setattr(self, pump_attr, min(target, current + 0.0143))
             elif current > target:
-                setattr(self, pump_attr, max(target, current - 0.1))
+                setattr(self, pump_attr, max(target, current - 0.0143))
 
         if self.sim_emergency:
             # Drop control rods immediately
