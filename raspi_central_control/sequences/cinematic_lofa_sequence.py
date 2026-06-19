@@ -109,11 +109,17 @@ class CinematicLOFASequence:
                 if self._cancelled: return
                 elapsed = time.time() - start_time
                 progress = min((elapsed - 18.0) / 10.0, 1.0)
+                
+                # Sequential rod raising
+                safety_prog = min(max(progress / 0.333, 0.0), 1.0)
+                shim_prog = min(max((progress - 0.333) / 0.333, 0.0), 1.0)
+                reg_prog = min(max((progress - 0.666) / 0.334, 0.0), 1.0)
+                
                 with self._state_manager as state:
                     state.pressure = 45.0 + (150.0 - 45.0) * progress
-                    state.safety_rod = 100.0 * progress
-                    state.shim_rod = 100.0 * progress
-                    state.regulating_rod = 100.0 * progress
+                    state.safety_rod = 100.0 * safety_prog
+                    state.shim_rod = 100.0 * shim_prog
+                    state.regulating_rod = 100.0 * reg_prog
                     state.thermal_kw = 300000.0 * progress
                     state.temperature_core = 25.0 + (280.0 - 25.0) * progress
                     state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * progress
