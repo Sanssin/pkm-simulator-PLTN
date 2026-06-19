@@ -42,7 +42,7 @@ class VideoPlayer:
             log_suffix = os.path.basename(filename).replace('.', '_')
             log_path = f"/tmp/mpv_{log_suffix}.log"
             
-            # Base command — kembalikan vo dan hwdec agar tidak blackscreen
+            # Base command — kembalikan hwdec direct
             cmd = [
                 "mpv",
                 filename,
@@ -53,9 +53,9 @@ class VideoPlayer:
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
                 "--vo=dmabuf-wayland",   # Penting untuk Wayland agar tidak blackscreen
-                "--hwdec=v4l2m2m-copy",  # Gunakan copy-mode untuk hwdec agar audio tidak tersendat
+                "--hwdec=v4l2m2m",       # Hardware decode murni (copy mode gagal di Wayland DMABUF)
                 "--no-pause",
-                "--audio-buffer=0.5",    # Perbesar buffer audio untuk mencegah patah-patah
+                "--video-sync=display-resample", # Sinkronisasi audio dengan refresh rate layar
                 f"--log-file={log_path}"
             ]
             
