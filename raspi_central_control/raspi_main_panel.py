@@ -358,7 +358,7 @@ class PLTNPanelController:
                     # agar video LOFA tidak tertimpa oleh video tutorial
                     if state.simulation_mode == 'cinematic_lofa':
                         # Gunakan versi H.264 agar bisa hardware decode (v4l2m2m) dengan mulus
-                        video_path = "/home/pkm/video_pltn/simulsi_lofa_720.mp4"
+                        video_path = "/home/pkm/video_pltn/simulasi_lofa_720.mp4"
                         import os
                         if not os.path.exists(video_path):
                             # Fallback ke versi asli jika file baru tidak ditemukan
