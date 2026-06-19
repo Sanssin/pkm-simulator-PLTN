@@ -53,8 +53,9 @@ class VideoPlayer:
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
                 "--vo=dmabuf-wayland",   # Penting untuk Wayland agar tidak blackscreen
-                "--hwdec=v4l2m2m",       # Hardware decode untuk RPi4
+                "--hwdec=v4l2m2m-copy",  # Gunakan copy-mode untuk hwdec agar audio tidak tersendat
                 "--no-pause",
+                "--audio-buffer=0.5",    # Perbesar buffer audio untuk mencegah patah-patah
                 f"--log-file={log_path}"
             ]
             
