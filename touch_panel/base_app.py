@@ -1358,6 +1358,13 @@ class TouchPanelBaseWindow(QMainWindow):
                         self.sim_fuel_cladding_temp = state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp)
                         self.sim_condenser_pressure = state_data.get("condenser_pressure", self.sim_condenser_pressure)
 
+                        # Auto-clear pump failures if the reactor is fully reset/cold
+                        if self.sim_thermal_kw < 1.0 and self.sim_pressure < 10.0:
+                            self.Primer_failed = False
+                            self.Sekunder_failed = False
+                            self.Tersier_failed = False
+                            self.last_pump_states = {}
+
                         # Set alarm
                         is_lofa = (state_data.get("lofa_primary", False) or 
                                    state_data.get("lofa_secondary", False) or 

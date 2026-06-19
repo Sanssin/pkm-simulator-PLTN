@@ -55,8 +55,7 @@ class VideoPlayer:
                 "--vo=dmabuf-wayland",   # default: hardware decode via DMA-BUF (H.264)
                 "--hwdec=v4l2m2m",       # hardware decode RPi4 untuk H.264
                 "--no-pause",
-                "--framedrop=vo",        # Mencegah frame drop video mengorbankan suara
-                "--audio-buffer=0.5",    # Memperbesar buffer audio agar tidak putus-putus
+                "--ao=alsa",             # Paksa output audio via ALSA langsung
                 f"--log-file={log_path}"
             ]
             
