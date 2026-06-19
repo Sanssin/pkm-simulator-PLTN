@@ -187,6 +187,10 @@ class LOFASimulator:
 
         # Execute SCRAM if needed
         if scram_reason and not state.emergency_active:
-            logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
-            if self.trigger_scram:
-                self.trigger_scram()
+            if getattr(state, 'simulation_mode', '') == 'cinematic_lofa':
+                # Bypass automatic SCRAM during cinematic LOFA to perfectly sync with video
+                pass
+            else:
+                logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
+                if self.trigger_scram:
+                    self.trigger_scram()

@@ -135,6 +135,7 @@ class CinematicLOFASequence:
             logger.warning("--- 02:00 SCRAM: Batang Kendali Turun ---")
             with self._state_manager as state:
                 state.auto_sim_phase = "LOFA: Batang Kendali Turun (SCRAM)"
+                state.emergency_active = True
             
             # Animasi drop rod & power secara cepat selama 3 detik
             scram_start = time.time()
