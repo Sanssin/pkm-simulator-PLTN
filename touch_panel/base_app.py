@@ -1003,6 +1003,16 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_auto_running = True
             self.sim_mode = "Otomatis"
             self.sim_alarm = "Tidak Ada"
+            self.last_pump_states = {}
+            self.target_pump_primary = 0.0
+            self.target_pump_secondary = 0.0
+            self.target_pump_tertiary = 0.0
+            self.sim_pump_primary = 0.0
+            self.sim_pump_secondary = 0.0
+            self.sim_pump_tertiary = 0.0
+            if hasattr(self, 'Primary_failed'): self.Primary_failed = False
+            if hasattr(self, 'Secondary_failed'): self.Secondary_failed = False
+            if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
         elif action == "LOFA_SIMULATE_PRIMARY":
             self.sim_auto_running = True
             self.sim_mode = "LOFA Otomatis"
@@ -1184,6 +1194,20 @@ class TouchPanelBaseWindow(QMainWindow):
                         # Set mode
                         auto_running = state_data.get("auto_running", False)
                         json_mode = state_data.get("mode", "")
+                        
+                        if not hasattr(self, 'last_auto_running'):
+                            self.last_auto_running = False
+                            
+                        # If we just started auto simulation, clear pump states to prevent false failures
+                        if auto_running and not self.last_auto_running:
+                            self.last_pump_states = {}
+                            self.target_pump_primary = 0.0
+                            self.target_pump_secondary = 0.0
+                            self.target_pump_tertiary = 0.0
+                            if hasattr(self, 'Primary_failed'): self.Primary_failed = False
+                            if hasattr(self, 'Secondary_failed'): self.Secondary_failed = False
+                            if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
+                        self.last_auto_running = auto_running
                         
                         if self.sim_emergency:
                             self.sim_mode = "SCRAM"
