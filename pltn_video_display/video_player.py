@@ -54,9 +54,6 @@ class VideoPlayer:
                 "--ontop",
                 "--vo=dmabuf-wayland",   # default: hardware decode via DMA-BUF (H.264)
                 "--hwdec=v4l2m2m",       # hardware decode RPi4 untuk H.264
-                "--ao=alsa",
-                f"--audio-device={AUDIO_DEVICE}",
-                "--audio-fallback-to-null=yes",
                 "--no-pause",
                 f"--log-file={log_path}"
             ]

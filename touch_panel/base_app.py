@@ -296,50 +296,15 @@ class TouchPanelBaseWindow(QMainWindow):
     def _init_audio(self) -> None:
         self.audio_enabled = False
         self.current_alarm = None
-        self.scram_sound = None
-        self.lofa_sound = None
-        try:
-            import pygame
-            pygame.mixer.init()
-            
-            base_path = Path(__file__).parent / "assets"
-            scram_path = base_path / "scram_alarm.wav"
-            lofa_path = base_path / "lofa_alarm.wav"
-            
-            if scram_path.exists():
-                self.scram_sound = pygame.mixer.Sound(str(scram_path))
-            if lofa_path.exists():
-                self.lofa_sound = pygame.mixer.Sound(str(lofa_path))
-                
-            self.audio_enabled = True
-            logger.info("Audio initialized successfully with Pygame.")
-        except Exception as e:
-            logger.warning(f"Audio initialization failed (pygame not available or no audio device): {e}")
+        # Audio alarm dimatikan sementara sesuai permintaan
 
     def _play_alarm(self, alarm_type: str) -> None:
-        if not self.audio_enabled:
-            return
-        if alarm_type == self.current_alarm:
-            return
-            
-        import pygame
-        pygame.mixer.stop()
-        
-        self.current_alarm = alarm_type
-        
-        # Audio alarm ditunda selama development agar tidak mengganggu
-        # if alarm_type == "SCRAM" and self.scram_sound:
-        #     self.scram_sound.play(loops=-1)
-        # elif alarm_type == "LOFA" and self.lofa_sound:
-        #     self.lofa_sound.play(loops=-1)
+        # Audio alarm dimatikan sementara sesuai permintaan
+        pass
             
     def _stop_alarm(self) -> None:
-        if not self.audio_enabled or self.current_alarm is None:
-            return
-            
-        import pygame
-        pygame.mixer.stop()
-        self.current_alarm = None
+        # Audio alarm dimatikan sementara sesuai permintaan
+        pass
 
     def _update_audio_state(self) -> None:
         if self.sim_mode == "Otomatis":
