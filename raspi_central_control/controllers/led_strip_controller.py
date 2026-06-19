@@ -91,10 +91,10 @@ class LEDSegment:
                 gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
-        # Pipa primer: 1-30 (index 0-29) Merah (panas dari reaktor), 31-118 (index 30-117) Biru (dingin setelah SG)
+        # Pipa primer: 1-27 (index 0-26) Merah (panas dari reaktor), 28-118 (index 27-117) Biru (dingin setelah SG)
         if self.name == 'primer':
             for i in range(self.length):
-                if i < 30:
+                if i < 27:
                     gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
                 else:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
