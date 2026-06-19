@@ -781,51 +781,51 @@ class TouchPanelBaseWindow(QMainWindow):
         pump_layout.addStretch()
         layout.addWidget(pump_group, 0, 2)
         
-        # Style (Dark Theme ala Pygame Display)
+        # Style (Light Theme ala Pygame Display)
         widget.setStyleSheet("""
             QWidget {
-                background-color: #0F172A;
+                background-color: #F5F7FA;
             }
             QGroupBox {
                 font-size: 22px;
                 font-weight: bold;
-                border: 2px solid #1E293B;
+                border: 2px solid #CBD5E1;
                 border-radius: 12px;
                 margin-top: 30px;
                 padding: 20px;
-                background-color: #1E293B;
+                background-color: #FFFFFF;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0 10px;
-                color: #06B6D4; /* Cyan accent */
+                color: #0369A1; /* Light Blue/Navy */
                 background-color: transparent;
             }
             QLabel {
                 font-size: 24px;
-                color: #F8FAFC;
+                color: #334155;
                 font-weight: bold;
             }
             QLabel[is_pump="true"] {
                 font-size: 26px;
                 color: #FFFFFF;
-                background-color: #334155;
+                background-color: #94A3B8;
                 padding: 15px;
                 border-radius: 8px;
             }
             QProgressBar {
-                border: 1px solid #475569;
+                border: 1px solid #CBD5E1;
                 border-radius: 8px;
                 text-align: center;
                 height: 40px;
                 font-size: 20px;
-                background-color: #0F172A;
-                color: #FFFFFF;
+                background-color: #F1F5F9;
+                color: #0F172A;
                 font-weight: bold;
             }
             QProgressBar::chunk {
-                background-color: #3B82F6;
+                background-color: #0EA5E9; /* Bright Blue */
                 border-radius: 7px;
             }
         """)
