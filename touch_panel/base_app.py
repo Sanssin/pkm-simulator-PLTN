@@ -240,6 +240,19 @@ class TouchPanelBaseWindow(QMainWindow):
 
         self.input_handler = TouchInputHandler(writer=self.input_writer)
 
+    def _reset_sim_state_for_auto(self) -> None:
+        """Resets target and history to prevent false failures when starting automatic simulations"""
+        self.last_pump_states = {}
+        self.target_pump_primary = 0.0
+        self.target_pump_secondary = 0.0
+        self.target_pump_tertiary = 0.0
+        self.sim_pump_primary = 0.0
+        self.sim_pump_secondary = 0.0
+        self.sim_pump_tertiary = 0.0
+        if hasattr(self, 'Primary_failed'): self.Primary_failed = False
+        if hasattr(self, 'Secondary_failed'): self.Secondary_failed = False
+        if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
+        
     def _init_simulation_state(self) -> None:
         # Default state
         self.sim_pressure = 155.5
@@ -1003,21 +1016,12 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_auto_running = True
             self.sim_mode = "Otomatis"
             self.sim_alarm = "Tidak Ada"
-            self.last_pump_states = {}
-            self.target_pump_primary = 0.0
-            self.target_pump_secondary = 0.0
-            self.target_pump_tertiary = 0.0
-            self.sim_pump_primary = 0.0
-            self.sim_pump_secondary = 0.0
-            self.sim_pump_tertiary = 0.0
-            if hasattr(self, 'Primary_failed'): self.Primary_failed = False
-            if hasattr(self, 'Secondary_failed'): self.Secondary_failed = False
-            if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
+            self._reset_sim_state_for_auto()
         elif action == "LOFA_SIMULATE_PRIMARY":
             self.sim_auto_running = True
             self.sim_mode = "LOFA Otomatis"
             self.sim_alarm = "LOFA PRIMER AKTIF!"
-            self.target_pump_primary = 0.0
+            self._reset_sim_state_for_auto()
         elif action == "LOFA_CANCEL":
             self.sim_alarm = "Tidak Ada"
             self.target_pump_primary = 1.0
@@ -1198,16 +1202,14 @@ class TouchPanelBaseWindow(QMainWindow):
                         if not hasattr(self, 'last_auto_running'):
                             self.last_auto_running = False
                             
-                        # If we just started auto simulation, clear pump states to prevent false failures
-                        if auto_running and not self.last_auto_running:
-                            self.last_pump_states = {}
-                            self.target_pump_primary = 0.0
-                            self.target_pump_secondary = 0.0
-                            self.target_pump_tertiary = 0.0
-                            if hasattr(self, 'Primary_failed'): self.Primary_failed = False
-                            if hasattr(self, 'Secondary_failed'): self.Secondary_failed = False
-                            if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
-                        self.last_auto_running = auto_running
+                        # Detect any transition into an automatic simulation (Normal Auto, LOFA, Cinematic LOFA)
+                        is_any_auto = auto_running or json_mode == "cinematic_lofa"
+                        
+                        # If we just started any auto simulation, clear pump states to prevent false failures
+                        if is_any_auto and not self.last_auto_running:
+                            self._reset_sim_state_for_auto()
+                            
+                        self.last_auto_running = is_any_auto
                         
                         if self.sim_emergency:
                             self.sim_mode = "SCRAM"
