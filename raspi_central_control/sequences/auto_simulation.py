@@ -192,9 +192,9 @@ class AutoSimulator:
                 state.pump_secondary_status = 0
                 state.pump_tertiary_status = 0
                 state.pressure = 0.0
-                state.rod_safety = 0
-                state.rod_shim = 0
-                state.rod_regulating = 0
+                state.safety_rod = 0
+                state.shim_rod = 0
+                state.regulating_rod = 0
                 state.thermal_kw = 0.0
             
             logger.info("=" * 70)
@@ -242,19 +242,48 @@ class AutoSimulator:
             if not wait_until(205.0): return
             self._set_phase(SimPhase.SAFETY_ROD, "Safety Rod")
             logger.info("3:25 - Safety Rod Withdrawal (5s)")
-            if not self._ramp_value('rod_safety', 0, 100, 5.0, is_int=True): return
+            if not self._ramp_value('safety_rod', 0, 100, 5.0, is_int=True): return
             
             # 3.48 (228s) - Shim rod (5 detik)
             if not wait_until(228.0): return
             self._set_phase(SimPhase.SHIM_ROD_50, "Shim Rod")
             logger.info("3:48 - Shim Rod Withdrawal (5s)")
-            if not self._ramp_value('rod_shim', 0, 100, 5.0, is_int=True): return
+            start_time_ramp = time.time()
+            while time.time() - start_time_ramp < 5.0:
+                if self._check_cancelled(): return
+                prog = (time.time() - start_time_ramp) / 5.0
+                with self._state_manager as state:
+                    state.shim_rod = 100.0 * prog
+                    state.thermal_kw = 150000.0 * prog
+                    state.temperature_core = 25.0 + (152.5 - 25.0) * prog
+                    state.temperature_coolant_primary = 25.0 + (162.5 - 25.0) * prog
+                    state.turbine_speed = 50.0 * prog
+                time.sleep(0.1)
+            with self._state_manager as state:
+                state.shim_rod = 100.0
+                state.thermal_kw = 150000.0
             
             # 4.26 (266s) - Regulating rod (5 detik)
             if not wait_until(266.0): return
             self._set_phase(SimPhase.REG_ROD_50, "Reg Rod")
             logger.info("4:26 - Regulating Rod Withdrawal (5s)")
-            if not self._ramp_value('rod_regulating', 0, 100, 5.0, is_int=True): return
+            start_time_ramp = time.time()
+            while time.time() - start_time_ramp < 5.0:
+                if self._check_cancelled(): return
+                prog = (time.time() - start_time_ramp) / 5.0
+                with self._state_manager as state:
+                    state.regulating_rod = 100.0 * prog
+                    state.thermal_kw = 150000.0 + (150000.0 * prog)
+                    state.temperature_core = 152.5 + (127.5 * prog)
+                    state.temperature_coolant_primary = 162.5 + (137.5 * prog)
+                    state.turbine_speed = 50.0 + (50.0 * prog)
+                time.sleep(0.1)
+            with self._state_manager as state:
+                state.regulating_rod = 100.0
+                state.thermal_kw = 300000.0
+                state.temperature_core = 280.0
+                state.temperature_coolant_primary = 300.0
+                state.turbine_speed = 100.0
             
             # Mematikan reaktor: 6.36 (396s)
             if not wait_until(396.0): return
@@ -266,12 +295,18 @@ class AutoSimulator:
                 for i in range(steps):
                     if self._check_cancelled(): return False
                     with self._state_manager as state:
-                        state.rod_shim = int(100 * (1 - i/steps))
-                        state.rod_regulating = int(100 * (1 - i/steps))
+                        prog = 1.0 - (i/steps)
+                        state.shim_rod = int(100 * prog)
+                        state.regulating_rod = int(100 * prog)
+                        # Turunkan daya juga secara bertahap
+                        state.thermal_kw = 300000.0 * prog
+                        state.temperature_core = 25.0 + (255.0 * prog)
+                        state.turbine_speed = 100.0 * prog
                     time.sleep(17.0/steps)
                 with self._state_manager as state:
-                    state.rod_shim = 0
-                    state.rod_regulating = 0
+                    state.shim_rod = 0
+                    state.regulating_rod = 0
+                    state.thermal_kw = 0.0
                 return True
             
             if not lower_rods(): return
@@ -285,7 +320,7 @@ class AutoSimulator:
                 state.pump_primary_status = 3
                 state.pump_secondary_status = 3
                 state.pump_tertiary_status = 3
-            if not self._ramp_value('rod_safety', 100, 0, 3.0, is_int=True): return
+            if not self._ramp_value('safety_rod', 100, 0, 3.0, is_int=True): return
                 
             # Finish simulation at video end: 7.14 (434s)
             if not wait_until(434.0): return
