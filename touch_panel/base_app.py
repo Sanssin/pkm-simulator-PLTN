@@ -729,8 +729,119 @@ class TouchPanelBaseWindow(QMainWindow):
     def _build_body(self) -> QHBoxLayout:
         body = QHBoxLayout()
         body.setSpacing(16)
-        body.addLayout(self._build_control_column(), 100)
+        
+        if _PYQT_AVAILABLE:
+            from PyQt5.QtWidgets import QStackedWidget
+            self.body_stack = QStackedWidget()
+            
+            control_page = QWidget()
+            control_layout = QVBoxLayout(control_page)
+            control_layout.setContentsMargins(0, 0, 0, 0)
+            control_layout.addLayout(self._build_control_column())
+            
+            status_page = self._build_status_dashboard()
+            
+            self.body_stack.addWidget(control_page)
+            self.body_stack.addWidget(status_page)
+            
+            body.addWidget(self.body_stack, 100)
+        else:
+            body.addLayout(self._build_control_column(), 100)
+            
         return body
+
+    def _build_status_dashboard(self) -> QWidget:
+        widget = QWidget()
+        layout = QGridLayout(widget)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
+
+        # 1. Status Pompa
+        self.lbl_dash_pump1 = QLabel("P1: OFF")
+        self.lbl_dash_pump2 = QLabel("P2: OFF")
+        self.lbl_dash_pump3 = QLabel("P3: OFF")
+        
+        pump_group = QGroupBox("Status Pompa Pendingin")
+        pump_layout = QVBoxLayout(pump_group)
+        pump_layout.addWidget(self.lbl_dash_pump1)
+        pump_layout.addWidget(self.lbl_dash_pump2)
+        pump_layout.addWidget(self.lbl_dash_pump3)
+        layout.addWidget(pump_group, 0, 0)
+        
+        # 2. Batang Kendali
+        self.bar_safety = QProgressBar()
+        self.bar_shim = QProgressBar()
+        self.bar_reg = QProgressBar()
+        
+        for bar in [self.bar_safety, self.bar_shim, self.bar_reg]:
+            bar.setMinimum(0)
+            bar.setMaximum(100)
+            bar.setTextVisible(True)
+        
+        rod_group = QGroupBox("Posisi Batang Kendali")
+        rod_layout = QVBoxLayout(rod_group)
+        rod_layout.addWidget(QLabel("Pengaman"))
+        rod_layout.addWidget(self.bar_safety)
+        rod_layout.addWidget(QLabel("Shim"))
+        rod_layout.addWidget(self.bar_shim)
+        rod_layout.addWidget(QLabel("Pengatur"))
+        rod_layout.addWidget(self.bar_reg)
+        layout.addWidget(rod_group, 0, 1)
+
+        # 3. Parameter Termal
+        self.lbl_dash_power = QLabel("0 kW")
+        self.lbl_dash_pressure = QLabel("0 bar")
+        self.lbl_dash_temp_pri = QLabel("0 °C")
+        self.lbl_dash_temp_sec = QLabel("0 °C")
+        
+        param_group = QGroupBox("Parameter Utama")
+        param_layout = QVBoxLayout(param_group)
+        param_layout.addWidget(QLabel("Daya Output Termal:"))
+        param_layout.addWidget(self.lbl_dash_power)
+        param_layout.addWidget(QLabel("Tekanan Pressurizer:"))
+        param_layout.addWidget(self.lbl_dash_pressure)
+        param_layout.addWidget(QLabel("Suhu Pendingin Primer:"))
+        param_layout.addWidget(self.lbl_dash_temp_pri)
+        param_layout.addWidget(QLabel("Suhu Pendingin Sekunder:"))
+        param_layout.addWidget(self.lbl_dash_temp_sec)
+        layout.addWidget(param_group, 1, 0, 1, 2)
+        
+        # Style
+        widget.setStyleSheet("""
+            QGroupBox {
+                font-size: 20px;
+                font-weight: bold;
+                border: 2px solid #cbd5e1;
+                border-radius: 12px;
+                margin-top: 24px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 10px;
+                color: #334155;
+            }
+            QLabel {
+                font-size: 24px;
+                color: #0f172a;
+                font-weight: bold;
+            }
+            QProgressBar {
+                border: 1px solid #94a3b8;
+                border-radius: 8px;
+                text-align: center;
+                height: 30px;
+                font-size: 18px;
+                background-color: #f1f5f9;
+                color: #000000;
+            }
+            QProgressBar::chunk {
+                background-color: #3b82f6;
+                border-radius: 7px;
+            }
+        """)
+        return widget
 
     def _build_control_column(self) -> QVBoxLayout:
         column = QVBoxLayout()
@@ -1332,6 +1443,37 @@ class TouchPanelBaseWindow(QMainWindow):
         self._update_ui_displays()
 
     def _update_ui_displays(self) -> None:
+        if hasattr(self, 'body_stack'):
+            if self._is_auto_running():
+                self.body_stack.setCurrentIndex(1)
+            else:
+                self.body_stack.setCurrentIndex(0)
+                
+            # Update Dashboard Values
+            def pump_status_str(val):
+                if val == 2: return "ON"
+                elif val == 1: return "STARTING"
+                elif val == 3: return "STOPPING"
+                else: return "OFF"
+                
+            if hasattr(self, 'lbl_dash_pump1'):
+                p1 = "FAILED" if getattr(self, "Primer_failed", False) else pump_status_str(self.sim_pump_primary)
+                p2 = "FAILED" if getattr(self, "Sekunder_failed", False) else pump_status_str(self.sim_pump_secondary)
+                p3 = "FAILED" if getattr(self, "Tersier_failed", False) else pump_status_str(self.sim_pump_tertiary)
+                
+                self.lbl_dash_pump1.setText(f"Primer: {p1}")
+                self.lbl_dash_pump2.setText(f"Sekunder: {p2}")
+                self.lbl_dash_pump3.setText(f"Tersier: {p3}")
+                
+                self.bar_safety.setValue(int(self.sim_rod_safety))
+                self.bar_shim.setValue(int(self.sim_rod_shim))
+                self.bar_reg.setValue(int(self.sim_rod_regulating))
+                
+                self.lbl_dash_power.setText(f"{int(self.sim_thermal_kw):,} kW")
+                self.lbl_dash_pressure.setText(f"{self.sim_pressurizer_pressure:.1f} bar")
+                self.lbl_dash_temp_pri.setText(f"{self.sim_coolant_temp_primary:.1f} °C")
+                self.lbl_dash_temp_sec.setText(f"{self.sim_coolant_temp_secondary:.1f} °C")
+
         # 1. Update Pumps Control buttons active styles
         self._apply_pump_state("Primer", self.btn_pump_p1_on, self.btn_pump_p1_off, self.sim_pump_primary, self.target_pump_primary)
         self._apply_pump_state("Sekunder", self.btn_pump_p2_on, self.btn_pump_p2_off, self.sim_pump_secondary, self.target_pump_secondary)
