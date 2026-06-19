@@ -144,6 +144,12 @@ def get_layout_spec() -> TouchPanelLayoutSpec:
 
 
 if _PYQT_AVAILABLE:
+    class ClickableLabel(QLabel):
+        clicked = pyqtSignal()
+        def mousePressEvent(self, event):
+            self.clicked.emit()
+            super().mousePressEvent(event)
+
     class HoldButton(QPushButton):
         """Button that triggers touch press and release, supporting repeat triggers for rods/pressure."""
 
@@ -684,7 +690,16 @@ class TouchPanelBaseWindow(QMainWindow):
         title_block = QVBoxLayout()
         title_block.setSpacing(2)
         
-        title_text = QLabel(self.layout_spec.title)
+        if _PYQT_AVAILABLE:
+            title_text = ClickableLabel(self.layout_spec.title)
+            title_text.clicked.connect(self._on_hidden_reset_click)
+            self._hidden_reset_clicks = 0
+            self._hidden_reset_timer = QTimer(self)
+            self._hidden_reset_timer.setInterval(2000)
+            self._hidden_reset_timer.timeout.connect(self._reset_hidden_clicks)
+        else:
+            title_text = QLabel(self.layout_spec.title)
+            
         title_text.setObjectName("titleLabel")
         title_block.addWidget(title_text)
         
@@ -924,7 +939,31 @@ class TouchPanelBaseWindow(QMainWindow):
     # Touch Input Event Processors
     # ============================================
 
+    def _on_hidden_reset_click(self) -> None:
+        self._hidden_reset_clicks += 1
+        self._hidden_reset_timer.start()
+        if self._hidden_reset_clicks >= 5:
+            self._hidden_reset_timer.stop()
+            self._hidden_reset_clicks = 0
+            if self._footer_label is not None:
+                self._footer_label.setText("KODE RAHASIA DITERIMA: Mengatur ulang panel...")
+            self._execute_action("REACTOR_RESET")
+
+    def _reset_hidden_clicks(self) -> None:
+        self._hidden_reset_clicks = 0
+        self._hidden_reset_timer.stop()
+
+    def _is_auto_running(self) -> bool:
+        return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"]
+
     def _on_button_click(self, action: str) -> None:
+        if self._is_auto_running():
+            if self._footer_label is not None:
+                self._footer_label.setText("Sistem terkunci. Input dinonaktifkan selama simulasi otomatis berjalan.")
+            return
+        self._execute_action(action)
+
+    def _execute_action(self, action: str) -> None:
         if self.input_handler is not None:
             try:
                 self.input_handler.emit(action, duration=0.0)
@@ -953,6 +992,9 @@ class TouchPanelBaseWindow(QMainWindow):
         self._update_ui_displays()
 
     def _on_button_press(self, action: str) -> None:
+        if self._is_auto_running():
+            return
+            
         self._active_holds[action] = time.time()
         
         # Emit one event immediately for rods, so they feel responsive instantly
@@ -966,6 +1008,9 @@ class TouchPanelBaseWindow(QMainWindow):
             self._footer_label.setText(f"Menyesuaikan: {action}...")
 
     def _on_button_hold(self, action: str) -> None:
+        if self._is_auto_running():
+            return
+            
         # In local mode, apply gradual changes during hold timer tick
         if self.local_mode:
             self._update_local_simulation_hold(action)
