@@ -336,6 +336,7 @@ class AutoSimulator:
             with self._state_manager as state:
                 state.auto_sim_running = False
                 state.emergency_active = False # Reset emergency just in case
-                state.simulation_mode = 'idle' # Kembalikan ke mode idle
+                if not self._cancelled:
+                    state.simulation_mode = 'idle' # Kembalikan ke mode idle jika tidak dicancel
                 state.auto_sim_phase = ""
             logger.info("Auto simulation thread stopped")

@@ -186,9 +186,10 @@ class CinematicLOFASequence:
         finally:
             self._running = False
             with self._state_manager as state:
-                state.reset()
-                # Set mode ke idle agar tampilan kembali ke menu utama
-                state.simulation_mode = 'idle'
+                if not self._cancelled:
+                    state.reset()
+                    # Set mode ke idle agar tampilan kembali ke menu utama
+                    state.simulation_mode = 'idle'
                 # Clear emergency agar UI tidak terjebak di status bahaya
                 state.emergency_active = False
                 state.auto_sim_phase = ""

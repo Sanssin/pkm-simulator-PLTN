@@ -185,10 +185,10 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
-            # Update heat ratio berdasarkan daya termal (0 kW hingga 10.000 kW / 10 MW)
-            # Jika daya melebihi 10 MW, warna akan langsung mentok merah (1.0)
-            thermal_power_kw = getattr(state, 'thermal_kw', 0.0)
-            heat_ratio = thermal_power_kw / 10000.0
+            # Update heat ratio berdasarkan posisi batang kendali (shim & regulating)
+            # Sesuai permintaan: "ketika batang kendali mulai diangkan (shim dan regulating) nanti warnanya merah"
+            effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
+            heat_ratio = effective_rod / 50.0  # Mencapai merah penuh (1.0) saat rod diangkat 50%
             heat_ratio = max(0.0, min(1.0, heat_ratio))
             
             self.led_strip.set_heat_ratio('kondenser', heat_ratio)

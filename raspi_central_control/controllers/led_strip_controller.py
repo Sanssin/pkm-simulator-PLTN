@@ -91,7 +91,16 @@ class LEDSegment:
                 gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
-        # Default: Gradien halus untuk segmen lain (primer, sekunder, tersier)
+        # Pipa primer: 1-30 (index 0-29) Merah (panas dari reaktor), 31-118 (index 30-117) Biru (dingin setelah SG)
+        if self.name == 'primer':
+            for i in range(self.length):
+                if i < 30:
+                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+                else:
+                    gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+            return gradient_colors
+
+        # Default: Gradien halus untuk segmen lain (sekunder, tersier)
         grad_len = min(71, self.length) # Use 71 or max length
         grad_start = (self.length - grad_len) // 2
         grad_end = grad_start + grad_len - 1
