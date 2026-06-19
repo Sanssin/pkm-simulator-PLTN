@@ -115,15 +115,20 @@ class CinematicLOFASequence:
                 shim_prog = min(max((progress - 0.333) / 0.333, 0.0), 1.0)
                 reg_prog = min(max((progress - 0.666) / 0.334, 0.0), 1.0)
                 
+                # Power generation starts only when shim & reg rods are pulled
+                power_prog = (shim_prog + reg_prog) / 2.0
+                
                 with self._state_manager as state:
-                    state.pressure = 45.0 + (150.0 - 45.0) * progress
                     state.safety_rod = 100.0 * safety_prog
                     state.shim_rod = 100.0 * shim_prog
                     state.regulating_rod = 100.0 * reg_prog
-                    state.thermal_kw = 300000.0 * progress
-                    state.temperature_core = 25.0 + (280.0 - 25.0) * progress
-                    state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * progress
-                    state.turbine_speed = 100.0 * progress
+                    
+                    # Power and temperatures follow the rod heights, not time
+                    state.pressure = 45.0 + (150.0 - 45.0) * power_prog
+                    state.thermal_kw = 300000.0 * power_prog
+                    state.temperature_core = 25.0 + (280.0 - 25.0) * power_prog
+                    state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * power_prog
+                    state.turbine_speed = 100.0 * power_prog
                 time.sleep(0.1)
 
             if not wait_until(29.0): return
