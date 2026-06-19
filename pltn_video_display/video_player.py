@@ -42,7 +42,7 @@ class VideoPlayer:
             log_suffix = os.path.basename(filename).replace('.', '_')
             log_path = f"/tmp/mpv_{log_suffix}.log"
             
-            # Base command — biarkan mpv auto-detect hwdec dan audio output seperti saat dibuka manual
+            # Base command — kembalikan vo dan hwdec agar tidak blackscreen
             cmd = [
                 "mpv",
                 filename,
@@ -52,6 +52,8 @@ class VideoPlayer:
                 "--autofit=100%x100%",
                 f"--fs-screen-name={TARGET_SCREEN_NAME}",
                 "--ontop",
+                "--vo=dmabuf-wayland",   # Penting untuk Wayland agar tidak blackscreen
+                "--hwdec=v4l2m2m",       # Hardware decode untuk RPi4
                 "--no-pause",
                 f"--log-file={log_path}"
             ]
