@@ -1430,12 +1430,12 @@ class TouchPanelBaseWindow(QMainWindow):
                 self.lbl_dash_pump2.setText(f"Sekunder: {p2}")
                 self.lbl_dash_pump3.setText(f"Tersier: {p3}")
                 
-                self.bar_safety.setValue(int(self.sim_rod_safety))
-                self.bar_shim.setValue(int(self.sim_rod_shim))
-                self.bar_reg.setValue(int(self.sim_rod_regulating))
+                self.bar_safety.setValue(int(self.sim_safety_rod))
+                self.bar_shim.setValue(int(self.sim_shim_rod))
+                self.bar_reg.setValue(int(self.sim_regulating_rod))
                 
                 self.lbl_dash_power.setText(f"{int(self.sim_thermal_kw):,} kW")
-                self.lbl_dash_pressure.setText(f"{self.sim_pressurizer_pressure:.1f} bar")
+                self.lbl_dash_pressure.setText(f"{self.sim_pressure:.1f} bar")
                 self.lbl_dash_temp_pri.setText(f"{self.sim_coolant_temp_primary:.1f} °C")
                 self.lbl_dash_temp_sec.setText(f"{self.sim_coolant_temp_secondary:.1f} °C")
 
