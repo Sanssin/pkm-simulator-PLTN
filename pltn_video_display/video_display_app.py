@@ -204,70 +204,6 @@ class VideoDisplayApp:
         # Display mode
         self.display_mode = DisplayMode.IDLE
         
-        self._load_assets()
-        
-        # IDLE screen animation
-        self.idle_fade_alpha = 255
-        self.idle_fade_direction = -1
-        self.idle_fade_speed = 2
-        
-        # Mode transition tracking
-        self.last_state_hash = None  # Track state changes
-        self.auto_complete_time = None  # Track when auto simulation completes
-        self.user_has_interacted = False  # Track if user pressed any button
-        self.last_pressure = 0
-        self.last_rods_sum = 0
-        self.last_pumps_sum = 0
-        self.is_on_touchscreen = (self.display_idx == 1)
-        
-        # Manual guide - step tracker
-        self.current_step = 0
-        self.steps_completed = []
-        
-        # Test mode variables
-        if self.test_mode:
-            print("🧪 TESTING MODE ACTIVE")
-            print("   Using mock simulation data")
-            print("   Press keys to simulate push buttons:")
-            print("")
-            print("   === PUMP CONTROLS ===")
-            print("   1/2: Primary ON/OFF | 4/5: Secondary ON/OFF | 7/8: Tertiary ON/OFF")
-            print("")
-            print("   === CONTROL RODS (Hold for continuous) ===")
-            print("   Q/W: Safety UP/DOWN | E/R: Shim UP/DOWN | T/Y: Regulating UP/DOWN")
-            print("")
-            print("   === PRESSURE ===")
-            print("   ↑/↓: Pressure UP/DOWN")
-            print("")
-            print("   === SYSTEM CONTROLS ===")
-            print("   F1: Start Auto | F2: Reset | F3: Emergency")
-            print("")
-            print("   ESC: Exit")
-            self.mock_state = self.create_mock_state()
-            self.mock_mode = "idle"  # Start with IDLE mode
-            
-            # Keyboard state tracking (untuk level detection)
-            self.last_key_trigger = {}  # Last trigger time for each button
-            self.key_repeat_interval = 0.05  # 50ms repeat for held keys
-            self.key_press_times = {}  # key_code -> press_time
-            self.key_held_flags = {}   # key_code -> is_held
-            
-            # Track user interaction untuk mode transition
-            self.user_has_interacted = False  # Start False, switch to True on first input
-
-        else:
-            print("🚀 PRODUCTION MODE")
-            print(f"   Reading state from: {self.state_file}")
-        
-        print(f"🎬 Video Display App initialized")
-        print(f"   Screen: {self.width}x{self.height}")
-        print(f"   Fullscreen: {self.fullscreen}")
-        if self.logo_brin and self.logo_poltek:
-            print(f"   ✅ Logos loaded successfully")
-        else:
-            print(f"   ⚠️  Logos not found (will skip)")
-            
-    def _load_assets(self):
         # Fonts - Enhanced for 4K display with better hierarchy
         # Scale fonts based on display resolution
         # For 3840x2160 (4K): scale = 2.0, so fonts are 2x larger
@@ -323,39 +259,66 @@ class VideoDisplayApp:
         self.logo_size_large = (int(150 * self.scale), int(150 * self.scale))  # IDLE mode (increased from 120)
         self.logo_size_small = (int(100 * self.scale), int(100 * self.scale))   # MANUAL mode (increased from 60)
         self.load_logos()
+        
+        # IDLE screen animation
+        self.idle_fade_alpha = 255
+        self.idle_fade_direction = -1
+        self.idle_fade_speed = 2
+        
+        # Mode transition tracking
+        self.last_state_hash = None  # Track state changes
+        self.auto_complete_time = None  # Track when auto simulation completes
+        self.user_has_interacted = False  # Track if user pressed any button
+        self.last_pressure = 0
+        self.last_rods_sum = 0
+        self.last_pumps_sum = 0
+        
+        # Manual guide - step tracker
+        self.current_step = 0
+        self.steps_completed = []
+        
+        # Test mode variables
+        if self.test_mode:
+            print("🧪 TESTING MODE ACTIVE")
+            print("   Using mock simulation data")
+            print("   Press keys to simulate push buttons:")
+            print("")
+            print("   === PUMP CONTROLS ===")
+            print("   1/2: Primary ON/OFF | 4/5: Secondary ON/OFF | 7/8: Tertiary ON/OFF")
+            print("")
+            print("   === CONTROL RODS (Hold for continuous) ===")
+            print("   Q/W: Safety UP/DOWN | E/R: Shim UP/DOWN | T/Y: Regulating UP/DOWN")
+            print("")
+            print("   === PRESSURE ===")
+            print("   ↑/↓: Pressure UP/DOWN")
+            print("")
+            print("   === SYSTEM CONTROLS ===")
+            print("   F1: Start Auto | F2: Reset | F3: Emergency")
+            print("")
+            print("   ESC: Exit")
+            self.mock_state = self.create_mock_state()
+            self.mock_mode = "idle"  # Start with IDLE mode
+            
+            # Keyboard state tracking (untuk level detection)
+            self.last_key_trigger = {}  # Last trigger time for each button
+            self.key_repeat_interval = 0.05  # 50ms repeat for held keys
+            self.key_press_times = {}  # key_code -> press_time
+            self.key_held_flags = {}   # key_code -> is_held
+            
+            # Track user interaction untuk mode transition
+            self.user_has_interacted = False  # Start False, switch to True on first input
 
-    def switch_to_display(self, target_display_idx: int):
-        if self.display_idx == target_display_idx:
-            return
-            
-        print(f"🔄 Moving window to display {target_display_idx}")
-        self.display_idx = target_display_idx
-        self.is_on_touchscreen = (target_display_idx == 1)
-        
-        is_wayland = os.environ.get('SDL_VIDEODRIVER') == 'wayland'
-        
-        if not is_wayland:
-            offset_x = 1920 if target_display_idx == 1 else 0
-            os.environ['SDL_VIDEO_WINDOW_POS'] = f"{offset_x},0"
-            
-        if self.fullscreen:
-            try:
-                if is_wayland:
-                    self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                else:
-                    self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=target_display_idx)
-            except Exception as e:
-                print(f"⚠️ Error changing display: {e}")
-                self.screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
         else:
-            self.screen = pygame.display.set_mode((1280, 720))
-            
-        self.width, self.height = self.screen.get_size()
-        self.scale_x = self.width / 1920.0
-        self.scale_y = self.height / 1080.0
-        self.scale = min(self.scale_x, self.scale_y)
+            print("🚀 PRODUCTION MODE")
+            print(f"   Reading state from: {self.state_file}")
         
-        self._load_assets()
+        print(f"🎬 Video Display App initialized")
+        print(f"   Screen: {self.width}x{self.height}")
+        print(f"   Fullscreen: {self.fullscreen}")
+        if self.logo_brin and self.logo_poltek:
+            print(f"   ✅ Logos loaded successfully")
+        else:
+            print(f"   ⚠️  Logos not found (will skip)")
     
     def load_logos(self):
         """Load BRIN and Poltek logos from assets folder"""
@@ -1799,7 +1762,6 @@ class VideoDisplayApp:
         # Jangan pernah kembali ke IDLE saat mode cinematic_lofa aktif
         lofa_mode_active = (mode == "cinematic_lofa")
         if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active:
-            self.switch_to_display(0)
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
@@ -1819,12 +1781,10 @@ class VideoDisplayApp:
             self.user_has_interacted = True  # Enable manual mode immediately
             self.auto_complete_time = None
             self.current_step = 0
-            self.switch_to_display(0)
             # Don't return here, continue to draw manual guide
         
         # MODE 1: EMERGENCY - Switch to MANUAL to show real-time physics updates
         if emergency:
-            self.switch_to_display(0)
             if self.display_mode != DisplayMode.MANUAL_GUIDE:
                 print("🚨 Emergency detected - switching to MANUAL to show status")
                 self.stop_video()
@@ -1835,7 +1795,7 @@ class VideoDisplayApp:
             self.draw_manual_guide(state)
             return
         
-        # MODE 2: AUTO SIMULATION - Move to touchscreen and draw dashboard
+        # MODE 2: AUTO SIMULATION - Play video
         if mode == "auto" and auto_running:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
@@ -1843,25 +1803,22 @@ class VideoDisplayApp:
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
             
-            self.switch_to_display(1)
-            self.draw_manual_guide(state)
+            # Video is playing via mpv - don't draw anything
+            # (mpv handles fullscreen itself)
             return
 
-        # MODE 2.5: CINEMATIC LOFA - Move to touchscreen and draw dashboard
+        # MODE 2.5: CINEMATIC LOFA - Play video
         if mode == "cinematic_lofa":
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to CINEMATIC LOFA VIDEO mode")
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None
                 self.user_has_interacted = False
-            
-            self.switch_to_display(1)
-            self.draw_manual_guide(state)
+            # Video berjalan via mpv - tidak ada yang perlu digambar
             return
         
         # MODE 3: MANUAL - Show guide if user interacted or after auto complete
         if mode == "manual" and self.user_has_interacted:
-            self.switch_to_display(0)
             if self.display_mode != DisplayMode.MANUAL_GUIDE:
                 print(f"📋 Switching to MANUAL GUIDE mode (user pressed button)")
                 self.stop_video()
@@ -1872,7 +1829,6 @@ class VideoDisplayApp:
         
         # MODE 4: IDLE - Default (no user interaction yet, not in auto, not reset)
         else:
-            self.switch_to_display(0)
             if self.display_mode != DisplayMode.IDLE:
                 self.stop_video()
                 self.display_mode = DisplayMode.IDLE
