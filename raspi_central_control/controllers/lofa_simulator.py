@@ -52,6 +52,12 @@ class LOFASimulator:
         if state.pump_primary_status == PUMP_ON: self.primary_pump_was_on = True
         if state.pump_secondary_status == PUMP_ON: self.secondary_pump_was_on = True
         if state.pump_tertiary_status == PUMP_ON: self.tertiary_pump_was_on = True
+        
+        # Reset flow tracking automatically if reactor is completely cold and off (e.g., after system reset)
+        if state.thermal_kw < 1.0:
+            if state.pump_primary_status == 0: self.primary_pump_was_on = False
+            if state.pump_secondary_status == 0: self.secondary_pump_was_on = False
+            if state.pump_tertiary_status == 0: self.tertiary_pump_was_on = False
             
         # 0. LOFA Mitigation: Pressurizer Relief & Spray
         if state.pressure > 165.0:
