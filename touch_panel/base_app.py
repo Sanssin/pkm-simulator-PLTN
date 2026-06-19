@@ -400,63 +400,51 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_layout.setAlignment(Qt.AlignCenter)
         btn_layout.setSpacing(30)
         
-        start_btn = QPushButton("Mulai Mode Manual")
+        start_btn = QPushButton("Mulai Mode\nManual")
         start_btn.setObjectName("hudStartBtn")
-        start_btn.setFixedSize(320, 80)
+        start_btn.setFixedSize(360, 140)
         start_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3B82F6;
                 color: white;
-                font-size: 24px;
+                font-size: 32px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 16px;
             }
-            QPushButton:hover {
-                background-color: #2563EB;
-            }
-            QPushButton:pressed {
-                background-color: #1D4ED8;
-            }
+            QPushButton:hover { background-color: #2563EB; }
+            QPushButton:pressed { background-color: #1D4ED8; }
         """)
         start_btn.clicked.connect(self._start_manual_mode)
         
-        auto_btn = QPushButton("Mulai Mode Otomatis")
+        auto_btn = QPushButton("Mulai Mode\nOtomatis")
         auto_btn.setObjectName("hudAutoBtn")
-        auto_btn.setFixedSize(320, 80)
+        auto_btn.setFixedSize(360, 140)
         auto_btn.setStyleSheet("""
             QPushButton {
                 background-color: #10B981;
                 color: white;
-                font-size: 24px;
+                font-size: 32px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 16px;
             }
-            QPushButton:hover {
-                background-color: #059669;
-            }
-            QPushButton:pressed {
-                background-color: #047857;
-            }
+            QPushButton:hover { background-color: #059669; }
+            QPushButton:pressed { background-color: #047857; }
         """)
         auto_btn.clicked.connect(lambda: self._show_confirmation_overlay("auto"))
         
-        lofa_btn = QPushButton("Simulasi LOFA")
+        lofa_btn = QPushButton("Simulasi\nLOFA")
         lofa_btn.setObjectName("hudLofaBtn")
-        lofa_btn.setFixedSize(320, 80)
+        lofa_btn.setFixedSize(360, 140)
         lofa_btn.setStyleSheet("""
             QPushButton {
                 background-color: #EF4444;
                 color: white;
-                font-size: 24px;
+                font-size: 32px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 16px;
             }
-            QPushButton:hover {
-                background-color: #DC2626;
-            }
-            QPushButton:pressed {
-                background-color: #B91C1C;
-            }
+            QPushButton:hover { background-color: #DC2626; }
+            QPushButton:pressed { background-color: #B91C1C; }
         """)
         lofa_btn.clicked.connect(lambda: self._show_confirmation_overlay("lofa"))
         
@@ -479,7 +467,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._confirmation_overlay = QWidget(hud)
         self._confirmation_overlay.setObjectName("confirmationOverlay")
         self._confirmation_overlay.setVisible(False)
-        self._confirmation_overlay.setStyleSheet("background-color: rgba(2, 6, 23, 0.72);")
+        self._confirmation_overlay.setStyleSheet("background-color: rgba(2, 6, 23, 0.75);")
         self._confirmation_overlay.setGeometry(0, 0, hud.width(), hud.height())
 
         overlay_layout = QVBoxLayout(self._confirmation_overlay)
@@ -490,41 +478,41 @@ class TouchPanelBaseWindow(QMainWindow):
         overlay_card.setObjectName("confirmationCard")
         overlay_card.setStyleSheet("""
             QWidget#confirmationCard {
-                background-color: rgba(15, 23, 42, 0.94);
-                border: 1px solid rgba(148, 163, 184, 0.35);
-                border-radius: 24px;
+                background-color: rgba(15, 23, 42, 0.96);
+                border: 2px solid rgba(148, 163, 184, 0.5);
+                border-radius: 30px;
             }
         """)
-        overlay_card.setFixedSize(600, 260)
+        overlay_card.setFixedSize(850, 420)
 
         card_layout = QVBoxLayout(overlay_card)
-        card_layout.setContentsMargins(28, 28, 28, 28)
-        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(40, 40, 40, 40)
+        card_layout.setSpacing(25)
 
         self._overlay_title = QLabel("Konfirmasi")
         self._overlay_title.setObjectName("overlayTitle")
         self._overlay_title.setAlignment(Qt.AlignCenter)
-        self._overlay_title.setStyleSheet("font-size: 26px; font-weight: bold; color: #F8FAFC;")
+        self._overlay_title.setStyleSheet("font-size: 42px; font-weight: bold; color: #F8FAFC;")
 
         self._overlay_text = QLabel("...")
         self._overlay_text.setObjectName("overlayText")
         self._overlay_text.setAlignment(Qt.AlignCenter)
         self._overlay_text.setWordWrap(True)
-        self._overlay_text.setStyleSheet("font-size: 18px; color: #E2E8F0; line-height: 1.4;")
+        self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
 
         button_row = QHBoxLayout()
-        button_row.setSpacing(14)
+        button_row.setSpacing(20)
         button_row.setAlignment(Qt.AlignCenter)
 
         continue_btn = QPushButton("Lanjutkan")
-        continue_btn.setFixedSize(180, 58)
+        continue_btn.setFixedSize(260, 80)
         continue_btn.setStyleSheet("""
             QPushButton {
                 background-color: #10B981;
                 color: white;
-                font-size: 18px;
+                font-size: 26px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 16px;
             }
             QPushButton:hover { background-color: #059669; }
             QPushButton:pressed { background-color: #047857; }
@@ -532,14 +520,14 @@ class TouchPanelBaseWindow(QMainWindow):
         continue_btn.clicked.connect(self._confirm_mode)
 
         cancel_btn = QPushButton("Batal")
-        cancel_btn.setFixedSize(180, 58)
+        cancel_btn.setFixedSize(260, 80)
         cancel_btn.setStyleSheet("""
             QPushButton {
                 background-color: #475569;
                 color: white;
-                font-size: 18px;
+                font-size: 26px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 16px;
             }
             QPushButton:hover { background-color: #334155; }
             QPushButton:pressed { background-color: #1E293B; }
