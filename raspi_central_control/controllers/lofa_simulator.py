@@ -113,7 +113,8 @@ class LOFASimulator:
         state.temperature_coolant = state.temperature_coolant_primary
         
         # 4. Pressure Dynamics
-        pressure_generation = (delta_temp * 0.5) if delta_temp > 0 else (delta_temp * 0.2)
+        # Mengurangi koefisien kenaikan agar tekanan tidak melesat tajam saat batang kendali dinaikkan
+        pressure_generation = (delta_temp * 0.1) if delta_temp > 0 else (delta_temp * 0.2)
         if state.relief_valve_open:
             pressure_generation -= 1.5 * dt  # Relieve pressure more slowly (1.5 bar/sec)
             
