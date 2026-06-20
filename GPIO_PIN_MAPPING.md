@@ -1,230 +1,61 @@
-# Raspberry Pi GPIO Pin Mapping - PLTN Simulator
+# Peta Pin GPIO Raspberry Pi - Simulator PLTN v5.0
 
-> **✅ STATUS:** This document shows the CURRENT PRODUCTION pin mapping (v4.0)
-> 
-> The "BEFORE Changes" section is kept for historical reference only.
-
-## Pin Usage History (BEFORE v4.0 Migration)
-
-### Reserved Pins (DO NOT USE)
-```
-GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
-GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
-```
-
-### Output Pins
-```
-GPIO 22 - BUZZER (Software PWM)
-```
-
-### UART Pins (Planned)
-```
-GPIO 14, 15 - UART0 (Built-in) → ESP-BC      [ALREADY USED]
-GPIO 4, 5   - UART3 → ESP-E (Visualizer)     [NEED TO FREE GPIO 5]
-```
+> **✅ STATUS:** Dokumen ini menampilkan pemetaan pin AKTIF untuk arsitektur Single Controller (v5.0).
+> Seluruh komunikasi antarmuka lawas (UART/I2C) serta penggunaan mikrokontroler eksternal (ESP32) telah DITANGGALKAN.
+> Semua aktuator mekanik dan indikator kelistrikan dikontrol langsung oleh pin pada Raspberry Pi 4.
 
 ---
 
-## ✅ CURRENT PIN MAPPING (v4.0 Production)
+## 📌 Ringkasan Penggunaan Pin GPIO (Sistem Penomoran: BCM)
 
-### Reserved Pins (DO NOT USE)
-```
-GPIO 0, 1    - ID EEPROM (Reserved)
-GPIO 2, 3    - AVAILABLE (Previously I2C/OLEDs)
-GPIO 4, 5    - UART3 (TXD, RXD) - ESP-E Communication  ✅ NEW
-GPIO 14, 15  - UART0 (TXD, RXD) - ESP-BC Communication
-```
+### 1. Motor & Aktuator (via Driver L298N / VNH2SP30)
+| Fungsi | Pin GPIO (BCM) | Keterangan |
+|--------|---------------|------------|
+| Pompa Primer | **GPIO 17** | Sirkulasi air utama reaktor (PWM) |
+| Pompa Sekunder | **GPIO 20** | Sirkulasi menuju penukar panas / *Heat Exchanger* (PWM) |
+| Pompa Tersier | **GPIO 27** | Sirkulasi panas buangan ke menara pendingin (PWM) |
+| Motor Turbin | **GPIO 26** | Menggerakkan turbin putar (PWM) |
 
+### 2. Servo Motor (Sistem Batang Kendali)
+| Fungsi | Pin GPIO (BCM) | Keterangan |
+|--------|---------------|------------|
+| Safety Rod | **GPIO 23** | Batang Pengaman (Otomatis jatuh pada mode Darurat/SCRAM) |
+| Shim Rod | **GPIO 24** | Batang Penyesuai Daya Tingkat Kasar |
+| Regulating Rod | **GPIO 25** | Batang Pengatur Daya Tingkat Halus |
 
-### Output Pins
-```
-GPIO 22 - BUZZER (Software PWM)
-```
+### 3. Relay Modul (Humidifier / Pembuat Uap Air)
+| Fungsi | Pin GPIO (BCM) | Keterangan |
+|--------|---------------|------------|
+| Cooling Tower 1 (CT1) | **GPIO 2** | Otomatis dihidupkan (Aktif LOW/HIGH mengikuti relay) bergantung MWe |
+| Cooling Tower 2 (CT2) | **GPIO 3** | Bergabung ke kontrol sekunsial pelepasan energi panas |
+| Cooling Tower 3 (CT3) | **GPIO 9** | Bergabung ke kontrol sekunsial pelepasan energi panas |
+| Cooling Tower 4 (CT4) | **GPIO 22** | Bergabung ke kontrol sekunsial pelepasan energi panas |
 
-### Available for Future Use
-```
-GPIO 9, 10, 11 - SPI0 (if SPI not needed, can use as GPIO)
-```
-
----
-
-## Pin Summary Table
-
-| GPIO | Function (BEFORE) | Function (AFTER) | Notes |
-|------|-------------------|------------------|-------|
-| 0 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
-| 1 | Reserved (EEPROM) | Reserved (EEPROM) | Don't use |
-| 2 | Available | Available | Don't use |
-| 3 | Available | Available | Don't use |
-| **4** | **Available** | **UART3 TXD (ESP-E)** | ✅ NEW |
-| **5** | **PUMP_PRIMARY_ON** | **UART3 RXD (ESP-E)** | ✅ MOVED |
-| 6 | PUMP_PRIMARY_OFF | PUMP_PRIMARY_OFF | Same |
-| 7 | SHIM_ROD_DOWN | SHIM_ROD_DOWN | Same |
-| 8 | REGULATING_ROD_UP | REGULATING_ROD_UP | Same |
-| 9 | Available | Available | - |
-| 10 | Available | Available | - |
-| **11** | **Available** | **PUMP_PRIMARY_ON** | ✅ NEW |
-| 12 | SHIM_ROD_UP | SHIM_ROD_UP | Same |
-| 13 | PUMP_SECONDARY_ON | PUMP_SECONDARY_ON | Same |
-| 14 | UART0 TXD (ESP-BC) | UART0 TXD (ESP-BC) | Don't use |
-| 15 | UART0 RXD (ESP-BC) | UART0 RXD (ESP-BC) | Don't use |
-| 16 | SAFETY_ROD_DOWN | SAFETY_ROD_DOWN | Same |
-| 17 | REACTOR_START | REACTOR_START | Same |
-| 18 | EMERGENCY | EMERGENCY | Same |
-| 19 | PUMP_SECONDARY_OFF | PUMP_SECONDARY_OFF | Same |
-| 20 | SAFETY_ROD_UP | SAFETY_ROD_UP | Same |
-| 21 | PUMP_TERTIARY_OFF | PUMP_TERTIARY_OFF | Same |
-| 22 | BUZZER | BUZZER | Same |
-| 23 | PRESSURE_DOWN | PRESSURE_DOWN | Same |
-| 24 | PRESSURE_UP | PRESSURE_UP | Same |
-| 25 | REGULATING_ROD_DOWN | REGULATING_ROD_DOWN | Same |
-| 26 | PUMP_TERTIARY_ON | PUMP_TERTIARY_ON | Same |
-| 27 | REACTOR_RESET | REACTOR_RESET | Same |
+### 4. Visualisasi LED & Indikator Status
+| Fungsi | Pin GPIO (BCM) | Keterangan |
+|--------|---------------|------------|
+| LED Strip (WS2812) | **GPIO 18** | Visualisasi laju pergerakan air di pipa (Terkunci ke hardware PWM0) |
+| Indikator Daya Output | **GPIO 13** | Lampu tingkat produksi MWe (PWM1) |
+| Efek Cherenkov (Biru) | **GPIO 16** | Pendaran cahaya biru reaktif di sekitar inti reaktor |
+| Dekorasi Turbin | **GPIO 12** | Cahaya ambien untuk generator turbin |
+| Relief Valve Aman | **GPIO 5** | Hijau (Tekanan Normal/Stabil) |
+| Relief Valve Darurat| **GPIO 6** | Merah (Tekanan Melebihi Batas/Overpressure) |
 
 ---
 
-## UART Port Configuration
+## 🚫 Pin Usang / Dihapus (DO NOT USE)
+Pin-pin berikut ini **sudah tidak lagi digunakan** karena komponen fisiknya telah dibongkar sepenuhnya dalam versi *Single Controller*:
 
-### Raspberry Pi UART Ports
-
-```
-UART0 (/dev/ttyAMA0)  - GPIO 14/15  → ESP-BC (Control Rods + Turbine + Humid)
-UART3 (/dev/ttyAMA1)  - GPIO 4/5    → ESP-E (LED Visualizer)  ✅ NEW
-```
-
-### Enable UART3 on Raspberry Pi
-
-Edit `/boot/config.txt`:
-```bash
-# Enable UART3 on GPIO 4/5
-dtoverlay=uart3
-```
-
-Or use device tree overlay:
-```bash
-sudo dtoverlay uart3
-```
-
-Check available UARTs:
-```bash
-ls -l /dev/ttyAMA*
-```
-
-Expected output:
-```
-/dev/ttyAMA0 -> GPIO 14/15  (ESP-BC)
-/dev/ttyAMA1 -> GPIO 4/5    (ESP-E)   ✅ NEW
-```
+- **GPIO 14 & 15 (UART0 TX/RX)**: Tidak lagi terhubung ke papan sirkuit ESP-BC.
+- **GPIO 4 & 5 (UART3 TX/RX)**: Tidak lagi terhubung ke papan sirkuit ESP-E.
+- **20+ Pin Input Tersebar**: Seluruh *push button* fisik mekanis (tombol Pompa, Tekanan, Batang, Reset) telah **dihapus** karena sistem pengoperasian kini 100% beralih menggunakan *Touchscreen Panel*.
 
 ---
 
-## Wiring Changes
+## 🔌 Detail Konfigurasi Tambahan
 
-### Button Wiring
-```
-BEFORE:
-  [PUMP PRIMARY ON Button] → GPIO 5 → GND
+1. **Dukungan Catu Daya Eksternal (WS2812 & Servo)**:
+   Pin Raspberry Pi murni hanya untuk mengirimkan aliran data kelistrikan (Data/Signal). Jangan pernah mengambil daya (VCC) 5V dari Pin Raspberry Pi secara berlebihan untuk menarik beban Servo Motor atau ratusan lampu LED WS2812. Selalu gunakan PSU (Power Supply Unit) berkapasitas daya tinggi eksternal.
 
-AFTER:
-  [PUMP PRIMARY ON Button] → GPIO 11 → GND  ✅ MOVED
-```
-
-### UART3 Wiring (NEW)
-```
-Raspberry Pi         ESP-E (Visualizer)
-GPIO 4 (TXD3)   →   GPIO 16 (RX2)
-GPIO 5 (RXD3)   ←   GPIO 17 (TX2)
-GND             →   GND
-```
-
----
-
-## Changes Required
-
-### 1. raspi_config.py
-```python
-# Button Pins - OLD
-BTN_PUMP_PRIM_ON = 5  # ❌ CONFLICT with UART3
-
-# Button Pins - NEW
-BTN_PUMP_PRIM_ON = 11  # ✅ MOVED
-
-# UART Configuration - NEW
-UART_ESP_BC_PORT = '/dev/ttyAMA0'    # GPIO 14/15
-UART_ESP_E_PORT = '/dev/ttyAMA1'     # GPIO 4/5  ✅ NEW (was /dev/ttyUSB0)
-```
-
-### 2. raspi_gpio_buttons.py
-```python
-class ButtonPin(IntEnum):
-    # Pump Control
-    PUMP_PRIMARY_ON = 11   # ✅ CHANGED from 5
-    PUMP_PRIMARY_OFF = 6
-    # ... rest unchanged
-```
-
-### 3. raspi_uart_master.py
-```python
-# UART port update
-def __init__(self, 
-             esp_bc_port: str = '/dev/ttyAMA0',  # GPIO 14/15
-             esp_e_port: str = '/dev/ttyAMA1',   # GPIO 4/5  ✅ CHANGED
-             baudrate: int = 115200):
-```
-
----
-
-## Testing After Changes
-
-### 1. Test Button (GPIO 11)
-```python
-python3 -c "
-import RPi.GPIO as GPIO
-import time
-
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-print('Press PUMP PRIMARY ON button (GPIO 11)...')
-while True:
-    if GPIO.input(11) == GPIO.LOW:
-        print('✅ Button pressed!')
-        time.sleep(0.5)
-    time.sleep(0.1)
-"
-```
-
-### 2. Test UART3 (GPIO 4/5)
-```bash
-# Check UART3 device
-ls -l /dev/ttyAMA1
-
-# Test with minicom
-sudo minicom -D /dev/ttyAMA1 -b 115200
-```
-
----
-
-## Summary of Changes
-
-| Item | BEFORE | AFTER | Status |
-|------|--------|-------|--------|
-| PUMP_PRIMARY_ON Button | GPIO 5 | GPIO 11 | ✅ Moved |
-| ESP-E UART Port | /dev/ttyUSB0 (USB) | /dev/ttyAMA1 (GPIO 4/5) | ✅ Hardware UART |
-| UART3 Enable | Not enabled | Enabled via dtoverlay | ✅ Required |
-
----
-
-## Files to Modify
-
-1. `raspi_config.py` - Update button pin and UART port
-2. `raspi_gpio_buttons.py` - Update ButtonPin enum
-3. `raspi_uart_master.py` - Update default ESP-E port
-4. `/boot/config.txt` - Enable UART3
-
----
-
-**Migration Date**: 2025-12-17  
-**Current Version**: v4.0  
-**Status**: ✅ IMPLEMENTED & IN PRODUCTION
+2. **Pentingnya Common Ground**:
+   Sinyal kontrol PWM dari Raspberry Pi akan mengalami distorsi parah, atau tidak terbaca sama sekali oleh *Motor Driver* (L298N/VNH2SP30), jika Ground (`GND`) dari sirkuit tegangan 12V/24V milik perangkat keras tidak diikat secara fisik (*Jumper*) menyatu dengan pin Ground (`GND`) milik Raspberry Pi.
