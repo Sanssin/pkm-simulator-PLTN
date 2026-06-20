@@ -255,8 +255,6 @@ class AutoSimulator:
                 with self._state_manager as state:
                     state.shim_rod = 100.0 * prog
                     state.thermal_kw = 150000.0 * prog
-                    state.temperature_core = 25.0 + (152.5 - 25.0) * prog
-                    state.temperature_coolant_primary = 25.0 + (162.5 - 25.0) * prog
                     state.turbine_speed = 50.0 * prog
                 time.sleep(0.1)
             with self._state_manager as state:
@@ -274,15 +272,11 @@ class AutoSimulator:
                 with self._state_manager as state:
                     state.regulating_rod = 100.0 * prog
                     state.thermal_kw = 150000.0 + (150000.0 * prog)
-                    state.temperature_core = 152.5 + (127.5 * prog)
-                    state.temperature_coolant_primary = 162.5 + (137.5 * prog)
                     state.turbine_speed = 50.0 + (50.0 * prog)
                 time.sleep(0.1)
             with self._state_manager as state:
                 state.regulating_rod = 100.0
                 state.thermal_kw = 300000.0
-                state.temperature_core = 280.0
-                state.temperature_coolant_primary = 300.0
                 state.turbine_speed = 100.0
             
             # Mematikan reaktor: 6.36 (396s)
@@ -300,7 +294,6 @@ class AutoSimulator:
                         state.regulating_rod = int(100 * prog)
                         # Turunkan daya juga secara bertahap
                         state.thermal_kw = 300000.0 * prog
-                        state.temperature_core = 25.0 + (255.0 * prog)
                         state.turbine_speed = 100.0 * prog
                     time.sleep(17.0/steps)
                 with self._state_manager as state:

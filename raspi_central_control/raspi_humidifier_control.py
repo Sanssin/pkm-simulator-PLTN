@@ -157,67 +157,30 @@ class HumidifierController:
         Returns:
             tuple: (ct1, ct2, ct3, ct4) as (bool, bool, bool, bool)
         """
-        # CT1 - First stage (60 MWe)
-        if self.ct1_last_state:
-            threshold = self.ct1_power_threshold - self.ct_hysteresis
-        else:
-            threshold = self.ct1_power_threshold
-        new_ct1 = electrical_power_kw >= threshold
+        # Staged CT logic refactored
+        thresholds = [
+            (self.ct1_power_threshold, self.ct1_last_state, "Stage 1/4"),
+            (self.ct2_power_threshold, self.ct2_last_state, "Stage 2/4"),
+            (self.ct3_power_threshold, self.ct3_last_state, "Stage 3/4"),
+            (self.ct4_power_threshold, self.ct4_last_state, "Stage 4/4 - MAX COOLING")
+        ]
         
-        if new_ct1 != self.ct1_last_state:
-            if new_ct1:
-                logger.info(f"🌊 CT1 ON: Power={electrical_power_kw/1000.0:.1f} MWe (Stage 1/4)")
-            else:
-                logger.info(f"⭕ CT1 OFF: Power={electrical_power_kw/1000.0:.1f} MWe")
-        self.ct1_last_state = new_ct1
-        self.ct1_active = new_ct1
+        new_states = []
+        for i, (base_thresh, last_state, desc) in enumerate(thresholds, 1):
+            threshold = base_thresh - self.ct_hysteresis if last_state else base_thresh
+            new_state = electrical_power_kw >= threshold
+            
+            if new_state != last_state:
+                if new_state:
+                    logger.info(f"🌊 CT{i} ON: Power={electrical_power_kw/1000.0:.1f} MWe ({desc})")
+                else:
+                    logger.info(f"⭕ CT{i} OFF: Power={electrical_power_kw/1000.0:.1f} MWe")
+            new_states.append(new_state)
+            
+        self.ct1_last_state, self.ct2_last_state, self.ct3_last_state, self.ct4_last_state = new_states
+        self.ct1_active, self.ct2_active, self.ct3_active, self.ct4_active = new_states
         
-        # CT2 - Second stage (120 MWe)
-        if self.ct2_last_state:
-            threshold = self.ct2_power_threshold - self.ct_hysteresis
-        else:
-            threshold = self.ct2_power_threshold
-        new_ct2 = electrical_power_kw >= threshold
-        
-        if new_ct2 != self.ct2_last_state:
-            if new_ct2:
-                logger.info(f"🌊 CT2 ON: Power={electrical_power_kw/1000.0:.1f} MWe (Stage 2/4)")
-            else:
-                logger.info(f"⭕ CT2 OFF: Power={electrical_power_kw/1000.0:.1f} MWe")
-        self.ct2_last_state = new_ct2
-        self.ct2_active = new_ct2
-        
-        # CT3 - Third stage (180 MWe)
-        if self.ct3_last_state:
-            threshold = self.ct3_power_threshold - self.ct_hysteresis
-        else:
-            threshold = self.ct3_power_threshold
-        new_ct3 = electrical_power_kw >= threshold
-        
-        if new_ct3 != self.ct3_last_state:
-            if new_ct3:
-                logger.info(f"🌊 CT3 ON: Power={electrical_power_kw/1000.0:.1f} MWe (Stage 3/4)")
-            else:
-                logger.info(f"⭕ CT3 OFF: Power={electrical_power_kw/1000.0:.1f} MWe")
-        self.ct3_last_state = new_ct3
-        self.ct3_active = new_ct3
-        
-        # CT4 - Fourth stage (240 MWe)
-        if self.ct4_last_state:
-            threshold = self.ct4_power_threshold - self.ct_hysteresis
-        else:
-            threshold = self.ct4_power_threshold
-        new_ct4 = electrical_power_kw >= threshold
-        
-        if new_ct4 != self.ct4_last_state:
-            if new_ct4:
-                logger.info(f"🌊 CT4 ON: Power={electrical_power_kw/1000.0:.1f} MWe (Stage 4/4 - MAX COOLING)")
-            else:
-                logger.info(f"⭕ CT4 OFF: Power={electrical_power_kw/1000.0:.1f} MWe")
-        self.ct4_last_state = new_ct4
-        self.ct4_active = new_ct4
-        
-        return (new_ct1, new_ct2, new_ct3, new_ct4)
+        return tuple(new_states)
     
     def update(self, shim_rod, regulating_rod, electrical_power_kw):
         """

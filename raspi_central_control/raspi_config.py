@@ -10,7 +10,6 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 # Only hardware output pins are defined here (buzzer, etc.)
 
 # Output Pins
-BUZZER_PIN = 4           # GPIO 4 for passive buzzer alarm (software PWM) - dipindah dari 22
 LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
 LED_CHERENKOV_PIN = 16   # GPIO 16 for Cherenkov Blue LED effect via 74HC245N (PWM)
 LED_TURBINE_PIN = 12     # GPIO 12 for Turbine decorative LED effect via 74HC245N (PWM)
@@ -90,13 +89,7 @@ PWM_SHUTDOWN_STEP = 5
 # ============================================
 DEBOUNCE_DELAY = 0.1
 PWM_UPDATE_INTERVAL = 0.1
-I2C_UPDATE_INTERVAL_FAST = 0.05    # ESP-B (critical)
-I2C_UPDATE_INTERVAL_NORMAL = 0.1   # ESP-C, ESP-E
 BLINK_INTERVAL = 0.25
-
-# I2C Timeout
-I2C_TIMEOUT = 1.0
-I2C_RETRY_COUNT = 3
 
 # ============================================
 # Logging Configuration

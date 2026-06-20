@@ -75,10 +75,7 @@ class SystemHealthMonitor:
         start_time = time.time()
         
         # Check each component
-        self._check_multiplexers(panel_controller)
         self._check_actuator_manager(panel_controller)
-        self._check_oled_displays(panel_controller)
-        self._check_gpio_buttons(panel_controller)
         self._check_humidifier(panel_controller)
         self._check_buzzer(panel_controller)
         
@@ -109,64 +106,6 @@ class SystemHealthMonitor:
         self.last_full_check = time.time()
         return self.system_ready
     
-    def _check_multiplexers(self, panel):
-        """Check TCA9548A multiplexers"""
-        logger.info("\n[1/8] Checking I2C Multiplexers...")
-        
-        if not panel.mux_manager:
-            self.components["mux"] = ComponentHealth(
-                name="I2C Multiplexers",
-                status=HealthStatus.CRITICAL,
-                message="Multiplexer manager not initialized"
-            )
-            logger.error("  ❌ CRITICAL: Multiplexers not available")
-            return
-        
-        try:
-            # Try to scan multiplexers
-            scan_result = panel.mux_manager.scan_all()
-            
-            mux1_ok = len(scan_result.get('mux1', {})) > 0
-            mux2_ok = len(scan_result.get('mux2', {})) > 0
-            
-            if mux1_ok and mux2_ok:
-                self.components["mux"] = ComponentHealth(
-                    name="I2C Multiplexers",
-                    status=HealthStatus.OK,
-                    message="Both multiplexers responding",
-                    details={
-                        'mux1_devices': len(scan_result.get('mux1', {})),
-                        'mux2_devices': len(scan_result.get('mux2', {}))
-                    }
-                )
-                logger.info("  ✅ OK: Both TCA9548A multiplexers responding")
-            elif mux1_ok or mux2_ok:
-                self.components["mux"] = ComponentHealth(
-                    name="I2C Multiplexers",
-                    status=HealthStatus.ERROR,
-                    message="One multiplexer not responding",
-                    details={
-                        'mux1_ok': mux1_ok,
-                        'mux2_ok': mux2_ok
-                    }
-                )
-                logger.error("  ❌ ERROR: One multiplexer not responding")
-            else:
-                self.components["mux"] = ComponentHealth(
-                    name="I2C Multiplexers",
-                    status=HealthStatus.CRITICAL,
-                    message="No multiplexers responding"
-                )
-                logger.error("  ❌ CRITICAL: No multiplexers responding")
-                
-        except Exception as e:
-            self.components["mux"] = ComponentHealth(
-                name="I2C Multiplexers",
-                status=HealthStatus.CRITICAL,
-                message=f"Exception during check: {e}"
-            )
-            logger.error(f"  ❌ CRITICAL: Exception - {e}")
-    
     def _check_actuator_manager(self, panel):
         """Check Actuator Manager initialization"""
         logger.info("\n[2/8] Checking Actuator Manager...")
@@ -194,104 +133,6 @@ class SystemHealthMonitor:
                 message="Mock mode active (GPIO unavailable)"
             )
             logger.warning("  ⚠️  WARNING: Actuator Manager (Mock Mode)")
-    
-    def _check_oled_displays(self, panel):
-        """Check OLED displays"""
-        logger.info("\n[5/8] Checking OLED Displays...")
-        
-        # OLED is optional (non-critical)
-        if not hasattr(panel, 'oled_manager') or not panel.oled_manager:
-            self.components["oled"] = ComponentHealth(
-                name="OLED Displays",
-                status=HealthStatus.WARNING,
-                message="OLED manager not initialized (non-critical)"
-            )
-            logger.warning("  ⚠️  WARNING: OLED displays not available (non-critical)")
-            return
-        
-        # Count initialized displays
-        display_count = 0
-        display_list = [
-            panel.oled_manager.oled_pressurizer,
-            panel.oled_manager.oled_pump_primary,
-            panel.oled_manager.oled_pump_secondary,
-            panel.oled_manager.oled_pump_tertiary,
-            panel.oled_manager.oled_safety_rod,
-            panel.oled_manager.oled_shim_rod,
-            panel.oled_manager.oled_regulating_rod,
-            panel.oled_manager.oled_thermal_power,
-            panel.oled_manager.oled_system_status
-        ]
-        
-        for display in display_list:
-            if display and display.initialized:
-                display_count += 1
-        
-        if display_count >= 7:
-            self.components["oled"] = ComponentHealth(
-                name="OLED Displays",
-                status=HealthStatus.OK,
-                message=f"{display_count}/9 displays working",
-                details={'display_count': display_count}
-            )
-            logger.info(f"  ✅ OK: {display_count}/9 OLED displays working")
-        elif display_count > 0:
-            self.components["oled"] = ComponentHealth(
-                name="OLED Displays",
-                status=HealthStatus.WARNING,
-                message=f"Only {display_count}/9 displays working",
-                details={'display_count': display_count}
-            )
-            logger.warning(f"  ⚠️  WARNING: Only {display_count}/9 displays working")
-        else:
-            self.components["oled"] = ComponentHealth(
-                name="OLED Displays",
-                status=HealthStatus.WARNING,
-                message="No displays working (non-critical)",
-                details={'display_count': 0}
-            )
-            logger.warning("  ⚠️  WARNING: No OLED displays working (non-critical)")
-    
-    def _check_gpio_buttons(self, panel):
-        """Check GPIO button initialization"""
-        logger.info("\n[6/8] Checking GPIO Buttons...")
-        
-        if not hasattr(panel, 'button_manager') or not panel.button_manager:
-            self.components["buttons"] = ComponentHealth(
-                name="GPIO Buttons",
-                status=HealthStatus.WARNING,
-                message="Button manager not initialized (simulation mode)"
-            )
-            logger.warning("  ⚠️  WARNING: Buttons not available (simulation mode)")
-            return
-        
-        callback_count = len(panel.button_manager.callbacks)
-        expected_count = 17  # Total buttons in system
-        
-        if callback_count == expected_count:
-            self.components["buttons"] = ComponentHealth(
-                name="GPIO Buttons",
-                status=HealthStatus.OK,
-                message=f"All {callback_count} buttons registered",
-                details={'callback_count': callback_count}
-            )
-            logger.info(f"  ✅ OK: All {callback_count} buttons registered")
-        elif callback_count > 0:
-            self.components["buttons"] = ComponentHealth(
-                name="GPIO Buttons",
-                status=HealthStatus.WARNING,
-                message=f"Only {callback_count}/{expected_count} buttons registered",
-                details={'callback_count': callback_count}
-            )
-            logger.warning(f"  ⚠️  WARNING: Only {callback_count}/{expected_count} buttons")
-        else:
-            self.components["buttons"] = ComponentHealth(
-                name="GPIO Buttons",
-                status=HealthStatus.WARNING,
-                message="No buttons registered",
-                details={'callback_count': 0}
-            )
-            logger.warning("  ⚠️  WARNING: No buttons registered")
     
     def _check_humidifier(self, panel):
         """Check humidifier control"""

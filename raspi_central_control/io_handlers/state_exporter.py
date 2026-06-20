@@ -65,7 +65,7 @@ class StateExporter:
                 
                 temp_file = self.export_path.with_suffix('.tmp')
                 with open(temp_file, 'w') as f:
-                    json.dump(state_dict, f, indent=2)
+                    json.dump(state_dict, f)
                 temp_file.replace(self.export_path)
                 
             except Exception as e:

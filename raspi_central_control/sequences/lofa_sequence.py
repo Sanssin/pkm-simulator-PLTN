@@ -15,6 +15,8 @@ from controllers.interlock_validator import PUMP_ON, PUMP_OFF
 
 if TYPE_CHECKING:
     from controllers.state_manager import StateManager
+from controllers.physics_engine import PhysicsEngine
+from .base_sequence import SimulationSequence
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class LofaPhase(Enum):
     OBSERVATION = auto()
     COMPLETE = auto()
 
-class LOFASequence:
+class LOFASequence(SimulationSequence):
     """
     Automated LOFA simulation sequence.
     
@@ -35,8 +37,9 @@ class LOFASequence:
     then deliberately fails the primary pump.
     """
     
-    def __init__(self, state_manager: 'StateManager'):
-        self._state_manager = state_manager
+    def __init__(self, state_manager: 'StateManager', physics_engine: PhysicsEngine):
+        super().__init__(state_manager)
+        self.physics_engine = physics_engine
         self._current_phase = LofaPhase.IDLE
         self._running = False
         self._cancelled = False
