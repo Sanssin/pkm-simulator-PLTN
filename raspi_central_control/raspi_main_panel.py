@@ -43,7 +43,7 @@ from io_handlers.button_handler import ButtonEvent
 from sequences.scram_sequence import SCRAMSequence
 from sequences.auto_simulation import AutoSimulator
 from pltn_video_display.video_player import VideoPlayer
-from cpu_manager import CpuManager
+from cpu_manager import set_realtime_priority
 
 
 # Try to import GPIO library
@@ -436,7 +436,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Optimize CPU for this hardware node (Core 0,1 + High Priority)
-    CpuManager.setup_hardware_node()
+    set_realtime_priority()
     
     try:
         controller = PLTNPanelController()
