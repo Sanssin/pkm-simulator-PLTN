@@ -52,6 +52,12 @@ class LOFASimulator:
         if state.pump_primary_status == PUMP_ON: self.primary_pump_was_on = True
         if state.pump_secondary_status == PUMP_ON: self.secondary_pump_was_on = True
         if state.pump_tertiary_status == PUMP_ON: self.tertiary_pump_was_on = True
+        
+        # Reset flow tracking automatically if reactor is completely cold and off (e.g., after system reset)
+        if state.thermal_kw < 1.0:
+            if state.pump_primary_status == 0: self.primary_pump_was_on = False
+            if state.pump_secondary_status == 0: self.secondary_pump_was_on = False
+            if state.pump_tertiary_status == 0: self.tertiary_pump_was_on = False
             
         # 0. LOFA Mitigation: Pressurizer Relief & Spray
         if state.pressure > 165.0:
@@ -113,7 +119,8 @@ class LOFASimulator:
         state.temperature_coolant = state.temperature_coolant_primary
         
         # 4. Pressure Dynamics
-        pressure_generation = (delta_temp * 0.5) if delta_temp > 0 else (delta_temp * 0.2)
+        # Mengurangi koefisien kenaikan agar tekanan tidak melesat tajam saat batang kendali dinaikkan
+        pressure_generation = (delta_temp * 0.1) if delta_temp > 0 else (delta_temp * 0.2)
         if state.relief_valve_open:
             pressure_generation -= 1.5 * dt  # Relieve pressure more slowly (1.5 bar/sec)
             
@@ -186,6 +193,10 @@ class LOFASimulator:
 
         # Execute SCRAM if needed
         if scram_reason and not state.emergency_active:
-            logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
-            if self.trigger_scram:
-                self.trigger_scram()
+            if getattr(state, 'simulation_mode', '') == 'cinematic_lofa':
+                # Bypass automatic SCRAM during cinematic LOFA to perfectly sync with video
+                pass
+            else:
+                logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
+                if self.trigger_scram:
+                    self.trigger_scram()

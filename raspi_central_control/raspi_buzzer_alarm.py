@@ -4,7 +4,8 @@ Buzzer Alarm Control for PLTN Simulator
 Passive buzzer control with PWM for different alarm tones
 
 Alarm Conditions:
-1. Procedure Warning: Pump start without pressure (>= 40 bar required)
+1. Procedure Warning: Primary pump start without pressure (>= 40 bar required)
+   or incorrect pump sequence. (3 short beeps)
 2. Pressure Warning: Pressure >= 160 bar (approaching limit)
 3. Pressure Critical: Pressure >= 180 bar (near maximum)
 4. Emergency SCRAM: Safety shutdown activated

@@ -39,6 +39,7 @@ from io_handlers import ButtonIOHandler, ButtonEvent
 from controllers.actuator_manager import ActuatorManager
 from pltn_video_display.video_player import VideoPlayer
 
+
 # Try to import GPIO library
 try:
     import RPi.GPIO as GPIO
@@ -97,6 +98,9 @@ class PLTNPanelController:
         
         # Initialize video player (Thread 9 concept, non-blocking)
         self.video_player = VideoPlayer()
+        
+        # Initialize video player (Thread 9 concept, non-blocking)
+
         
         logger.info("=" * 60)
         logger.info("PLTN Panel Controller initialized successfully")
@@ -184,8 +188,13 @@ class PLTNPanelController:
         self.lofa_sequence = LOFASequence(self.state_manager)
         logger.info("✓ LOFASequence initialized")
         
+        # Cinematic LOFA Sequence
+        from sequences.cinematic_lofa_sequence import CinematicLOFASequence
+        self.cinematic_lofa_sequence = CinematicLOFASequence(self.state_manager)
+        logger.info("✓ CinematicLOFASequence initialized")
+        
         # Pump controller
-        self.pump_controller = PumpController(startup_time=5.0, shutdown_time=3.0)
+        self.pump_controller = PumpController(startup_time=7.0, shutdown_time=7.0)
         logger.info("✓ PumpController initialized")
         
         # Event processor
@@ -196,6 +205,7 @@ class PLTNPanelController:
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
             lofa_sequence=self.lofa_sequence,
+            cinematic_lofa_sequence=self.cinematic_lofa_sequence,
             buzzer=self.buzzer
         )
         logger.info("✓ EventProcessor initialized")
@@ -269,6 +279,8 @@ class PLTNPanelController:
                                     elif direction == "DOWN": button_event = ButtonEvent.PRESSURE_DOWN
                                 elif evt_type == "START_AUTO":
                                     button_event = ButtonEvent.START_AUTO_SIMULATION
+                                elif evt_type == "START_CINEMATIC_LOFA":
+                                    button_event = ButtonEvent.START_CINEMATIC_LOFA
                                 elif evt_type == "RESET":
                                     button_event = ButtonEvent.REACTOR_RESET
                                 elif evt_type == "EMERGENCY":
@@ -342,15 +354,29 @@ class PLTNPanelController:
                         self.lofa_simulator.update(state)
 
                     # Manage Video Player
-                    if state.auto_sim_running or state.simulation_mode == 'auto':
-                        if not self.video_player.is_playing():
-                            self.video_player.play(loop=True)
+                    # PENTING: cek cinematic_lofa DULU sebelum auto_sim_running
+                    # agar video LOFA tidak tertimpa oleh video tutorial
+                    if state.simulation_mode == 'cinematic_lofa':
+                        # Gunakan versi H.264 agar bisa hardware decode (v4l2m2m) dengan mulus
+                        video_path = "/home/pkm/video_pltn/simulasi_lofa_720.mp4"
+                        import os
+                        if not os.path.exists(video_path):
+                            # Fallback ke versi asli jika file baru tidak ditemukan
+                            video_path = "/home/pkm/video_pltn/simulasi_lofa.mp4"
+                            logger.warning(f"[VideoPlayer] {video_path} tidak ditemukan, menggunakan versi asli")
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            # Hapus extra_mpv_args agar menggunakan default dmabuf-wayland hwdec
+                            self.video_player.play(filename=video_path, loop=False)
+                    elif state.auto_sim_running or state.simulation_mode == 'auto':
+                        video_path = "/home/pkm/video_pltn/pwr_tutorial_ver.mp4"
+                        if not self.video_player.is_playing() or self.video_player.current_video != video_path:
+                            self.video_player.play(filename=video_path, loop=True)
                     else:
-                        if self.video_player.is_playing():
+                        if hasattr(self, 'video_player') and self.video_player.is_playing():
                             self.video_player.stop()
 
-                    # Primary Physics Simulation (runs every 10ms)
-                    if True:
+                    # Primary Physics Simulation (hanya berjalan saat mode manual, agar tidak bertabrakan dengan animasi auto/lofa)
+                    if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
                         # Shim rod has 80% worth, Regulating rod has 20% worth
                         effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
                         

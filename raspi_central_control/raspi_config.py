@@ -13,6 +13,7 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 BUZZER_PIN = 4           # GPIO 4 for passive buzzer alarm (software PWM) - dipindah dari 22
 LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
 LED_CHERENKOV_PIN = 16   # GPIO 16 for Cherenkov Blue LED effect via 74HC245N (PWM)
+LED_TURBINE_PIN = 12     # GPIO 12 for Turbine decorative LED effect via 74HC245N (PWM)
 LED_RELIEF_GREEN_PIN = 5  # GPIO 5 for Relief Valve Safe (Green)
 LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red)
 
@@ -44,14 +45,19 @@ HUMIDIFIER_PINS = {
 # LED Strip Configuration (WS2812)
 # ============================================
 LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0) - Daisy Chained
-LED_STRIP_COUNT = 638    # Total number of LEDs (21 Press + 46 Kondenser + 571 Pipa)
+LED_STRIP_COUNT = 315    # Total number of LEDs yang FISIKNYA SUDAH TERPASANG (197 + 118 primer)
 
-# Segments: (start_index, length)
-LED_SEGMENT_PRESSURIZER = (0, 21)
-LED_SEGMENT_KONDENSER   = (21, 46)
-LED_SEGMENT_PRIMER      = (67, 190)
-LED_SEGMENT_SEKUNDER    = (257, 190)
-LED_SEGMENT_TERSIER     = (447, 191)
+# Segments: (start_index, length) - Disusun BERURUTAN sesuai fisik kabel
+LED_SEGMENT_TERSIER_IN  = (0, 84)     # Baru: Pipa tersier masuk (Biru)
+LED_SEGMENT_KONDENSER   = (84, 46)    # Kondenser
+LED_SEGMENT_TERSIER_OUT = (130, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
+LED_SEGMENT_SEKUNDER_IN = (151, 46)   # Baru: Gabungan aliran sekunder dari kondenser (19 + 27)
+LED_SEGMENT_PRIMER      = (197, 118)  # Pipa Primer (disambung dari keluaran sekunder)
+
+# Segmen yang BELUM dipasang fisik (dibuat dummy di index 1000 ke atas)
+LED_SEGMENT_SEKUNDER    = (1200, 190) # Pipa Sekunder Utama (Belum ada fisik)
+LED_SEGMENT_TERSIER     = (1400, 191) # Pipa Tersier Keluar Utama (Belum ada fisik)
+LED_SEGMENT_PRESSURIZER = (1600, 21)  # Dummy index (dicopot sementara / belum dipakai)
 
 # ============================================
 # System Parameters

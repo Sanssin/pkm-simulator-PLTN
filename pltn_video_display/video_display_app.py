@@ -26,6 +26,11 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
+# Force Wayland driver on Linux so app_id is correctly passed to Wayfire
+if sys.platform.startswith('linux'):
+    os.environ['SDL_VIDEODRIVER'] = 'wayland'
+    os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
+
 # Initialize Pygame
 pygame.init()
 
@@ -103,30 +108,27 @@ class VideoDisplayApp:
     def __init__(self, test_mode: bool = False, fullscreen: bool = True, display_idx: int = 0):
         """
         Initialize video display app
-        
-        Args:
-            test_mode: Jika True, masuk mode tes
-            fullscreen: Jika True, fullscreen
-            display_idx: Indeks monitor untuk fullscreen
         """
         self.test_mode = test_mode
         self.fullscreen = fullscreen
         self.display_idx = display_idx
-        # Menentukan display yang akan digunakan
+        
+        # Set environment variables BEFORE init
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
+        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
             
         pygame.init()
-        
-        # Set caption SEBELUM membuat window agar Wayfire rule "on created" bisa mendeteksinya!
-        pygame.display.set_caption("PLTN Simulator - Educational Display")
-        os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
         
         # Cek apakah display yang diminta tersedia
         num_displays = pygame.display.get_num_displays()
         print(f"🔍 Found {num_displays} displays. Target: {display_idx}")
         
-        # Jika display_idx tidak ditemukan, hapus environment variable dan coba atur posisi manual
-        if display_idx >= num_displays and num_displays > 0:
+        # Jika menggunakan Wayland, Wayland menyembunyikan topology monitor (selalu lapor 1 monitor)
+        # Jadi fallback X11 (pygame.quit() dsb) jangan dipanggil jika kita menggunakan Wayland,
+        # karena akan menghilangkan set_caption.
+        is_wayland = os.environ.get('SDL_VIDEODRIVER') == 'wayland'
+        
+        if not is_wayland and display_idx >= num_displays and num_displays > 0:
             print(f"⚠️ Display {display_idx} tidak terdeteksi oleh SDL. Fallback ke windowed borderless offset.")
             pygame.quit()
             del os.environ['SDL_VIDEO_DISPLAY_INDEX']
@@ -136,18 +138,27 @@ class VideoDisplayApp:
             os.environ['SDL_VIDEO_WINDOW_POS'] = f"{offset_x},0"
             pygame.init()
             
+            # SELALU set caption tepat sebelum membuat window agar Wayfire bisa membacanya
+            pygame.display.set_caption("PLTN Simulator - Educational Display")
+            
             if self.fullscreen:
                 print(f"🚀 Membuka fallback di koordinat {offset_x},0 dengan mode NOFRAME.")
-                # Gunakan NOFRAME karena FULLSCREEN sering error di xinerama/spanning
-                # Resolusi diatur ke 1920x1080 (standar) atau biarkan sistem menyesuaikan
                 self.screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
             else:
                 self.screen = pygame.display.set_mode((1280, 720))
         else:
+            # SELALU set caption tepat sebelum membuat window agar Wayfire bisa membacanya
+            pygame.display.set_caption("PLTN Simulator - Educational Display")
+            
             # Fullscreen window atau windowed (untuk testing)
             if self.fullscreen:
                 try:
-                    self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=display_idx)
+                    # Di Wayland, kita serahkan sepenuhnya pada Wayfire rule
+                    # Jika menggunakan display_idx, terkadang SDL XWayland error "Invalid display index"
+                    if is_wayland:
+                        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                    else:
+                        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=display_idx)
                 except Exception as e:
                     print(f"⚠️ Error FULLSCREEN Pygame: {e}. Fallback ke NOFRAME.")
                     self.screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
@@ -207,6 +218,12 @@ class VideoDisplayApp:
         self.font_body = pygame.font.SysFont(font_name, int(base_scale * 0.50))           # Body text (40)
         self.font_small = pygame.font.SysFont(font_name, int(base_scale * 0.44))          # Small text (35)
         self.font_caption = pygame.font.SysFont(font_name, int(base_scale * 0.38))        # Caption/tiny (30)
+        
+        # Dedicated larger fonts for IDLE screen to fill space
+        self.font_idle_main = pygame.font.SysFont(font_name, int(base_scale * 1.05))      # Adjusted for longer text
+        self.font_idle_sub = pygame.font.SysFont(font_name, int(base_scale * 0.95))       # Larger for subtitle
+        self.font_idle_inst = pygame.font.SysFont(font_name, int(base_scale * 0.75))      # Instruction text
+        self.font_idle_desc = pygame.font.SysFont(font_name, int(base_scale * 0.65))      # Description text
         
        # === LIGHT THEME INDUSTRIAL HMI COLORS ===
         self.COLOR_BG = (245, 248, 250)                 # Abu-abu sangat terang (Latar luar)
@@ -674,32 +691,28 @@ class VideoDisplayApp:
                 print("   💡 Create video file or use placeholder")
             return
         
-        # Build mpv command
+        # Build mpv command optimized for Wayland/Raspberry Pi 4
         cmd = [
-            'mpv',
-            '--no-osd-bar',             # No on-screen display
-            '--no-input-default-bindings',  # Disable keyboard
-            '--really-quiet',           # Minimal output
-            
-            # === VIDEO OUTPUT ===
-            '--vo=gpu',                 # Video output: GPU (Wayland compatible)
-            '--hwdec=no',               # Hardware decode disabled to avoid VAAPI/CUDA errors on RPi4
-        ]
-            
-        # Use fullscreen directly on the target display instead of X11 WID embedding
-        # WID embedding on Wayland/RPi often causes the window to disappear or steal focus incorrectly
-        cmd.extend(['--fs', f'--fs-screen={self.display_idx}', f'--screen={self.display_idx}'])
-
-        cmd.extend([
-            # === AUDIO OUTPUT (HDMI) ===
-            '--ao=alsa',                # Use ALSA audio server
-            '--audio-device=alsa/hw:1,0',  # HDMI audio
-            '--audio-fallback-to-null=yes',
-            '--audio-channels=stereo',  # Stereo output
-            '--volume=100',             # Maximum volume
-            
+            "mpv",
+            "--fullscreen",
+            "--no-border",
+            "--window-maximized=yes",
+            "--autofit=100%x100%",
+            "--fs-screen-name=HDMI-A-1", # As seen in wlr-randr for the 4K monitor
+            "--ontop",
+            "--vo=dmabuf-wayland",
+            "--hwdec=v4l2m2m",
+            "--keep-open=yes",
+            "--no-osd-bar",             
+            "--no-input-default-bindings",  
+            "--really-quiet",
+            "--ao=alsa",
+            "--audio-device=alsa/plughw:1,0",
+            "--audio-fallback-to-null=yes",
+            "--audio-channels=stereo",
+            "--volume=100",
             video_path
-        ])
+        ]
         
         if loop:
             cmd.insert(1, '--loop=inf')
@@ -784,60 +797,45 @@ class VideoDisplayApp:
         pygame.draw.line(self.screen, self.COLOR_TEXT_TERTIARY, (margin_x, line_y), (self.width - margin_x, line_y), max(int(3* self.scale), 1))
         
         # === 2. BAGIAN TENGAH (Judul Utama) ===
-        center_y_start = self.height // 2 - int(180 * self.scale)
+        center_y_start = self.height // 2 - int(170 * self.scale)
         
-        # Baris 1: ALAT PERAGA PLTN TIPE PWR (Warna Emas/Orange)
-        title1_text = "ALAT PERAGA PLTN TIPE PWR"
-        title1 = self.font_display.render(title1_text, True, self.COLOR_PRIMARY_BRIGHT)
+        # Baris 1: ALAT PERAGA PLTN
+        title1_text = "ALAT PERAGA PEMBANGKIT LISTRIK TENAGA NUKLIR"
+        title1 = self.font_idle_main.render(title1_text, True, self.COLOR_PRIMARY_BRIGHT)
         title1_rect = title1.get_rect(center=(self.width//2, center_y_start))
         self.screen.blit(title1, title1_rect)
         
-        # Baris 2: BERBASIS MIKROKONTROLLER (Warna Putih)
-        title2_text = "BERBASIS MIKROKONTROLLER"
-        title2 = self.font_title.render(title2_text, True, self.COLOR_TEXT)
+        # Baris 2: TIPE PWR
+        title2_text = "TIPE PRESSURIZED WATER REACTOR"
+        title2 = self.font_idle_main.render(title2_text, True, self.COLOR_PRIMARY_BRIGHT)
         title2_rect = title2.get_rect(center=(self.width//2, center_y_start + int(80 * self.scale)))
         self.screen.blit(title2, title2_rect)
         
         # Baris 3: Nama Institusi (Warna Biru Muda)
         title3_text = "POLITEKNIK TEKNOLOGI NUKLIR INDONESIA"
-        title3 = self.font_subtitle.render(title3_text, True, self.COLOR_TEXT_TERTIARY)
-        title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(150 * self.scale)))
+        title3 = self.font_idle_sub.render(title3_text, True, self.COLOR_TEXT_TERTIARY)
+        title3_rect = title3.get_rect(center=(self.width//2, center_y_start + int(180 * self.scale)))
         self.screen.blit(title3, title3_rect)
         
-        # === 3. BAGIAN TOMBOL / BADGE "SIMULASI SIAP" ===
-        badge_y = center_y_start + int(310 * self.scale)
-        badge_width = int(450 * self.scale)
-        badge_height = int(90 * self.scale)
-        badge_rect = pygame.Rect(0, 0, badge_width, badge_height)
-        badge_rect.center = (self.width//2, badge_y)
-        
-        # Latar belakang tombol (Warna Emas/Orange dengan sudut melengkung)
-        pygame.draw.rect(self.screen, self.COLOR_WARNING, badge_rect, border_radius=int(10 * self.scale))
-        
-        # Teks dalam tombol (Warna Gelap/Background agar kontras)
-        badge_text = self.font_subtitle.render("SIMULASI SIAP", True, self.COLOR_DARK_NAVY)
-        badge_text_rect = badge_text.get_rect(center=badge_rect.center)
-        self.screen.blit(badge_text, badge_text_rect)
-        
-        # === 4. INSTRUKSI & MODE TEST ===
-        inst_y = badge_y + int(80 * self.scale)
+        # === 3. INSTRUKSI & MODE TEST ===
+        inst_y = center_y_start + int(360 * self.scale)
         
         # Teks instruksi berkedip (Biru Muda)
-        inst_text = self.font_body.render("Tekan Tombol Untuk Memulai Simulasi", True, self.COLOR_PRIMARY_LIGHT)
+        inst_text = self.font_idle_inst.render("Tekan Tombol Untuk Memulai Simulasi", True, self.COLOR_PRIMARY_LIGHT)
         inst_text.set_alpha(int(self.idle_fade_alpha))  # Efek berkedip
         inst_rect = inst_text.get_rect(center=(self.width//2, inst_y))
         self.screen.blit(inst_text, inst_rect)
         
         # Indikator Mode Test (Warna Merah)
         if self.test_mode:
-            test_y = inst_y + int(50 * self.scale)
-            test_text = self.font_small.render("Test Mode: Tekan I/M/A Untuk Mengganti Mode | ESC Untuk Keluar", 
+            test_y = inst_y + int(70 * self.scale)
+            test_text = self.font_idle_desc.render("Test Mode: Tekan I/M/A Untuk Mengganti Mode | ESC Untuk Keluar", 
                                                True, self.COLOR_ERROR)
             test_rect = test_text.get_rect(center=(self.width//2, test_y))
             self.screen.blit(test_text, test_rect)
         
         # === 5. DESKRIPSI BAWAH ===
-        desc_y_start = self.height - int(150 * self.scale)
+        desc_y_start = self.height - int(180 * self.scale)
         desc_lines = [
             "Simulasi Interaktif Untuk Pembelajaran",
             "Pembangkit Listrik Tenaga Nuklir (PLTN)",
@@ -845,8 +843,8 @@ class VideoDisplayApp:
         ]
         for i, line in enumerate(desc_lines):
             # Menggunakan warna biru muda sesuai mockup
-            desc_text = self.font_small.render(line, True, self.COLOR_PRIMARY)
-            desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(40 * self.scale)))
+            desc_text = self.font_idle_desc.render(line, True, self.COLOR_PRIMARY)
+            desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(60 * self.scale)))
             self.screen.blit(desc_text, desc_rect)
         
         pygame.display.flip()
@@ -881,16 +879,16 @@ class VideoDisplayApp:
         self.screen.blit(pump_title, pump_title.get_rect(center=(box_x + box_w // 2, bottom_y + int(35 * self.scale))))
         
         pumps = [
-            ("Primer", state.get("pump_primary", 0) > 0),
-            ("Sekunder", state.get("pump_secondary", 0) > 0),
-            ("Tersier", state.get("pump_tertiary", 0) > 0)
+            ("Primer", int(state.get("pump_primary", 0))),
+            ("Sekunder", int(state.get("pump_secondary", 0))),
+            ("Tersier", int(state.get("pump_tertiary", 0)))
         ]
         
         segment_w = box_w // 3
         # Center the pump vertically in the remaining space below the title
         item_y = bottom_y + int(35 * self.scale) + (bottom_h - int(35 * self.scale)) // 2
         
-        for idx, (name, is_on) in enumerate(pumps):
+        for idx, (name, status_int) in enumerate(pumps):
             center_x = box_x + idx * segment_w + segment_w // 2
             
             # Check LOFA status for this pump
@@ -905,11 +903,26 @@ class VideoDisplayApp:
                 pygame.draw.circle(self.screen, self.COLOR_ERROR, (center_x, item_y), int(55 * self.scale))
                 
             # Draw the actual pump icon/image
-            self.draw_centrifugal_pump(center_x, item_y, is_on)
+            is_active_visually = (status_int > 0)
+            self.draw_centrifugal_pump(center_x, item_y, is_active_visually)
             
             # Draw label below the pump
-            status_str = "AKTIF" if is_on else "MATI (GAGAL)" if is_lofa else "MATI"
-            lbl_color = self.COLOR_ERROR if is_lofa else self.COLOR_TEXT
+            if is_lofa:
+                status_str = "MATI (GAGAL)"
+                lbl_color = self.COLOR_ERROR
+            elif status_int == 1:
+                status_str = "START UP"
+                lbl_color = self.COLOR_WARNING
+            elif status_int == 2:
+                status_str = "AKTIF"
+                lbl_color = self.COLOR_SUCCESS
+            elif status_int == 3:
+                status_str = "SHUT DOWN"
+                lbl_color = self.COLOR_WARNING
+            else:
+                status_str = "MATI"
+                lbl_color = self.COLOR_TEXT
+                
             lbl_pump = self.font_body.render(f"Pompa {name}: {status_str}", True, lbl_color)
             self.screen.blit(lbl_pump, lbl_pump.get_rect(center=(center_x, item_y + int(95 * self.scale))))
 
@@ -928,8 +941,11 @@ class VideoDisplayApp:
             logo_small_poltek = pygame.transform.smoothscale(self.logo_poltek, self.logo_size_small)
             self.screen.blit(logo_small_poltek, (self.width - self.logo_size_small[0] - margin_x, header_y))
         
-        header_title = self.font_title.render("ALAT PERAGA PLTN TIPE PWR", True, self.COLOR_TEXT)
-        self.screen.blit(header_title, header_title.get_rect(center=(self.width//2, header_y + int(40 * self.scale))))
+        header_title1 = self.font_large.render("ALAT PERAGA PEMBANGKIT LISTRIK TENAGA NUKLIR", True, self.COLOR_TEXT)
+        self.screen.blit(header_title1, header_title1.get_rect(center=(self.width//2, header_y + int(25 * self.scale))))
+        
+        header_title2 = self.font_large.render("TIPE PRESSURIZED WATER REACTOR", True, self.COLOR_TEXT)
+        self.screen.blit(header_title2, header_title2.get_rect(center=(self.width//2, header_y + int(75 * self.scale))))
         
         line_y = header_y + int(120 * self.scale)
         pygame.draw.line(self.screen, self.COLOR_BORDER, (margin_x, line_y), (self.width - margin_x, line_y), max(int(2 * self.scale), 1))
@@ -981,14 +997,14 @@ class VideoDisplayApp:
             status_text_color = (0, 0, 0)
             
         relief_open = state.get("relief_valve_open", False)
-        mitigasi_text = f"Relief Valve: {'BUKA (AKTIF)' if relief_open else 'TUTUP'}"
+        mitigasi_text = f"Relief Valve: {'TERBUKA' if relief_open else 'MENUTUP'}"
         mitigasi_color = self.COLOR_ERROR if relief_open else self.COLOR_BG_PANEL
         if relief_open and blink_on:
             mitigasi_color = (200, 0, 0)
         mitigasi_text_color = (255, 255, 255) if relief_open else self.COLOR_TEXT
         
         lofa_active = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
-        lofa_text = "⚠️ SIMULASI LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
+        lofa_text = "PERINGATAN: LOFA AKTIF" if lofa_active else "LOFA: TIDAK AKTIF"
         lofa_color = self.COLOR_ERROR if lofa_active else self.COLOR_BG_PANEL
         if lofa_active and blink_on:
             lofa_color = (200, 0, 0)
@@ -1019,26 +1035,29 @@ class VideoDisplayApp:
         right_col_w = int((self.width - 2 * margin_x - col_gap) * 0.37)
         right_col_x = margin_x + left_col_w + col_gap
         
-        # === KIRI: REACTOR DIAGNOSTIC DISPLAYS ===
+        # === KIRI: PARAMETER REAKTOR NUKLIR ===
         diag_h = self.height - content_y - int(40 * self.scale)
-        self.draw_boxed_panel(margin_x, content_y, left_col_w, diag_h, "REACTOR DIAGNOSTIC DISPLAYS")
+        self.draw_boxed_panel(margin_x, content_y, left_col_w, diag_h, "PARAMETER REAKTOR NUKLIR")
         
         # Content area setelah judul (80px reserved untuk judul + garis)
         diag_content_y = content_y + int(80 * self.scale)
         diag_content_h = diag_h - int(100 * self.scale)
         self.draw_reactor_diagnostic_displays(state, margin_x, diag_content_y, left_col_w, diag_content_h)
 
-        # === KANAN 1: MONITOR SUHU (LOFA) ===
+        # === KANAN 1: MONITORING SUHU ===
         temp_y = content_y
         temp_h = int(260 * self.scale)
-        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITOR SUHU (LOFA)")
+        self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITORING SUHU")
         
         # Read temperatures from state (fallback to calculated if not available)
-        default_temp = state.get("temperature", (state.get("pressure", 0) / 160.0) * 300.0)
-        core_temp = state.get("temperature_core", default_temp)
-        clad_temp = state.get("temperature_fuel_cladding", core_temp * 0.95)
-        prim_temp = state.get("temperature_coolant_primary", clad_temp * 0.85)
-        sec_temp = state.get("temperature_coolant_secondary", prim_temp * 0.70)
+        ambient_temp = 28.0  # Suhu ruangan normal
+        # Jika belum beroperasi, suhu minimal adalah suhu ruangan
+        default_temp = state.get("temperature", max(ambient_temp, (state.get("pressure", 0) / 160.0) * 300.0))
+        
+        core_temp = max(ambient_temp, state.get("temperature_core", default_temp))
+        clad_temp = max(ambient_temp, state.get("temperature_fuel_cladding", ambient_temp + (core_temp - ambient_temp) * 0.95))
+        prim_temp = max(ambient_temp, state.get("temperature_coolant_primary", ambient_temp + (clad_temp - ambient_temp) * 0.85))
+        sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.70))
         
         temps = [
             ("Bahan Bakar", core_temp, 350.0),
@@ -1166,39 +1185,39 @@ class VideoDisplayApp:
         """Get instruction text for current step"""
         steps = [
             {
-                "text": ["Naikkan Tekanan ke 45 bar", "Tekan tombol TEKANAN NAIK"],
-                "check": lambda s: s.get("pressure", 0) >= 45
-            },
-            {
-                "text": ["Hidupkan Pompa Tersier", "Tekan tombol POMPA TERSIER ON"],
+                "text": ["Tahap 1: Nyalakan Pompa Tersier", "Silakan tekan tombol 'POMPA TERSIER ON' di panel kontrol untuk memulai sirkulasi air pendingin luar."],
                 "check": lambda s: s.get("pump_tertiary", 0) >= 1
             },
             {
-                "text": ["Hidupkan Pompa Sekunder", "Tekan tombol POMPA SEKUNDER ON"],
+                "text": ["Tahap 2: Nyalakan Pompa Sekunder", "Bagus! Selanjutnya, tekan tombol 'POMPA SEKUNDER ON' untuk mendinginkan uap dari turbin."],
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
             },
             {
-                "text": ["Hidupkan Pompa Primer", "Tekan tombol POMPA PRIMER ON"],
+                "text": ["Tahap 3: Naikkan Tekanan Awal", "Tekan dan tahan tombol 'TEKANAN NAIK' hingga pressurizer mencapai tekanan aman minimal 40 bar."],
+                "check": lambda s: s.get("pressure", 0) >= 40
+            },
+            {
+                "text": ["Tahap 4: Nyalakan Pompa Primer", "Tekanan sudah aman! Sekarang tekan tombol 'POMPA PRIMER ON' agar air pendingin reaktor mulai bersirkulasi."],
                 "check": lambda s: s.get("pump_primary", 0) >= 1
             },
             {
-                "text": ["Naikkan Tekanan ke 140 bar", "Terus tekan tombol TEKANAN NAIK"],
+                "text": ["Tahap 5: Capai Tekanan Operasi", "Kembali tekan dan tahan tombol 'TEKANAN NAIK' sampai mencapai target operasi normal di 140 bar."],
                 "check": lambda s: s.get("pressure", 0) >= 140
             },
             {
-                "text": ["Naikkan Safety Rod ke 100%", "Tekan tombol SAFETY ROD UP"],
+                "text": ["Tahap 6: Angkat Safety Rod", "Tekanan optimal! Tarik penuh tuas 'SAFETY ROD UP' sampai 100% untuk menyiapkan kondisi kritis."],
                 "check": lambda s: s.get("safety_rod", 0) >= 100
             },
             {
-                "text": ["Naikkan Shim Rod ke 50%", "Tekan tombol SHIM ROD UP"],
+                "text": ["Tahap 7: Posisikan Shim Rod", "Tarik batang kendali utama dengan tuas 'SHIM ROD UP' perlahan hingga mencapai posisi 50%."],
                 "check": lambda s: s.get("shim_rod", 0) >= 50
             },
             {
-                "text": ["Naikkan Regulating Rod ke 50%", "Tekan tombol REGULATING ROD UP"],
+                "text": ["Tahap 8: Naikkan Daya Reaktor", "Terakhir, tarik tuas pengatur 'REGULATING ROD UP' hingga 50% untuk mulai memanaskan air reaktor."],
                 "check": lambda s: s.get("regulating_rod", 0) >= 50
             },
             {
-                "text": ["Operasi Normal Tercapai!", "Sistem sedang menghasilkan daya"],
+                "text": ["Selamat! Reaktor Beroperasi Normal", "PLTN kini siap menghasilkan listrik. Jaga agar suhu dan tekanan tetap stabil dalam batas aman."],
                 "check": lambda s: True
             }
         ]
@@ -1216,8 +1235,8 @@ class VideoDisplayApp:
         else:
             # Final step: Manual control instructions
             return [
-                "Gunakan kontrol batang kendali", "untuk mengatur daya PLTN", "",
-                "Tekan tombol RESET untuk, mengulang simulasi"
+                "Pertahankan Performa Optimal!", "Gunakan tuas batang kendali untuk mengatur daya sesuai kebutuhan.", "",
+                "Jika ingin memulai dari awal, tekan tombol RESET kapan saja."
             ]
     
     def wrap_text(self, text: str, font: pygame.font.Font, max_width: int) -> list:
@@ -1525,13 +1544,13 @@ class VideoDisplayApp:
 
         # 5. TEKS UTAMA DI TENGAH
         val_text = format_str.format(value)
-        # Menggunakan font_large agar angka MW menjadi BESAR dan mencolok
+        # Teks nilai berada pas di tengah
         val_surface = self.font_heading.render(val_text, True, self.COLOR_TEXT)
-        self.screen.blit(val_surface, val_surface.get_rect(center=(center_x, center_y - int(10 * self.scale))))
+        self.screen.blit(val_surface, val_surface.get_rect(center=(center_x, center_y)))
         
-        # Subtitle
-        lbl_text = self.font_caption.render(subtitle, True, self.COLOR_TEXT_SECONDARY)
-        self.screen.blit(lbl_text, lbl_text.get_rect(center=(center_x, center_y + int(20 * self.scale))))
+        # Subtitle (Teks Label) diletakkan di BAWAH spedometer
+        lbl_text = self.font_body.render(subtitle, True, self.COLOR_TEXT)
+        self.screen.blit(lbl_text, lbl_text.get_rect(center=(center_x, center_y + outer_radius + int(30 * self.scale))))
 
     def draw_pump_status(self, state: Dict, center_x: int, start_y: int):
         """Menggambar indikator pompa tanpa judul (judul diurus oleh parent)"""
@@ -1718,6 +1737,10 @@ class VideoDisplayApp:
         auto_running = state.get("auto_running", False)
         emergency = state.get("emergency", False)
         
+        # Sinkronisasi user_has_interacted dari state (misal setelah LOFA selesai)
+        if state.get("user_interacted", False) and not self.user_has_interacted:
+            self.user_has_interacted = True
+        
         # Check if simulation was RESET (pressure back to 0, all parameters reset)
         current_pressure = state.get("pressure", 0)
         current_rods = (state.get("safety_rod", 0) + 
@@ -1736,7 +1759,9 @@ class VideoDisplayApp:
 
         is_manual_started = hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists()
 
-        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started:
+        # Jangan pernah kembali ke IDLE saat mode cinematic_lofa aktif
+        lofa_mode_active = (mode == "cinematic_lofa")
+        if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active:
             if self.display_mode != DisplayMode.IDLE:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
@@ -1748,7 +1773,7 @@ class VideoDisplayApp:
             return
         
         # Check if auto simulation just completed
-        if not auto_running and self.display_mode == DisplayMode.AUTO_VIDEO:
+        if not auto_running and mode != "cinematic_lofa" and self.display_mode == DisplayMode.AUTO_VIDEO:
             # Auto simulation just finished - go to MANUAL, not IDLE!
             print("🏁 Auto simulation completed - switching to MANUAL")
             self.stop_video()
@@ -1774,21 +1799,22 @@ class VideoDisplayApp:
         if mode == "auto" and auto_running:
             if self.display_mode != DisplayMode.AUTO_VIDEO:
                 print(f"🎬 Switching to AUTO VIDEO mode")
-                # Use video from assets folder (production ready)
-                import pwd
-                try:
-                    target_home = pwd.getpwuid(1000).pw_dir
-                except Exception:
-                    target_home = "/home/pi"
-                video_path = str(Path(target_home) / "video_pltn" / "pwr_tutorial_ver.mp4")
-                # Video is now handled by raspi_main_panel.py subprocess!
-                # self.play_video(video_path, loop=True)
                 self.display_mode = DisplayMode.AUTO_VIDEO
                 self.auto_complete_time = None  # Reset completion timer
                 self.user_has_interacted = False  # Reset interaction flag
             
             # Video is playing via mpv - don't draw anything
             # (mpv handles fullscreen itself)
+            return
+
+        # MODE 2.5: CINEMATIC LOFA - Play video
+        if mode == "cinematic_lofa":
+            if self.display_mode != DisplayMode.AUTO_VIDEO:
+                print(f"🎬 Switching to CINEMATIC LOFA VIDEO mode")
+                self.display_mode = DisplayMode.AUTO_VIDEO
+                self.auto_complete_time = None
+                self.user_has_interacted = False
+            # Video berjalan via mpv - tidak ada yang perlu digambar
             return
         
         # MODE 3: MANUAL - Show guide if user interacted or after auto complete

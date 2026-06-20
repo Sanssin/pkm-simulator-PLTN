@@ -49,11 +49,14 @@ class ActuatorManager:
                 count=getattr(config, 'LED_STRIP_COUNT', 638),
                 channel=0, dma=10
             )
-            self.led_strip.add_segment('pressurizer', getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[0], getattr(config, 'LED_SEGMENT_PRESSURIZER', (0, 21))[1], flow_direction=1)
-            self.led_strip.add_segment('kondenser', getattr(config, 'LED_SEGMENT_KONDENSER', (21, 46))[0], getattr(config, 'LED_SEGMENT_KONDENSER', (21, 46))[1], flow_direction=1)
-            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (67, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (67, 190))[1])
-            self.led_strip.add_segment('sekunder', getattr(config, 'LED_SEGMENT_SEKUNDER', (257, 190))[0], getattr(config, 'LED_SEGMENT_SEKUNDER', (257, 190))[1])
-            self.led_strip.add_segment('tersier', getattr(config, 'LED_SEGMENT_TERSIER', (447, 191))[0], getattr(config, 'LED_SEGMENT_TERSIER', (447, 191))[1])
+            self.led_strip.add_segment('tersier_in', getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[0], getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[1], flow_direction=1)
+            self.led_strip.add_segment('kondenser', getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[0], getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[1], flow_direction=1)
+            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[1])
+            self.led_strip.add_segment('sekunder', config.LED_SEGMENT_SEKUNDER[0], config.LED_SEGMENT_SEKUNDER[1])
+            self.led_strip.add_segment('tersier', config.LED_SEGMENT_TERSIER[0], config.LED_SEGMENT_TERSIER[1], flow_direction=1)
+            self.led_strip.add_segment('tersier_out', config.LED_SEGMENT_TERSIER_OUT[0], config.LED_SEGMENT_TERSIER_OUT[1], flow_direction=1)
+            self.led_strip.add_segment('sekunder_in', config.LED_SEGMENT_SEKUNDER_IN[0], config.LED_SEGMENT_SEKUNDER_IN[1], flow_direction=1)
+            self.led_strip.add_segment('pressurizer', config.LED_SEGMENT_PRESSURIZER[0], config.LED_SEGMENT_PRESSURIZER[1], flow_direction=1)
             
             if self.hardware_active:
                 self.led_strip.start()
@@ -99,6 +102,21 @@ class ActuatorManager:
                         self.cherenkov_pwm = GPIO.PWM(config.LED_CHERENKOV_PIN, 1000)
                         self.cherenkov_pwm.start(0)
                         logger.info(f"ActuatorManager: Cherenkov LED initialized on GPIO {config.LED_CHERENKOV_PIN} (via RPi.GPIO fallback)")
+
+                # Initialize Turbine LED
+                if hasattr(config, 'LED_TURBINE_PIN'):
+                    if getattr(self, 'use_pigpio_for_led', False):
+                        import pigpio
+                        self.motors.pi.set_mode(config.LED_TURBINE_PIN, pigpio.OUTPUT)
+                        self.motors.pi.set_PWM_frequency(config.LED_TURBINE_PIN, 1000)
+                        self.motors.pi.set_PWM_range(config.LED_TURBINE_PIN, 100)
+                        self.motors.pi.set_PWM_dutycycle(config.LED_TURBINE_PIN, 0)
+                        logger.info(f"ActuatorManager: Turbine LED initialized on GPIO {config.LED_TURBINE_PIN} (via pigpio)")
+                    else:
+                        GPIO.setup(config.LED_TURBINE_PIN, GPIO.OUT)
+                        self.turbine_pwm = GPIO.PWM(config.LED_TURBINE_PIN, 1000)
+                        self.turbine_pwm.start(0)
+                        logger.info(f"ActuatorManager: Turbine LED initialized on GPIO {config.LED_TURBINE_PIN} (via RPi.GPIO fallback)")
                 
                 # Initialize Relief Valve LEDs
                 if hasattr(config, 'LED_RELIEF_GREEN_PIN'):
@@ -127,7 +145,7 @@ class ActuatorManager:
         self.servos.set_rods(state.safety_rod, state.shim_rod, state.regulating_rod)
         
         # Motors are also managed by pigpio
-        # Calculate smooth speed during transition (3.0 seconds duration, as in raspi_main_panel)
+        # Calculate smooth speed during transition (7.0 seconds duration)
         def calc_speed(status, transition_start):
             if status == 0:  # OFF
                 return 0.0
@@ -139,7 +157,7 @@ class ActuatorManager:
             if transition_start == 0:
                 return 0.0 if status == 1 else 100.0
                 
-            progress = (current_time - transition_start) / 3.0
+            progress = (current_time - transition_start) / 7.0
             progress = max(0.0, min(1.0, progress))
             
             if status == 1:  # STARTING: 0 to 100%
@@ -159,10 +177,26 @@ class ActuatorManager:
         
         # Update LED Strip speeds (0.0 to 1.0 multiplier)
         if self.led_strip is not None:
+            self.led_strip.set_flow_speed('tersier_in', tert_speed / 100.0)
             self.led_strip.set_flow_speed('kondenser', tert_speed / 100.0)
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder', sec_speed / 100.0)
+            self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
+            self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
+            
+            # Update heat ratio berdasarkan posisi batang kendali (shim & regulating)
+            # Sesuai permintaan: "ketika batang kendali mulai diangkan (shim dan regulating) nanti warnanya merah"
+            effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
+            heat_ratio = effective_rod / 50.0  # Mencapai merah penuh (1.0) saat rod diangkat 50%
+            heat_ratio = max(0.0, min(1.0, heat_ratio))
+            
+            self.led_strip.set_heat_ratio('kondenser', heat_ratio)
+            self.led_strip.set_heat_ratio('primer', heat_ratio)
+            self.led_strip.set_heat_ratio('sekunder', heat_ratio)
+            self.led_strip.set_heat_ratio('sekunder_in', heat_ratio)
+            self.led_strip.set_heat_ratio('tersier', heat_ratio)
+            self.led_strip.set_heat_ratio('tersier_out', heat_ratio)
             
         # Update Pressurizer WS2812 Fill Level based on Pressure
         if hasattr(self, 'led_strip') and self.led_strip is not None and 'pressurizer' in self.led_strip.segments:
@@ -217,6 +251,19 @@ class ActuatorManager:
                 elif hasattr(self, 'cherenkov_pwm') and self.cherenkov_pwm is not None:
                     self.cherenkov_pwm.ChangeDutyCycle(cherenkov_duty)
 
+            # Update Turbine LED based on thermal_kw (0-300000 kW)
+            if hasattr(config, 'LED_TURBINE_PIN'):
+                # Cahaya turbin menyala proporsional dengan daya yang dihasilkan
+                power_ratio = getattr(state, 'thermal_kw', 0.0) / 300000.0
+                power_ratio = max(0.0, min(1.0, power_ratio))
+                # Kurva linier biasa untuk turbin
+                turbine_duty = power_ratio * 100.0
+                
+                if getattr(self, 'use_pigpio_for_led', False):
+                    self.motors.pi.set_PWM_dutycycle(config.LED_TURBINE_PIN, int(turbine_duty))
+                elif hasattr(self, 'turbine_pwm') and self.turbine_pwm is not None:
+                    self.turbine_pwm.ChangeDutyCycle(turbine_duty)
+
             # Physical relay control for Humidifiers
             self.relays.set_relays(
                 getattr(state, 'humid_ct1_cmd', 0),
@@ -257,10 +304,14 @@ class ActuatorManager:
                         self.motors.pi.set_PWM_dutycycle(config.LED_POWER_PIN, 0)
                         if hasattr(config, 'LED_CHERENKOV_PIN'):
                             self.motors.pi.set_PWM_dutycycle(config.LED_CHERENKOV_PIN, 0)
+                        if hasattr(config, 'LED_TURBINE_PIN'):
+                            self.motors.pi.set_PWM_dutycycle(config.LED_TURBINE_PIN, 0)
                     elif not self.use_pigpio_for_led and hasattr(self, 'led_pwm') and self.led_pwm is not None:
                         self.led_pwm.stop()
                         if hasattr(self, 'cherenkov_pwm') and self.cherenkov_pwm is not None:
                             self.cherenkov_pwm.stop()
+                        if hasattr(self, 'turbine_pwm') and self.turbine_pwm is not None:
+                            self.turbine_pwm.stop()
                 GPIO.cleanup()
                 logger.info("ActuatorManager: Cleaned up GPIO.")
             except Exception as e:

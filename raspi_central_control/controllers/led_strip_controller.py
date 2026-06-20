@@ -36,31 +36,89 @@ class LEDSegment:
         self.speed = 0.0 # 0.0 = stopped, >0 = moving
         self.fill_level = -1.0 # -1.0 means flow mode, 0.0-1.0 means fill mode
         self.fill_color = Color(255, 100, 0)
+        self.heat_ratio = 0.0  # 0.0 = cold (full blue), 1.0 = hot (red end)
         
         # Pre-compute gradient for this segment
         self.gradient = self._generate_gradient()
 
+    def update_heat_ratio(self, ratio: float):
+        ratio = max(0.0, min(1.0, ratio))
+        if abs(self.heat_ratio - ratio) > 0.05:
+            self.heat_ratio = ratio
+            self.gradient = self._generate_gradient()
+
     def _generate_gradient(self):
         gradient_colors = [Color(0,0,0)] * self.length
         
+        blue = (0, 0, 255)
+        # Warna panas bertransisi dari Biru (dingin) ke Merah (panas maksimum)
+        hot_r = int(blue[0] * (1.0 - self.heat_ratio) + 255 * self.heat_ratio)
+        hot_g = int(blue[1] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
+        hot_b = int(blue[2] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
+        hot_color = (hot_r, hot_g, hot_b)
+
+        # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
+        # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
+        # Lampu 24-46 (index 23-45) Merah/Panas: setelah mengambil panas uap turbin
+        if self.name == 'kondenser':
+            for i in range(self.length):
+                if i < 23:
+                    gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+                else:
+                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+            return gradient_colors
+
+        # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
+        if self.name == 'tersier_in':
+            for i in range(self.length):
+                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+            return gradient_colors
+
+        # Aliran balik sekunder (sekunder_in) dari kondenser: Hangat (sedikit merah) saat reaktor aktif
+        if self.name == 'sekunder_in':
+            # Buat rasionya lebih kecil dari heat_ratio utama agar warnanya hanya "hangat", bukan mendidih
+            warm_ratio = self.heat_ratio * 0.4 
+            warm_r = int(blue[0] * (1.0 - warm_ratio) + 255 * warm_ratio)
+            warm_g = int(blue[1] * (1.0 - warm_ratio) + 0 * warm_ratio)
+            warm_b = int(blue[2] * (1.0 - warm_ratio) + 0 * warm_ratio)
+            for i in range(self.length):
+                gradient_colors[i] = Color(warm_r, warm_g, warm_b)
+            return gradient_colors
+
+        # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid
+        if self.name == 'tersier_out':
+            for i in range(self.length):
+                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+            return gradient_colors
+
+        # Pipa primer: 1-27 (index 0-26) Merah (panas dari reaktor), 28-118 (index 27-117) Biru (dingin setelah SG)
+        if self.name == 'primer':
+            for i in range(self.length):
+                if i < 27:
+                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+                else:
+                    gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+            return gradient_colors
+
+        # Default: Gradien halus untuk segmen lain (sekunder, tersier)
         grad_len = min(71, self.length) # Use 71 or max length
         grad_start = (self.length - grad_len) // 2
         grad_end = grad_start + grad_len - 1
 
-        red = (255, 0, 0)
-        blue = (0, 0, 255)
-
         for i in range(self.length):
             if i < grad_start:
-                gradient_colors[i] = Color(red[0], red[1], red[2])
+                # Awal: Biru (dingin — air masuk)
+                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             elif i <= grad_end:
+                # Tengah: Blend dari Biru ke Warna Panas
                 t = (i - grad_start) / (max(1, grad_len - 1))
-                r = int(red[0] * (1 - t) + blue[0] * t)
-                g = int(red[1] * (1 - t) + blue[1] * t)
-                b = int(red[2] * (1 - t) + blue[2] * t)
+                r = int(blue[0] * (1 - t) + hot_color[0] * t)
+                g = int(blue[1] * (1 - t) + hot_color[1] * t)
+                b = int(blue[2] * (1 - t) + hot_color[2] * t)
                 gradient_colors[i] = Color(r, g, b)
             else:
-                gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+                # Akhir: Warna Panas (dingin/panas — air keluar)
+                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
                 
         return gradient_colors
 
@@ -119,6 +177,11 @@ class LedStripController:
         if name in self.segments:
             self.segments[name].speed = speed
 
+    def set_heat_ratio(self, name: str, ratio: float):
+        """Mengatur rasio panas (0.0 = biru total, 1.0 = ada gradien merah)."""
+        if name in self.segments:
+            self.segments[name].update_heat_ratio(ratio)
+
     def set_fill_level(self, name: str, level: float, r: int, g: int, b: int):
         """Mengatur mode segment sebagai bar level terisi warna tertentu."""
         if name in self.segments:
@@ -175,30 +238,34 @@ class LedStripController:
                     int_offset = int(seg.offset)
 
                     for i in range(seg.length):
-                        if i < lit_count:
-                            # Jika animasi berjalan, buat efek gelembung/pola
-                            if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
-                                # Matikan lampu untuk pola "mati" agar efek gelembung/ombak sangat kontras terlihat
-                                self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                        idx = seg.start_idx + i
+                        if idx < self.count:
+                            if i < lit_count:
+                                # Jika animasi berjalan, buat efek gelembung/pola
+                                if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
+                                    self.strip.setPixelColor(idx, self.color_black)
+                                else:
+                                    self.strip.setPixelColor(idx, seg.fill_color)
                             else:
-                                self.strip.setPixelColor(seg.start_idx + i, seg.fill_color)
-                        else:
-                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                                self.strip.setPixelColor(idx, self.color_black)
                 else:
                     # Mode flow: update offset berdasarkan speed
                     if seg.speed <= 0.0:
                         # Jika pompa mati (speed 0), matikan semua LED di segmen ini
                         for i in range(seg.length):
-                            self.strip.setPixelColor(seg.start_idx + i, self.color_black)
+                            idx = seg.start_idx + i
+                            if idx < self.count:
+                                self.strip.setPixelColor(idx, self.color_black)
                     else:
                         seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
                         int_offset = int(seg.offset)
                         
                         for i in range(seg.length):
-                            # Pola aliran 5 nyala, 5 mati
-                            if ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                                # Pixel nyala, gunakan warna gradien segmen
-                                self.strip.setPixelColor(seg.start_idx + i, seg.gradient[i])
+                            idx = seg.start_idx + i
+                            if idx < self.count:
+                                # Pola aliran 5 nyala, 5 mati
+                                if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                    self.strip.setPixelColor(idx, seg.gradient[i])
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:

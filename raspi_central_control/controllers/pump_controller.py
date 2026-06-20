@@ -9,7 +9,7 @@ class PumpController:
     Manages pump state transitions (STARTING -> ON, SHUTTING_DOWN -> OFF) with timing.
     """
     
-    def __init__(self, startup_time: float = 5.0, shutdown_time: float = 3.0):
+    def __init__(self, startup_time: float = 7.0, shutdown_time: float = 7.0):
         self.startup_time = startup_time
         self.shutdown_time = shutdown_time
 
