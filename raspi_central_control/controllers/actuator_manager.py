@@ -160,7 +160,9 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
             # Jika reactor belum aktif (belum dipanaskan) dan kecepatan 0, matikan lampu sepenuhnya
-            if not getattr(state, 'reactor_active', False):
+            # Dipastikan berlaku robust pada mode manual, otomatis normal, maupun otomatis lofa
+            valid_modes = ['manual', 'auto', 'cinematic_lofa']
+            if getattr(state, 'simulation_mode', 'manual') in valid_modes and not getattr(state, 'reactor_active', False):
                 if prim_speed == 0.0:
                     self.led_strip.set_active('primer', False)
                 if sec_speed == 0.0:
