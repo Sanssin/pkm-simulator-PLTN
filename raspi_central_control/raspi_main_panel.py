@@ -18,8 +18,8 @@ from pathlib import Path
 # Add current directory to sys.path to ensure absolute imports work regardless of working directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, current_dir)
 sys.path.insert(0, parent_dir)
+sys.path.insert(0, current_dir)
 
 from typing import Optional
 from queue import Queue
@@ -55,7 +55,7 @@ except ImportError:
 
 # Setup logging
 logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
+    level=getattr(logging, getattr(config, 'LOG_LEVEL', 'INFO')),
     format=config.LOG_FORMAT,
     handlers=[
         logging.FileHandler(config.LOG_FILE),
