@@ -115,28 +115,33 @@ class PhysicsEngine:
         # =====================================================================
         # 4. THERMODYNAMICS (Heat Generation & Cooling)
         # =====================================================================
-        heat_generation_rate = state.thermal_kw * 0.00038
+        # Use control rod directly to define heat target so it doesn't depend on turbine
+        effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
         
-        # Pressurizer heating effect
-        pressure_heating = state.pressure * 0.002
-        heat_generation_rate += pressure_heating
+        # Target core temperature based on rod (0 to 100%) -> (25C to 450C)
+        target_core_temp = 25.0 + (effective_rod / 100.0) * 425.0
         
-        # Cooling from Pumps
-        cooling_efficiency = 0.005  # Passive ambient cooling
-        if state.pump_primary_status == PUMP_ON: cooling_efficiency += 0.25
-        if state.pump_secondary_status == PUMP_ON: cooling_efficiency += 0.12
-        if state.pump_tertiary_status == PUMP_ON: cooling_efficiency += 0.08
+        # LOFA / Cooling adjustments
+        if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
+        if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
+        if state.spray_active: target_core_temp -= 50.0
         
-        if state.spray_active:
-            cooling_efficiency += 0.15
-
-        cooling_rate = (state.temperature_core - self.ambient_temp) * cooling_efficiency
+        # Pressurizer heating effect adds to target
+        target_core_temp += state.pressure * 0.1
         
-        # Core Temperature change
-        delta_temp = (heat_generation_rate - cooling_rate) * dt
+        target_core_temp = max(self.ambient_temp, target_core_temp)
         
-        new_core_temp = max(self.ambient_temp, state.temperature_core + delta_temp)
-        state.temperature_core = new_core_temp
+        # Linear Temperature change
+        if state.temperature_core < target_core_temp:
+            delta_temp = 20.0 * dt  # Linear heat up rate (20 deg/sec)
+            if state.temperature_core + delta_temp > target_core_temp:
+                delta_temp = target_core_temp - state.temperature_core
+        else:
+            delta_temp = -15.0 * dt # Linear cool down rate (15 deg/sec)
+            if state.temperature_core + delta_temp < target_core_temp:
+                delta_temp = target_core_temp - state.temperature_core
+                
+        state.temperature_core += delta_temp
         
         state.temperature_fuel_cladding = state.temperature_core * 0.95 + self.ambient_temp * 0.05
         
