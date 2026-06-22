@@ -165,9 +165,9 @@ class ActuatorManager:
                     self.led_strip.set_active('primer', False)
                 if sec_speed == 0.0:
                     self.led_strip.set_active('sekunder_in', False)
-                    self.led_strip.set_active('kondenser', False)
                 if tert_speed == 0.0:
                     self.led_strip.set_active('tersier_in', False)
+                    self.led_strip.set_active('kondenser', False)
                     self.led_strip.set_active('tersier_out', False)
             
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
