@@ -908,9 +908,18 @@ class VideoDisplayApp:
                 # Draw Names
                 for name in names:
                     n_surf = name_font.render(name, True, self.COLOR_TEXT)
+                    
+                    box_h = int(28 * self.scale)
+                    box_w = n_surf.get_width() + int(20 * self.scale)
+                    box_rect = pygame.Rect(0, 0, box_w, box_h)
+                    box_rect.center = (x, y)
+                    
+                    pygame.draw.rect(self.screen, self.COLOR_BG_PANEL, box_rect, border_radius=int(5 * self.scale))
+                    pygame.draw.rect(self.screen, self.COLOR_BORDER, box_rect, max(1, int(1 * self.scale)), border_radius=int(5 * self.scale))
+                    
                     n_rect = n_surf.get_rect(center=(x, y))
                     self.screen.blit(n_surf, n_rect)
-                    y += int(26 * self.scale)
+                    y += int(32 * self.scale)
                 
                 y += int(25 * self.scale) # Gap between sections
                 

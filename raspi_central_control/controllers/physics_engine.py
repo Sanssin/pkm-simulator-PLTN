@@ -118,8 +118,8 @@ class PhysicsEngine:
         # Use control rod directly to define heat target so it doesn't depend on turbine
         effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
         
-        # Target core temperature based on rod (0 to 100%) -> (25C to 450C)
-        target_core_temp = 25.0 + (effective_rod / 100.0) * 425.0
+        # Target core temperature based on rod (0 to 100%) -> (25C to 340C)
+        target_core_temp = 25.0 + (effective_rod / 100.0) * 315.0
         
         # LOFA / Cooling adjustments
         if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
@@ -210,9 +210,14 @@ class PhysicsEngine:
             if state.condenser_pressure > 0.5: return f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
         scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
 
-        # General Overheat
-        if state.temperature_core >= self.max_core_temp and not scram_reason:
-            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= {self.max_core_temp}°C"
+        # General Overheat & Saturation Check
+        t_sat = 100.0 * (max(1.0, state.pressure) ** 0.25)
+        
+        if state.temperature_coolant_primary >= t_sat and not scram_reason:
+            scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
+        
+        if state.temperature_core >= 450.0 and not scram_reason:
+            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 450.0°C"
             
         # Overpressure
         if state.pressure >= 200.0 and not scram_reason:
