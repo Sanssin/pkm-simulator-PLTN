@@ -847,23 +847,7 @@ class VideoDisplayApp:
         for i, line in enumerate(desc_lines):
             # Menggunakan warna biru muda sesuai mockup
             desc_text = self.font_idle_desc.render(line, True, self.COLOR_PRIMARY)
-            desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(60 * self.scale)))
-            self.screen.blit(desc_text, desc_rect)
-            
-        # === 6. TOMBOL DAFTAR PENGEMBANG ===
-        btn_width = int(250 * self.scale)
-        btn_height = int(50 * self.scale)
-        btn_x = self.width // 2 - btn_width // 2
-        btn_y = self.height - int(70 * self.scale)
-        
-        self.credits_button_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
-        
-        pygame.draw.rect(self.screen, self.COLOR_PRIMARY, self.credits_button_rect, border_radius=10)
-        pygame.draw.rect(self.screen, self.COLOR_PRIMARY_BRIGHT, self.credits_button_rect, 2, border_radius=10)
-        
-        btn_text = self.font_small.render("Daftar Pengembang", True, self.COLOR_BG)
-        btn_text_rect = btn_text.get_rect(center=self.credits_button_rect.center)
-        self.screen.blit(btn_text, btn_text_rect)
+        # (Tombol Daftar Pengembang dihapus karena sekarang dikontrol dari Touchscreen)
         
         pygame.display.flip()
 
@@ -930,20 +914,7 @@ class VideoDisplayApp:
                 
                 y += int(25 * self.scale) # Gap between sections
                 
-        # Draw Back Button
-        btn_width = int(200 * self.scale)
-        btn_height = int(50 * self.scale)
-        btn_x = self.width // 2 - btn_width // 2
-        btn_y = self.height - int(70 * self.scale)
-        
-        self.back_button_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
-        
-        pygame.draw.rect(self.screen, self.COLOR_WARNING, self.back_button_rect, border_radius=10)
-        pygame.draw.rect(self.screen, self.COLOR_PRIMARY_BRIGHT, self.back_button_rect, 2, border_radius=10)
-        
-        btn_text = self.font_small.render("Kembali", True, self.COLOR_BG)
-        btn_text_rect = btn_text.get_rect(center=self.back_button_rect.center)
-        self.screen.blit(btn_text, btn_text_rect)
+        # (Tombol Kembali dihapus karena dikontrol dari Touchscreen)
         
         pygame.display.flip()
     
@@ -1838,6 +1809,16 @@ class VideoDisplayApp:
         mode = state.get("mode", "manual")
         auto_running = state.get("auto_running", False)
         emergency = state.get("emergency", False)
+        show_credits = state.get("show_credits", False)
+        
+        # Override for CREDITS screen
+        if show_credits:
+            if self.display_mode != DisplayMode.CREDITS:
+                self.stop_video()
+                self.display_mode = DisplayMode.CREDITS
+                self.user_has_interacted = False
+            self.draw_credits_screen()
+            return
         
         # Sinkronisasi user_has_interacted dari state (misal setelah LOFA selesai)
         if state.get("user_interacted", False) and not self.user_has_interacted:
@@ -1980,24 +1961,6 @@ class VideoDisplayApp:
                 
                 # Handle touch/mouse click
                 elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        pos = event.pos
-                    else:
-                        pos = (int(event.x * self.width), int(event.y * self.height))
-                        
-                    if self.display_mode == DisplayMode.IDLE and self.credits_button_rect.collidepoint(pos):
-                        self.display_mode = DisplayMode.CREDITS
-                        if self.test_mode: self.mock_mode = "credits"
-                        continue
-                        
-                    if self.display_mode == DisplayMode.CREDITS and self.back_button_rect.collidepoint(pos):
-                        self.display_mode = DisplayMode.IDLE
-                        if self.test_mode: self.mock_mode = "idle"
-                        continue
-                        
-                    if self.display_mode == DisplayMode.CREDITS:
-                        continue # Ignore other clicks in credits screen
-                        
                     if not self.user_has_interacted:
                         print("👉 Layar disentuh - beralih ke mode MANUAL")
                         self.user_has_interacted = True

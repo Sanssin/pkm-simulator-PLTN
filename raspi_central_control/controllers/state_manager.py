@@ -98,6 +98,8 @@ class PanelState:
     # Interlock satisfied flag
     interlock_satisfied: bool = False
     
+    show_credits: bool = False
+    
     # System running flag
     running: bool = True
     
@@ -141,6 +143,7 @@ class PanelState:
         self.relief_valve_open = False
         self.spray_active = False
         self.interlock_satisfied = False
+        self.show_credits = False
 
 
 class StateManager:

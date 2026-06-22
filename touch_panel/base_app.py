@@ -123,6 +123,7 @@ class TouchPanelLayoutSpec:
                 PanelButtonSpec("Simulasi LOFA", "LOFA_SIMULATE_PRIMARY", "primary"),
                 PanelButtonSpec("ATUR ULANG", "REACTOR_RESET", "secondary"),
                 PanelButtonSpec("DARURAT", "EMERGENCY", "danger"),
+                PanelButtonSpec("Daftar Pengembang", "TOGGLE_CREDITS", "primary"),
             ],
         ]
     )

@@ -61,6 +61,7 @@ class StateExporter:
                         "relief_valve_open": getattr(state, 'relief_valve_open', False),
                         "spray_active": getattr(state, 'spray_active', False),
                         "user_interacted": bool(getattr(state, 'user_interacted', False)),
+                        "show_credits": bool(getattr(state, 'show_credits', False)),
                     }
                 
                 temp_file = self.export_path.with_suffix('.tmp')
