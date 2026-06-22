@@ -159,6 +159,17 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
+            # Jika reactor belum aktif (belum dipanaskan) dan kecepatan 0, matikan lampu sepenuhnya
+            if not getattr(state, 'reactor_active', False):
+                if prim_speed == 0.0:
+                    self.led_strip.set_active('primer', False)
+                if sec_speed == 0.0:
+                    self.led_strip.set_active('sekunder_in', False)
+                    self.led_strip.set_active('kondenser', False)
+                if tert_speed == 0.0:
+                    self.led_strip.set_active('tersier_in', False)
+                    self.led_strip.set_active('tersier_out', False)
+            
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
             ambient = 25.0
             

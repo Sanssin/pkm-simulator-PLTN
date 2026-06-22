@@ -179,7 +179,9 @@ class PhysicsEngine:
         # 6. SAFETY & LOFA CHECKS
         # =====================================================================
         scram_reason = None
-        reactor_active = state.thermal_kw > 5.0 or getattr(state, 'reactor_active', False)
+        if state.thermal_kw > 5.0:
+            state.reactor_active = True
+        reactor_active = getattr(state, 'reactor_active', False)
         
         def check_lofa(pump_status, was_on, lofa_flag_attr, name, check_scram):
             if reactor_active and was_on:
