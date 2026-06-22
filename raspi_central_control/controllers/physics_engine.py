@@ -132,8 +132,11 @@ class PhysicsEngine:
         target_core_temp = max(self.ambient_temp, target_core_temp)
         
         # Linear Temperature change
+        # Kecepatan naik turunnya suhu disesuaikan dengan posisi batang kendali (0.5 hingga 10 deg/sec)
+        heat_up_rate = 0.5 + (effective_rod / 100.0) * 9.5
+        
         if state.temperature_core < target_core_temp:
-            delta_temp = 20.0 * dt  # Linear heat up rate (20 deg/sec)
+            delta_temp = heat_up_rate * dt
             if state.temperature_core + delta_temp > target_core_temp:
                 delta_temp = target_core_temp - state.temperature_core
         else:

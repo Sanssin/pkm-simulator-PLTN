@@ -52,11 +52,9 @@ LED_SEGMENT_KONDENSER   = (84, 46)    # Kondenser
 LED_SEGMENT_TERSIER_OUT = (130, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
 LED_SEGMENT_SEKUNDER_IN = (151, 45)   # Baru: Gabungan aliran sekunder dari kondenser (19 + 26)
 LED_SEGMENT_PRIMER      = (196, 117)  # Pipa Primer (disambung dari keluaran sekunder)
-
-# Segmen yang BELUM dipasang fisik (dibuat dummy di index 1000 ke atas)
-LED_SEGMENT_SEKUNDER    = (1200, 190) # Pipa Sekunder Utama (Belum ada fisik)
-LED_SEGMENT_TERSIER     = (1400, 191) # Pipa Tersier Keluar Utama (Belum ada fisik)
 LED_SEGMENT_PRESSURIZER = (313, 21)   # Pipa Pressurizer (disambung dari keluaran primer)
+
+# Segmen yang BELUM dipasang fisik (Kosong)
 
 # ============================================
 # System Parameters
