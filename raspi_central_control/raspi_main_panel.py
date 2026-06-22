@@ -193,6 +193,11 @@ class PLTNPanelController:
         logger.info("✓ EventProcessor initialized")
         
         # (ESP communication removed)
+        
+    def trigger_emergency_scram(self):
+        """Trigger emergency SCRAM sequence."""
+        if hasattr(self, 'scram_sequence') and not self.scram_sequence.is_running:
+            self.scram_sequence.execute()
     
     # ============================================
     # Thread Functions
