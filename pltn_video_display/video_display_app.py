@@ -19,6 +19,8 @@ from pathlib import Path
 from enum import Enum
 from typing import Optional, Dict
 import argparse
+import socket
+from credits_screen import CreditsScreen
 
 # Fix Windows console encoding untuk emoji support
 if sys.platform == 'win32':
@@ -261,6 +263,9 @@ class VideoDisplayApp:
         self.logo_size_small = (int(100 * self.scale), int(100 * self.scale))   # MANUAL mode (increased from 60)
         self.load_logos()
         
+        # Initialize CreditsScreen overlay
+        self.credits_screen = CreditsScreen(self)
+        
         # IDLE screen animation
         self.idle_fade_alpha = 255
         self.idle_fade_direction = -1
@@ -450,9 +455,11 @@ class VideoDisplayApp:
         """
         if self.test_mode:
             # Update mock state based on current mode
+            show_credits = self.mock_state.get("show_credits", False) if hasattr(self, 'mock_state') else False
+            
             if self.mock_mode == "idle":
-                # Return empty state for IDLE mode
-                return {}
+                # Return empty state for IDLE mode, except for show_credits
+                return {"show_credits": show_credits} if show_credits else {}
             elif self.mock_mode == "auto":
                 self.mock_state["mode"] = "auto"
                 self.mock_state["auto_running"] = True
@@ -464,6 +471,8 @@ class VideoDisplayApp:
             # CRITICAL FIX: Recalculate thermal_kw from current rod positions!
             # This ensures speedometer shows updated power values
             recalculated_state = self.create_mock_state()
+            if show_credits:
+                recalculated_state["show_credits"] = True
             return recalculated_state
         
         # Production mode: read from file
@@ -538,6 +547,9 @@ class VideoDisplayApp:
                 self.mock_mode = "auto"
                 self.mock_state["auto_running"] = True
                 print(f"  → Mode: AUTO")
+            elif event.key == pygame.K_c:  # C for CREDITS
+                self.mock_state["show_credits"] = True
+                print(f"  → Mode: CREDITS (Test)")
             elif event.key == pygame.K_ESCAPE:
                 return False  # Exit signal
                 
@@ -706,6 +718,7 @@ class VideoDisplayApp:
             "--vo=dmabuf-wayland",
             "--hwdec=v4l2m2m",
             "--keep-open=yes",
+            "--input-ipc-server=/tmp/mpvsocket",
             "--no-osd-bar",             
             "--no-input-default-bindings",  
             "--really-quiet",
@@ -757,6 +770,46 @@ class VideoDisplayApp:
         except Exception as e:
             print(f"❌ Failed to play video: {e}")
     
+    def pause_video(self):
+        """Pause video using mpv IPC"""
+        self._send_mpv_command({"command": ["set_property", "pause", True]})
+        self._send_mpv_command({"command": ["set_property", "ontop", False]})
+        
+    def resume_video(self):
+        """Resume video using mpv IPC"""
+        self._send_mpv_command({"command": ["set_property", "ontop", True]})
+        self._send_mpv_command({"command": ["set_property", "pause", False]})
+        
+    def _send_mpv_command(self, cmd_dict):
+        """Send command to mpv IPC socket"""
+        import json, socket, sys
+        try:
+            if sys.platform != 'win32':
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.connect("/tmp/mpvsocket")
+                client.send((json.dumps(cmd_dict) + "\n").encode())
+                client.close()
+        except Exception as e:
+            pass
+
+    def _clear_show_credits(self):
+        """Clear show_credits flag in state file"""
+        if self.test_mode and hasattr(self, 'mock_state'):
+            self.mock_state["show_credits"] = False
+            return
+            
+        try:
+            if self.state_file.exists():
+                import json
+                with open(self.state_file, 'r') as f:
+                    data = json.load(f)
+                if data.get("show_credits", False):
+                    data["show_credits"] = False
+                    with open(self.state_file, 'w') as f:
+                        json.dump(data, f)
+        except Exception as e:
+            print(f"Error clearing show_credits: {e}")
+
     def stop_video(self):
         """Stop current video"""
         if self.video_process:
@@ -848,9 +901,6 @@ class VideoDisplayApp:
             # Menggunakan warna biru muda sesuai mockup
             desc_text = self.font_idle_desc.render(line, True, self.COLOR_PRIMARY)
         # (Tombol Daftar Pengembang dihapus karena sekarang dikontrol dari Touchscreen)
-        
-        pygame.display.flip()
-
     def draw_credits_screen(self):
         """Display Developer Credits"""
         self.screen.fill(self.COLOR_BG)
@@ -924,9 +974,6 @@ class VideoDisplayApp:
                 y += int(25 * self.scale) # Gap between sections
                 
         # (Tombol Kembali dihapus karena dikontrol dari Touchscreen)
-        
-        pygame.display.flip()
-    
     def draw_reactor_diagnostic_displays(self, state: Dict, start_x: int, start_y: int, width: int, height: int):
         """Draw Reactor Diagnostic Displays in a hierarchical layout"""
         
@@ -1253,11 +1300,6 @@ class VideoDisplayApp:
                 y_offset += int(20 * self.scale)  # Spasi untuk baris kosong
 
         # The old floating pressure warning overlay has been replaced by the Status Banner at the top.
-        
-        pygame.display.flip()
-            
-        
-        pygame.display.flip()
     
     def get_current_step_instruction(self, state: Dict) -> list:
         """Get instruction text for current step"""
@@ -1745,13 +1787,27 @@ class VideoDisplayApp:
             inst = self.font_small.render("Press I to return to IDLE", True, self.COLOR_INFO)
             inst_rect = inst.get_rect(center=(self.width//2, self.height//2 + 60))
             self.screen.blit(inst, inst_rect)
-            
-            pygame.display.flip()
     
     def update(self):
         """Main update loop with improved mode transition logic"""
         state = self.read_simulation_state()
         
+        show_credits = state.get("show_credits", False) if state else False
+        
+        # Handle Credits trigger
+        if show_credits:
+            if not getattr(self, 'credits_screen_active', False):
+                self.credits_screen_active = True
+                self.pause_video()
+                self.credits_screen.show()
+                # Clear flag immediately so it won't loop forever
+                self._clear_show_credits()
+        
+        # Check if it was closed
+        if getattr(self, 'credits_screen_active', False) and not self.credits_screen.active:
+            self.credits_screen_active = False
+            self.resume_video()
+            
         # DEBUG: Print state info (less frequent)
         if state and hasattr(self, '_debug_counter'):
             self._debug_counter = (self._debug_counter + 1) % 30  # Print every 30 frames (~1 sec)
@@ -1818,16 +1874,6 @@ class VideoDisplayApp:
         mode = state.get("mode", "manual")
         auto_running = state.get("auto_running", False)
         emergency = state.get("emergency", False)
-        show_credits = state.get("show_credits", False)
-        
-        # Override for CREDITS screen
-        if show_credits:
-            if self.display_mode != DisplayMode.CREDITS:
-                self.stop_video()
-                self.display_mode = DisplayMode.CREDITS
-                self.user_has_interacted = False
-            self.draw_credits_screen()
-            return
         
         # Sinkronisasi user_has_interacted dari state (misal setelah LOFA selesai)
         if state.get("user_interacted", False) and not self.user_has_interacted:
@@ -1970,6 +2016,12 @@ class VideoDisplayApp:
                 
                 # Handle touch/mouse click
                 elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
+                    if getattr(self, 'credits_screen', None) and self.credits_screen.active:
+                        if self.credits_screen.handle_tap():
+                            pass
+                        # Don't trigger other interactions when tapping credits overlay
+                        continue
+
                     if not self.user_has_interacted:
                         print("👉 Layar disentuh - beralih ke mode MANUAL")
                         self.user_has_interacted = True
@@ -1985,6 +2037,11 @@ class VideoDisplayApp:
             
             # Update display
             self.update()
+            
+            if getattr(self, 'credits_screen', None) and self.credits_screen.active:
+                self.credits_screen.update()
+                self.credits_screen.draw(self.screen)
+                pygame.display.flip()
             
             # 30 FPS sufficient for UI updates
             clock.tick(30)
