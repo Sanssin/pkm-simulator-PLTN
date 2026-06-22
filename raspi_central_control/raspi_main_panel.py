@@ -38,7 +38,7 @@ from controllers.physics_engine import PhysicsEngine
 from controllers.event_processor import EventProcessor
 from controllers.actuator_manager import ActuatorManager
 from io_handlers.state_exporter import StateExporter
-from io_handlers.ipc_listener import IPCListenerManager
+
 from io_handlers.button_handler import ButtonEvent
 from sequences.scram_sequence import SCRAMSequence
 from sequences.auto_simulation import AutoSimulator
