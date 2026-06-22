@@ -18,8 +18,8 @@ from pathlib import Path
 # Add current directory to sys.path to ensure absolute imports work regardless of working directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, current_dir)
 sys.path.insert(0, parent_dir)
+sys.path.insert(0, current_dir)
 
 from typing import Optional
 from queue import Queue
@@ -27,17 +27,22 @@ from queue import Queue
 # Import our modules
 import raspi_config as config
 from raspi_humidifier_control import HumidifierController
-from raspi_buzzer_alarm import BuzzerAlarm
-from raspi_system_health import SystemHealthMonitor
 
 # Import refactored modules
-from controllers.cpu_manager import CpuManager
-from controllers import StateManager, PanelState, InterlockValidator, EventProcessor, PumpController
-from controllers.interlock_validator import PUMP_ON
-from sequences import SCRAMSequence, AutoSimulator
-from io_handlers import ButtonIOHandler, ButtonEvent
+from controllers.state_manager import StateManager
+from controllers.rod_controller import RodController
+from controllers.pump_controller import PumpController
+from controllers.interlock_validator import InterlockValidator
+from controllers.physics_engine import PhysicsEngine
+from controllers.event_processor import EventProcessor
 from controllers.actuator_manager import ActuatorManager
+from io_handlers.state_exporter import StateExporter
+
+from controllers.event_processor import ButtonEvent
+from sequences.scram_sequence import SCRAMSequence
+from sequences.auto_simulation import AutoSimulator
 from pltn_video_display.video_player import VideoPlayer
+import os
 
 
 # Try to import GPIO library
@@ -50,7 +55,7 @@ except ImportError:
 
 # Setup logging
 logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
+    level=getattr(logging, getattr(config, 'LOG_LEVEL', 'INFO')),
     format=config.LOG_FORMAT,
     handlers=[
         logging.FileHandler(config.LOG_FILE),
@@ -83,10 +88,6 @@ class PLTNPanelController:
         self.state_manager = StateManager()
         self.state_lock = self.state_manager.lock  # Alias for compatibility
         
-        # Event queue for button presses
-        self.button_event_queue = Queue(maxsize=100)
-        
-
         from io_handlers.state_exporter import StateExporter
         self.state_exporter = StateExporter(self.state_manager)
         
@@ -114,13 +115,7 @@ class PLTNPanelController:
         self.actuator_manager = ActuatorManager()
         logger.info("✓ Actuator Manager initialized")
         
-        # Initialize buzzer
-        try:
-            self.buzzer = BuzzerAlarm(buzzer_pin=config.BUZZER_PIN if hasattr(config, 'BUZZER_PIN') else 22)
-            logger.info("✓ Buzzer alarm initialized")
-        except Exception as e:
-            logger.warning(f"✗ Buzzer failed: {e}")
-            self.buzzer = None
+        # Buzzer removed as per user request
         
         # Initialize humidifier controller
         try:
@@ -130,32 +125,18 @@ class PLTNPanelController:
             logger.warning(f"✗ Humidifier failed: {e}")
             self.humidifier = None
         
-        # Initialize health monitor
-        try:
-            self.health_monitor = SystemHealthMonitor()
-            logger.info("✓ Health monitor initialized")
-        except Exception as e:
-            logger.warning(f"✗ Health monitor failed: {e}")
-            self.health_monitor = None
+
     
     def _init_modules(self):
         """Initialize refactored modules."""
         logger.info("Phase 2: Module initialization...")
         
-        # Interlock validator with buzzer callbacks
+        # Interlock validator with callbacks
         def on_interlock_violation(reason):
-            if self.buzzer:
-                try:
-                    self.buzzer.sound_interlock_warning(duration=1.5)
-                except Exception:
-                    pass
+            pass
         
         def on_procedure_violation(reason):
-            if self.buzzer:
-                try:
-                    self.buzzer.sound_procedure_warning(duration=2.0)
-                except Exception:
-                    pass
+            pass
         
         self.interlock_validator = InterlockValidator(
             on_interlock_violation=on_interlock_violation,
@@ -169,13 +150,9 @@ class PLTNPanelController:
         )
         logger.info("✓ SCRAMSequence initialized")
         
-        # LOFA Simulator
-        from controllers.lofa_simulator import LOFASimulator
-        self.lofa_simulator = LOFASimulator(
-            max_core_temp=self.interlock_validator.MAX_CORE_TEMPERATURE_LOFA,
-            trigger_scram_callback=self.scram_sequence.execute
-        )
-        logger.info("✓ LOFASimulator initialized")
+        # Physics Engine
+        self.physics_engine = PhysicsEngine(trigger_scram_callback=self.trigger_emergency_scram)
+        logger.info("✓ PhysicsEngine initialized")
         
         # Auto simulator
         self.auto_simulator = AutoSimulator(
@@ -200,17 +177,20 @@ class PLTNPanelController:
         # Event processor
         self.event_processor = EventProcessor(
             state_manager=self.state_manager,
-            event_queue=self.button_event_queue,
             interlock_validator=self.interlock_validator,
             scram_sequence=self.scram_sequence,
             auto_simulator=self.auto_simulator,
             lofa_sequence=self.lofa_sequence,
-            cinematic_lofa_sequence=self.cinematic_lofa_sequence,
-            buzzer=self.buzzer
+            cinematic_lofa_sequence=self.cinematic_lofa_sequence
         )
         logger.info("✓ EventProcessor initialized")
         
         # (ESP communication removed)
+        
+    def trigger_emergency_scram(self):
+        """Trigger emergency SCRAM sequence."""
+        if hasattr(self, 'scram_sequence') and not self.scram_sequence.is_running:
+            self.scram_sequence.execute()
     
     # ============================================
     # Thread Functions
@@ -231,6 +211,32 @@ class PLTNPanelController:
         
         touch_input_file = Path("/tmp/pltn_input.json")
         last_processed_timestamp = time.time()  # Ignore old events on startup
+        
+        EVENT_MAPPING = {
+            ("PUMP_ON", "PRIMARY", None, None): ButtonEvent.PUMP_PRIMARY_ON,
+            ("PUMP_ON", "SECONDARY", None, None): ButtonEvent.PUMP_SECONDARY_ON,
+            ("PUMP_ON", "TERTIARY", None, None): ButtonEvent.PUMP_TERTIARY_ON,
+            ("PUMP_OFF", "PRIMARY", None, None): ButtonEvent.PUMP_PRIMARY_OFF,
+            ("PUMP_OFF", "SECONDARY", None, None): ButtonEvent.PUMP_SECONDARY_OFF,
+            ("PUMP_OFF", "TERTIARY", None, None): ButtonEvent.PUMP_TERTIARY_OFF,
+            ("ROD_MOVE", None, "SAFETY", "UP"): ButtonEvent.SAFETY_ROD_UP,
+            ("ROD_MOVE", None, "SAFETY", "DOWN"): ButtonEvent.SAFETY_ROD_DOWN,
+            ("ROD_MOVE", None, "SHIM", "UP"): ButtonEvent.SHIM_ROD_UP,
+            ("ROD_MOVE", None, "SHIM", "DOWN"): ButtonEvent.SHIM_ROD_DOWN,
+            ("ROD_MOVE", None, "REGULATING", "UP"): ButtonEvent.REGULATING_ROD_UP,
+            ("ROD_MOVE", None, "REGULATING", "DOWN"): ButtonEvent.REGULATING_ROD_DOWN,
+            ("PRESSURE", None, None, "UP"): ButtonEvent.PRESSURE_UP,
+            ("PRESSURE", None, None, "DOWN"): ButtonEvent.PRESSURE_DOWN,
+            ("START_AUTO", None, None, None): ButtonEvent.START_AUTO_SIMULATION,
+            ("START_CINEMATIC_LOFA", None, None, None): ButtonEvent.START_CINEMATIC_LOFA,
+            ("RESET", None, None, None): ButtonEvent.REACTOR_RESET,
+            ("EMERGENCY", None, None, None): ButtonEvent.EMERGENCY,
+            ("LOFA_SIMULATE", "PRIMARY", None, None): ButtonEvent.LOFA_SIMULATE_PRIMARY,
+            ("LOFA_SIMULATE", "SECONDARY", None, None): ButtonEvent.LOFA_SIMULATE_SECONDARY,
+            ("LOFA_SIMULATE", "TERTIARY", None, None): ButtonEvent.LOFA_SIMULATE_TERTIARY,
+            ("LOFA_CANCEL", None, None, None): ButtonEvent.REACTOR_RESET,
+            ("TOGGLE_CREDITS", None, None, None): ButtonEvent.TOGGLE_CREDITS,
+        }
         
         while self.state_manager.running:
             try:
@@ -257,43 +263,10 @@ class PLTNPanelController:
                                 rod = evt.get("rod")
                                 direction = evt.get("direction")
                                 
-                                button_event = None
-                                
-                                if evt_type == "PUMP_ON":
-                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_ON
-                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_ON
-                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_ON
-                                elif evt_type == "PUMP_OFF":
-                                    if target == "PRIMARY": button_event = ButtonEvent.PUMP_PRIMARY_OFF
-                                    elif target == "SECONDARY": button_event = ButtonEvent.PUMP_SECONDARY_OFF
-                                    elif target == "TERTIARY": button_event = ButtonEvent.PUMP_TERTIARY_OFF
-                                elif evt_type == "ROD_MOVE":
-                                    if rod == "SAFETY" and direction == "UP": button_event = ButtonEvent.SAFETY_ROD_UP
-                                    elif rod == "SAFETY" and direction == "DOWN": button_event = ButtonEvent.SAFETY_ROD_DOWN
-                                    elif rod == "SHIM" and direction == "UP": button_event = ButtonEvent.SHIM_ROD_UP
-                                    elif rod == "SHIM" and direction == "DOWN": button_event = ButtonEvent.SHIM_ROD_DOWN
-                                    elif rod == "REGULATING" and direction == "UP": button_event = ButtonEvent.REGULATING_ROD_UP
-                                    elif rod == "REGULATING" and direction == "DOWN": button_event = ButtonEvent.REGULATING_ROD_DOWN
-                                elif evt_type == "PRESSURE":
-                                    if direction == "UP": button_event = ButtonEvent.PRESSURE_UP
-                                    elif direction == "DOWN": button_event = ButtonEvent.PRESSURE_DOWN
-                                elif evt_type == "START_AUTO":
-                                    button_event = ButtonEvent.START_AUTO_SIMULATION
-                                elif evt_type == "START_CINEMATIC_LOFA":
-                                    button_event = ButtonEvent.START_CINEMATIC_LOFA
-                                elif evt_type == "RESET":
-                                    button_event = ButtonEvent.REACTOR_RESET
-                                elif evt_type == "EMERGENCY":
-                                    button_event = ButtonEvent.EMERGENCY
-                                elif evt_type == "LOFA_SIMULATE":
-                                    if target == "PRIMARY": button_event = ButtonEvent.LOFA_SIMULATE_PRIMARY
-                                    elif target == "SECONDARY": button_event = ButtonEvent.LOFA_SIMULATE_SECONDARY
-                                    elif target == "TERTIARY": button_event = ButtonEvent.LOFA_SIMULATE_TERTIARY
-                                elif evt_type == "LOFA_CANCEL":
-                                    button_event = ButtonEvent.REACTOR_RESET
+                                button_event = EVENT_MAPPING.get((evt_type, target, rod, direction))
                                     
                                 if button_event is not None:
-                                    self.button_event_queue.put(button_event)
+                                    self.event_processor.process_event(button_event)
                                     # --- Latency Measurement ---
                                     latency_ms = (time.time() - evt_ts) * 1000.0
                                     try:
@@ -349,9 +322,9 @@ class PLTNPanelController:
                     # Update pump transition states
                     self.pump_controller.update(state)
                                 
-                    # Update LOFA thermodynamics
-                    if hasattr(self, 'lofa_simulator'):
-                        self.lofa_simulator.update(state)
+                    # Update Unified Physics (Thermodynamics, Capacities, Turbine, LOFA)
+                    if hasattr(self, 'physics_engine'):
+                        self.physics_engine.update(state)
 
                     # Manage Video Player
                     # PENTING: cek cinematic_lofa DULU sebelum auto_sim_running
@@ -375,39 +348,8 @@ class PLTNPanelController:
                         if hasattr(self, 'video_player') and self.video_player.is_playing():
                             self.video_player.stop()
 
-                    # Primary Physics Simulation (hanya berjalan saat mode manual, agar tidak bertabrakan dengan animasi auto/lofa)
-                    if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
-                        # Shim rod has 80% worth, Regulating rod has 20% worth
-                        effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
-                        
-                        if effective_rod > 10.0:
-                            reactor_thermal_capacity = (effective_rod**2) * 90.0
-                            reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
-                        else:
-                            reactor_thermal_capacity = 0.0
-                            
-                        # Turbine starts spinning when thermal power exceeds threshold (e.g. 50000 kW)
-                        # Speed is proportional to the power generated
-                        if not state.emergency_active:
-                            if reactor_thermal_capacity > 50000.0:
-                                # Map thermal capacity (50000 - 900000) to target speed (10 - 100%)
-                                # We start at 10% minimum so it visually spins when just crossing threshold
-                                target_speed = 10.0 + ((reactor_thermal_capacity - 50000.0) / 850000.0) * 90.0
-                                target_speed = min(max(target_speed, 10.0), 100.0)
-                                
-                                # Smooth acceleration / deceleration
-                                if state.turbine_speed < target_speed:
-                                    state.turbine_speed = min(state.turbine_speed + 0.2, target_speed)
-                                else:
-                                    state.turbine_speed = max(state.turbine_speed - 0.5, target_speed)
-                            else:
-                                state.turbine_speed = max(state.turbine_speed - 0.5, 0.0)
-                        else:
-                            # Emergency: stop turbine quickly
-                            state.turbine_speed = max(state.turbine_speed - 2.0, 0.0)
-                                
-                        state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
-                        
+                    # Physics are now fully handled by PhysicsEngine above.
+                    # Actuators will read the updated state (thermal_kw, turbine_speed, etc.) directly.
                     # Update hardware actuators
                     self.actuator_manager.update_actuators(state)
                 
@@ -430,9 +372,6 @@ class PLTNPanelController:
     def run(self):
         """Main control loop."""
         logger.info("Starting PLTN Controller (Refactored)...")
-        
-        # Start event processor
-        self.event_processor.start()
         
         # Start all threads
         threads = [
@@ -471,13 +410,7 @@ class PLTNPanelController:
         self.state_manager.running = False
         time.sleep(0.5)
         
-        # Stop event processor
-        self.event_processor.stop()
-        
         # Cleanup hardware
-        if hasattr(self, 'buzzer') and self.buzzer:
-            self.buzzer.cleanup()
-        
         if hasattr(self, "actuator_manager") and self.actuator_manager:
             self.actuator_manager.cleanup()
         
@@ -502,7 +435,11 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Optimize CPU for this hardware node (Core 0,1 + High Priority)
-    CpuManager.setup_hardware_node()
+    # Optimize CPU priority
+    try:
+        os.nice(-20)
+    except Exception as e:
+        logger.warning(f"Could not set real-time priority (are you root?): {e}")
     
     try:
         controller = PLTNPanelController()

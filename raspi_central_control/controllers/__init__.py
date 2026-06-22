@@ -5,13 +5,13 @@ Contains:
 - StateManager: Thread-safe state management
 - InterlockValidator: Safety interlock checks
 - EventProcessor: Button event handling
-- LOFASimulator: LOFA logic simulation
+- PhysicsEngine: LOFA logic simulation
 """
 
 from .state_manager import StateManager, PanelState
 from .interlock_validator import InterlockValidator, PUMP_OFF, PUMP_STARTING, PUMP_ON, PUMP_SHUTTING_DOWN
 from .event_processor import EventProcessor
-from .lofa_simulator import LOFASimulator
+from .physics_engine import PhysicsEngine
 from .pump_controller import PumpController
 
 __all__ = [

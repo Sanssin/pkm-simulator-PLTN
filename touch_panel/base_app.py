@@ -459,6 +459,30 @@ class TouchPanelBaseWindow(QMainWindow):
         main_content_layout.addWidget(title)
         main_content_layout.addWidget(subtitle)
         main_content_layout.addLayout(btn_layout)
+        
+        main_content_layout.addSpacing(40)
+        
+        credits_btn = QPushButton("Daftar Pengembang")
+        credits_btn.setObjectName("hudCreditsBtn")
+        credits_btn.setFixedSize(300, 60)
+        credits_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #94A3B8;
+                font-size: 20px;
+                border: 2px solid #94A3B8;
+                border-radius: 10px;
+            }
+            QPushButton:hover { background-color: rgba(148, 163, 184, 0.2); }
+            QPushButton:pressed { background-color: rgba(148, 163, 184, 0.4); }
+        """)
+        credits_btn.clicked.connect(lambda: self._on_button_click("TOGGLE_CREDITS"))
+        
+        credits_layout = QHBoxLayout()
+        credits_layout.setAlignment(Qt.AlignCenter)
+        credits_layout.addWidget(credits_btn)
+        
+        main_content_layout.addLayout(credits_layout)
         main_content_layout.addStretch()
         
         layout.addWidget(main_content)

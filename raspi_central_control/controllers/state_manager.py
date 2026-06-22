@@ -98,6 +98,8 @@ class PanelState:
     # Interlock satisfied flag
     interlock_satisfied: bool = False
     
+    show_credits: bool = False
+    
     # System running flag
     running: bool = True
     
@@ -141,6 +143,7 @@ class PanelState:
         self.relief_valve_open = False
         self.spray_active = False
         self.interlock_satisfied = False
+        self.show_credits = False
 
 
 class StateManager:
@@ -204,60 +207,6 @@ class StateManager:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit context manager, releasing lock."""
         self._lock.release()
-    
-    def get(self, field: str) -> Any:
-        """
-        Thread-safe get for a single field.
-        
-        Args:
-            field: Name of the field to get
-            
-        Returns:
-            Value of the field
-            
-        Raises:
-            AttributeError: If field doesn't exist
-        """
-        with self._lock:
-            return getattr(self._state, field)
-    
-    def set(self, field: str, value: Any) -> None:
-        """
-        Thread-safe set for a single field.
-        
-        Args:
-            field: Name of the field to set
-            value: New value for the field
-            
-        Raises:
-            AttributeError: If field doesn't exist
-        """
-        with self._lock:
-            setattr(self._state, field, value)
-    
-    def update(self, **kwargs) -> None:
-        """
-        Thread-safe bulk update of multiple fields.
-        
-        Args:
-            **kwargs: Field names and values to update
-            
-        Example:
-            state_manager.update(pressure=140.0, pump_primary_status=2)
-        """
-        with self._lock:
-            for field, value in kwargs.items():
-                setattr(self._state, field, value)
-    
-    def snapshot(self) -> Dict[str, Any]:
-        """
-        Get atomic snapshot of entire state as dictionary.
-        
-        Returns:
-            Dictionary copy of current state
-        """
-        with self._lock:
-            return self._state.to_dict()
     
     def reset(self) -> None:
         """Thread-safe reset of state to initial values."""

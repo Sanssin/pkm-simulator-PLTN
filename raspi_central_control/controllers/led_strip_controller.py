@@ -34,6 +34,7 @@ class LEDSegment:
         self.flow_direction = flow_direction # 1 for forward, -1 for backward
         self.offset = 0.0
         self.speed = 0.0 # 0.0 = stopped, >0 = moving
+        self.is_active = False # Tambahkan is_active (default False sampai pompa dihidupkan)
         self.fill_level = -1.0 # -1.0 means flow mode, 0.0-1.0 means fill mode
         self.fill_color = Color(255, 100, 0)
         self.heat_ratio = 0.0  # 0.0 = cold (full blue), 1.0 = hot (red end)
@@ -176,6 +177,13 @@ class LedStripController:
         """Mengatur kecepatan aliran segmen. 0 = berhenti."""
         if name in self.segments:
             self.segments[name].speed = speed
+            if speed > 0.0:
+                self.segments[name].is_active = True
+
+    def set_active(self, name: str, active: bool):
+        """Mengatur apakah segmen ini dirender atau digelapkan."""
+        if name in self.segments:
+            self.segments[name].is_active = active
 
     def set_heat_ratio(self, name: str, ratio: float):
         """Mengatur rasio panas (0.0 = biru total, 1.0 = ada gradien merah)."""
@@ -250,22 +258,22 @@ class LedStripController:
                                 self.strip.setPixelColor(idx, self.color_black)
                 else:
                     # Mode flow: update offset berdasarkan speed
-                    if seg.speed <= 0.0:
-                        # Jika pompa mati (speed 0), matikan semua LED di segmen ini
-                        for i in range(seg.length):
-                            idx = seg.start_idx + i
-                            if idx < self.count:
-                                self.strip.setPixelColor(idx, self.color_black)
-                    else:
+                    if seg.speed > 0.0:
                         seg.offset -= (seg.speed * seg.flow_direction * dt * 20.0) 
-                        int_offset = int(seg.offset)
                         
-                        for i in range(seg.length):
-                            idx = seg.start_idx + i
-                            if idx < self.count:
-                                # Pola aliran 5 nyala, 5 mati
-                                if ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                                    self.strip.setPixelColor(idx, seg.gradient[i])
+                    int_offset = int(seg.offset)
+                    
+                    for i in range(seg.length):
+                        idx = seg.start_idx + i
+                        if idx < self.count:
+                            if not seg.is_active:
+                                self.strip.setPixelColor(idx, self.color_black)
+                                continue
+                                
+                            # Pola aliran 5 nyala, 5 mati
+                            # Jika speed 0, posisi stuck (diam)
+                            if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                self.strip.setPixelColor(idx, seg.gradient[i])
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:
