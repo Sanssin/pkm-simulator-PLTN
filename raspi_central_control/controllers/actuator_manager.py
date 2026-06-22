@@ -49,11 +49,11 @@ class ActuatorManager:
                 count=getattr(config, 'LED_STRIP_COUNT', 638),
                 channel=0, dma=10
             )
-            self.led_strip.add_segment('tersier_in', getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[0], getattr(config, 'LED_SEGMENT_TERSIER_IN', (0, 84))[1], flow_direction=1)
-            self.led_strip.add_segment('kondenser', getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[0], getattr(config, 'LED_SEGMENT_KONDENSER', (84, 46))[1], flow_direction=1)
+            self.led_strip.add_segment('tersier_in', config.LED_SEGMENT_TERSIER_IN[0], config.LED_SEGMENT_TERSIER_IN[1], flow_direction=1)
+            self.led_strip.add_segment('kondenser', config.LED_SEGMENT_KONDENSER[0], config.LED_SEGMENT_KONDENSER[1], flow_direction=1)
             self.led_strip.add_segment('tersier_out', config.LED_SEGMENT_TERSIER_OUT[0], config.LED_SEGMENT_TERSIER_OUT[1], flow_direction=1)
             self.led_strip.add_segment('sekunder_in', config.LED_SEGMENT_SEKUNDER_IN[0], config.LED_SEGMENT_SEKUNDER_IN[1], flow_direction=1)
-            self.led_strip.add_segment('primer', getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[0], getattr(config, 'LED_SEGMENT_PRIMER', (130, 190))[1])
+            self.led_strip.add_segment('primer', config.LED_SEGMENT_PRIMER[0], config.LED_SEGMENT_PRIMER[1])
             self.led_strip.add_segment('pressurizer', config.LED_SEGMENT_PRESSURIZER[0], config.LED_SEGMENT_PRESSURIZER[1], flow_direction=1)
             
             if self.hardware_active:
