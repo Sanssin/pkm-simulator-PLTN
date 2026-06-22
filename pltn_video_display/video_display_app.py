@@ -38,6 +38,7 @@ class DisplayMode(Enum):
     AUTO_VIDEO = "auto_video"           # Play full video (auto sim)
     MANUAL_GUIDE = "manual_guide"       # Show step guide (manual)
     IDLE = "idle"                       # Standby/intro screen
+    CREDITS = "credits"                 # Developers list
 
 
 # ============================================
@@ -264,6 +265,8 @@ class VideoDisplayApp:
         self.idle_fade_alpha = 255
         self.idle_fade_direction = -1
         self.idle_fade_speed = 2
+        self.credits_button_rect = pygame.Rect(0, 0, 0, 0)
+        self.back_button_rect = pygame.Rect(0, 0, 0, 0)
         
         # Mode transition tracking
         self.last_state_hash = None  # Track state changes
@@ -846,6 +849,101 @@ class VideoDisplayApp:
             desc_text = self.font_idle_desc.render(line, True, self.COLOR_PRIMARY)
             desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(60 * self.scale)))
             self.screen.blit(desc_text, desc_rect)
+            
+        # === 6. TOMBOL DAFTAR PENGEMBANG ===
+        btn_width = int(250 * self.scale)
+        btn_height = int(50 * self.scale)
+        btn_x = self.width // 2 - btn_width // 2
+        btn_y = self.height - int(70 * self.scale)
+        
+        self.credits_button_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
+        
+        pygame.draw.rect(self.screen, self.COLOR_PRIMARY, self.credits_button_rect, border_radius=10)
+        pygame.draw.rect(self.screen, self.COLOR_PRIMARY_BRIGHT, self.credits_button_rect, 2, border_radius=10)
+        
+        btn_text = self.font_small.render("Daftar Pengembang", True, self.COLOR_BG)
+        btn_text_rect = btn_text.get_rect(center=self.credits_button_rect.center)
+        self.screen.blit(btn_text, btn_text_rect)
+        
+        pygame.display.flip()
+
+    def draw_credits_screen(self):
+        """Display Developer Credits"""
+        self.screen.fill(self.COLOR_BG)
+        
+        # Header
+        title = self.font_large.render("DAFTAR PENGEMBANG", True, self.COLOR_PRIMARY_BRIGHT)
+        title_rect = title.get_rect(center=(self.width//2, int(60 * self.scale)))
+        self.screen.blit(title, title_rect)
+        
+        # Columns Data
+        col1 = [
+            ("Dosen Pembimbing", ["Prof. Dr. Anhar Riza Antariksawan, DEA"]),
+            ("Special Project 2025", ["Daffa Arkhan Baihaqi", "Melani Sistya Ardhana", "Shelly Zahra Nidyaputri", "Wisnu Fitra Rachman"]),
+            ("Pengabdian Masyarakat 2025", ["Nur Ihsanudin", "Muhammad Elwas Yusuf", "Daffa Raditya Widyadhana", "Zulfikar Muzakki"])
+        ]
+        
+        col2 = [
+            ("Pekan Kreativitas Mahasiswa 2025", [
+                "Muhammad Elwas Yusuf", "Maulida Yusfarina Rahma", "Muhammad Nurrosyid Pangestu",
+                "Alfina Khairani", "Kinanthi Tara Salwahita", "Rabbany Al-Malika I", "Hanifah Nurul Aqila",
+                "Mohammad Irgi Islami", "Kunti Aisyatuzzahra", "Pasha Octa Perdana", "Faljarisy Bellyn",
+                "Syamuel Libaas A. A.", "Nur Ihsanudin", "Aisya Zhavira Pharamesty", "Ni Mas Aqila Najwan",
+                "Eka Risky Herdiansyah", "Rahmaningrum", "Shafina Zaidiya Nihrira", "Muhammad Athariq Sonitia",
+                "Bilbina Balqis", "Ganazel Oktaviano R.", "Gathfan Darmawan", "Rasya Andrew Budi S.", "Rizkiana Ramadhani"
+            ])
+        ]
+        
+        col3 = [
+            ("Special Project 2026", [
+                "Nur Ihsanudin", "Theresa Anggreeni", "Fadhli Abdulhaq", "Ananda Dewi Nurjannah", "Eka Amelia Lestari",
+                "Dhamar Sasongko", "Maulana Aria Perbangsa", "Bilal Rasyid Al Qindi", "Muhammad Elwas Yusuf", "Siti Azizah Lubis",
+                "Dzaki Yahya Ayyasy", "Fathima Tiara Nugroho", "Ardranitya Brilian Fery M", "Shira Kane Avicena", "Muhammad Daffa Farhan",
+                "Nahl Dya Istavara", "Eka Risky Herdiansyah", "Evita Rahmadani", "Kinanthi Tara Salwahita", "Firryal Nisrina Faiqah",
+                "Muhammad Nayif Siregar", "Dhiandra Rasha Zaputra", "Muhammad Reval Denta", "Muhammad Rafif"
+            ])
+        ]
+        
+        cols = [col1, col2, col3]
+        col_w = self.width // 3
+        start_y = int(140 * self.scale)
+        
+        title_font = self.font_idle_sub
+        name_font = self.font_idle_desc
+        
+        for i, col_data in enumerate(cols):
+            x = int((i + 0.5) * col_w)
+            y = start_y
+            for section_title, names in col_data:
+                # Draw Title
+                t_surf = title_font.render(section_title, True, self.COLOR_PRIMARY_LIGHT)
+                t_rect = t_surf.get_rect(center=(x, y))
+                self.screen.blit(t_surf, t_rect)
+                y += int(35 * self.scale)
+                
+                # Draw Names
+                for name in names:
+                    n_surf = name_font.render(name, True, self.COLOR_TEXT)
+                    n_rect = n_surf.get_rect(center=(x, y))
+                    self.screen.blit(n_surf, n_rect)
+                    y += int(26 * self.scale)
+                
+                y += int(25 * self.scale) # Gap between sections
+                
+        # Draw Back Button
+        btn_width = int(200 * self.scale)
+        btn_height = int(50 * self.scale)
+        btn_x = self.width // 2 - btn_width // 2
+        btn_y = self.height - int(70 * self.scale)
+        
+        self.back_button_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
+        
+        pygame.draw.rect(self.screen, self.COLOR_WARNING, self.back_button_rect, border_radius=10)
+        pygame.draw.rect(self.screen, self.COLOR_PRIMARY_BRIGHT, self.back_button_rect, 2, border_radius=10)
+        
+        btn_text = self.font_small.render("Kembali", True, self.COLOR_BG)
+        btn_text_rect = btn_text.get_rect(center=self.back_button_rect.center)
+        self.screen.blit(btn_text, btn_text_rect)
         
         pygame.display.flip()
     
@@ -1726,11 +1824,15 @@ class VideoDisplayApp:
             # No state yet - show idle
             if self._debug_counter == 0:
                 print("⚠️  No state file - showing IDLE")
-            if self.display_mode != DisplayMode.IDLE:
+            if self.display_mode != DisplayMode.IDLE and self.display_mode != DisplayMode.CREDITS:
                 self.stop_video()
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False  # Reset on no state
-            self.draw_idle_screen()
+            
+            if self.display_mode == DisplayMode.CREDITS:
+                self.draw_credits_screen()
+            else:
+                self.draw_idle_screen()
             return
         
         mode = state.get("mode", "manual")
@@ -1762,14 +1864,18 @@ class VideoDisplayApp:
         # Jangan pernah kembali ke IDLE saat mode cinematic_lofa aktif
         lofa_mode_active = (mode == "cinematic_lofa")
         if is_zero and not getattr(self, 'just_woke_up', False) and not is_manual_started and not lofa_mode_active:
-            if self.display_mode != DisplayMode.IDLE:
+            if self.display_mode != DisplayMode.IDLE and self.display_mode != DisplayMode.CREDITS:
                 print("🔄 RESET detected - returning to IDLE")
                 self.stop_video()
                 self.display_mode = DisplayMode.IDLE
                 self.user_has_interacted = False
                 self.auto_complete_time = None
                 self._clear_manual_flag()
-            self.draw_idle_screen()
+            
+            if self.display_mode == DisplayMode.CREDITS:
+                self.draw_credits_screen()
+            else:
+                self.draw_idle_screen()
             return
         
         # Check if auto simulation just completed
@@ -1872,8 +1978,26 @@ class VideoDisplayApp:
                         print("⚠️ Window bermigrasi atau tersembunyi (kabel HDMI mungkin dicabut). Mematikan program agar Watchdog me-restart...")
                         running = False
                 
-                # Handle touch/mouse click to switch from IDLE to MANUAL
+                # Handle touch/mouse click
                 elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        pos = event.pos
+                    else:
+                        pos = (int(event.x * self.width), int(event.y * self.height))
+                        
+                    if self.display_mode == DisplayMode.IDLE and self.credits_button_rect.collidepoint(pos):
+                        self.display_mode = DisplayMode.CREDITS
+                        if self.test_mode: self.mock_mode = "credits"
+                        continue
+                        
+                    if self.display_mode == DisplayMode.CREDITS and self.back_button_rect.collidepoint(pos):
+                        self.display_mode = DisplayMode.IDLE
+                        if self.test_mode: self.mock_mode = "idle"
+                        continue
+                        
+                    if self.display_mode == DisplayMode.CREDITS:
+                        continue # Ignore other clicks in credits screen
+                        
                     if not self.user_has_interacted:
                         print("👉 Layar disentuh - beralih ke mode MANUAL")
                         self.user_has_interacted = True
