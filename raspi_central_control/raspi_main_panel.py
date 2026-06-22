@@ -27,7 +27,6 @@ from queue import Queue
 # Import our modules
 import raspi_config as config
 from raspi_humidifier_control import HumidifierController
-from raspi_system_health import SystemHealthMonitor
 
 # Import refactored modules
 from controllers.state_manager import StateManager
@@ -126,13 +125,7 @@ class PLTNPanelController:
             logger.warning(f"✗ Humidifier failed: {e}")
             self.humidifier = None
         
-        # Initialize health monitor
-        try:
-            self.health_monitor = SystemHealthMonitor()
-            logger.info("✓ Health monitor initialized")
-        except Exception as e:
-            logger.warning(f"✗ Health monitor failed: {e}")
-            self.health_monitor = None
+
     
     def _init_modules(self):
         """Initialize refactored modules."""
