@@ -12,6 +12,31 @@ import time
 import logging
 import threading
 from queue import Queue, Empty
+from enum import Enum
+
+class ButtonEvent(Enum):
+    """Button event types for queue-based processing."""
+    PRESSURE_UP = "PRESSURE_UP"
+    PRESSURE_DOWN = "PRESSURE_DOWN"
+    PUMP_PRIMARY_ON = "PUMP_PRIMARY_ON"
+    PUMP_PRIMARY_OFF = "PUMP_PRIMARY_OFF"
+    PUMP_SECONDARY_ON = "PUMP_SECONDARY_ON"
+    PUMP_SECONDARY_OFF = "PUMP_SECONDARY_OFF"
+    PUMP_TERTIARY_ON = "PUMP_TERTIARY_ON"
+    PUMP_TERTIARY_OFF = "PUMP_TERTIARY_OFF"
+    SAFETY_ROD_UP = "SAFETY_ROD_UP"
+    SAFETY_ROD_DOWN = "SAFETY_ROD_DOWN"
+    SHIM_ROD_UP = "SHIM_ROD_UP"
+    SHIM_ROD_DOWN = "SHIM_ROD_DOWN"
+    REGULATING_ROD_UP = "REGULATING_ROD_UP"
+    REGULATING_ROD_DOWN = "REGULATING_ROD_DOWN"
+    REACTOR_RESET = "REACTOR_RESET"
+    EMERGENCY = "EMERGENCY"
+    START_AUTO_SIMULATION = "START_AUTO_SIMULATION"
+    START_CINEMATIC_LOFA = "START_CINEMATIC_LOFA"
+    LOFA_SIMULATE_PRIMARY = "LOFA_SIMULATE_PRIMARY"
+    LOFA_SIMULATE_SECONDARY = "LOFA_SIMULATE_SECONDARY"
+    LOFA_SIMULATE_TERTIARY = "LOFA_SIMULATE_TERTIARY"
 from typing import Callable, Optional, TYPE_CHECKING, Any
 
 from .interlock_validator import InterlockValidator, PUMP_ON, PUMP_OFF, PUMP_STARTING, PUMP_SHUTTING_DOWN
@@ -99,7 +124,7 @@ class EventProcessor:
         Args:
             event: ButtonEvent to process
         """
-        from io_handlers.button_handler import ButtonEvent
+
         
         # Update last button time
         self._last_button_time = time.time()

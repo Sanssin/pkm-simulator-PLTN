@@ -39,11 +39,11 @@ from controllers.event_processor import EventProcessor
 from controllers.actuator_manager import ActuatorManager
 from io_handlers.state_exporter import StateExporter
 
-from io_handlers.button_handler import ButtonEvent
+from controllers.event_processor import ButtonEvent
 from sequences.scram_sequence import SCRAMSequence
 from sequences.auto_simulation import AutoSimulator
 from pltn_video_display.video_player import VideoPlayer
-from cpu_manager import set_realtime_priority
+import os
 
 
 # Try to import GPIO library
@@ -441,7 +441,11 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Optimize CPU for this hardware node (Core 0,1 + High Priority)
-    set_realtime_priority()
+    # Optimize CPU priority
+    try:
+        os.nice(-20)
+    except Exception as e:
+        logger.warning(f"Could not set real-time priority (are you root?): {e}")
     
     try:
         controller = PLTNPanelController()
