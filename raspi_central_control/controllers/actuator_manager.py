@@ -163,18 +163,25 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('tersier', tert_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
-            # Update heat ratio berdasarkan posisi batang kendali (shim & regulating)
-            # Sesuai permintaan: "ketika batang kendali mulai diangkan (shim dan regulating) nanti warnanya merah"
-            effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
-            heat_ratio = effective_rod / 50.0  # Mencapai merah penuh (1.0) saat rod diangkat 50%
-            heat_ratio = max(0.0, min(1.0, heat_ratio))
+            # Update heat ratio berdasarkan suhu air aktual di tiap siklus
+            ambient = 25.0
             
-            self.led_strip.set_heat_ratio('kondenser', heat_ratio)
-            self.led_strip.set_heat_ratio('primer', heat_ratio)
-            self.led_strip.set_heat_ratio('sekunder', heat_ratio)
-            self.led_strip.set_heat_ratio('sekunder_in', heat_ratio)
-            self.led_strip.set_heat_ratio('tersier', heat_ratio)
-            self.led_strip.set_heat_ratio('tersier_out', heat_ratio)
+            # Suhu primer biasanya berkisar antara 25C hingga 320C
+            t_primary = getattr(state, 'temperature_coolant_primary', ambient)
+            hr_primary = (t_primary - ambient) / (320.0 - ambient)
+            hr_primary = max(0.0, min(1.0, hr_primary))
+            
+            # Suhu sekunder biasanya berkisar antara 25C hingga 280C
+            t_secondary = getattr(state, 'temperature_coolant_secondary', ambient)
+            hr_secondary = (t_secondary - ambient) / (280.0 - ambient)
+            hr_secondary = max(0.0, min(1.0, hr_secondary))
+            
+            self.led_strip.set_heat_ratio('primer', hr_primary)
+            self.led_strip.set_heat_ratio('sekunder', hr_secondary)
+            self.led_strip.set_heat_ratio('sekunder_in', hr_secondary)
+            self.led_strip.set_heat_ratio('kondenser', hr_secondary)
+            self.led_strip.set_heat_ratio('tersier', hr_secondary * 0.5)
+            self.led_strip.set_heat_ratio('tersier_out', hr_secondary * 0.5)
             
         # Update Pressurizer WS2812 Fill Level based on Pressure
         if hasattr(self, 'led_strip') and self.led_strip is not None and 'pressurizer' in self.led_strip.segments:
