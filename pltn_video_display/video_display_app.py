@@ -797,18 +797,28 @@ class VideoDisplayApp:
         if self.test_mode and hasattr(self, 'mock_state'):
             self.mock_state["show_credits"] = False
             return
-            
         try:
-            if self.state_file.exists():
-                import json
-                with open(self.state_file, 'r') as f:
-                    data = json.load(f)
-                if data.get("show_credits", False):
-                    data["show_credits"] = False
-                    with open(self.state_file, 'w') as f:
-                        json.dump(data, f)
+            # Tell backend to clear the flag by sending TOGGLE_CREDITS event
+            import json, time, sys
+            input_file = Path("C:/temp/pltn_input.json") if sys.platform == 'win32' else Path("/tmp/pltn_input.json")
+            
+            event_data = {
+                "timestamp": time.time(),
+                "events": [
+                    {
+                        "type": "TOGGLE_CREDITS",
+                        "target": None,
+                        "rod": None,
+                        "direction": None,
+                        "timestamp": time.time()
+                    }
+                ]
+            }
+            with open(input_file, 'w') as f:
+                json.dump(event_data, f)
+            print("Sent TOGGLE_CREDITS to backend to clear state.")
         except Exception as e:
-            print(f"Error clearing show_credits: {e}")
+            print(f"Error clearing show_credits via input: {e}")
 
     def stop_video(self):
         """Stop current video"""
