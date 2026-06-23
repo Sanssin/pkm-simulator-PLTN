@@ -159,10 +159,11 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
-            # Jika reactor belum aktif (belum dipanaskan) dan kecepatan 0, matikan lampu sepenuhnya
-            # Dipastikan berlaku robust pada mode manual, otomatis normal, maupun otomatis lofa
-            valid_modes = ['manual', 'auto', 'cinematic_lofa']
-            if getattr(state, 'simulation_mode', 'manual') in valid_modes and not getattr(state, 'reactor_active', False):
+            # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
+            sim_mode = getattr(state, 'simulation_mode', 'manual')
+            is_reset = (getattr(state, 'pressure', 1.0) == 0.0 and getattr(state, 'temperature_core', 26.0) == 25.0)
+            
+            if sim_mode == 'idle' or is_reset:
                 if prim_speed == 0.0:
                     self.led_strip.set_active('primer', False)
                 if sec_speed == 0.0:
@@ -171,13 +172,15 @@ class ActuatorManager:
                     self.led_strip.set_active('tersier_in', False)
                     self.led_strip.set_active('kondenser', False)
                     self.led_strip.set_active('tersier_out', False)
+            # Selain kondisi di atas, is_active tidak diset False meskipun pompa mati, 
+            # sehingga lampu tetap menyala (namun tidak bergerak karena speed 0)
             
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
             ambient = 25.0
             
-            # Suhu primer biasanya berkisar antara 25C hingga 320C
+            # Suhu primer normal berkisar 25C hingga 320C, saat LOFA bisa mencapai 380C
             t_primary = getattr(state, 'temperature_coolant_primary', ambient)
-            hr_primary = (t_primary - ambient) / (320.0 - ambient)
+            hr_primary = (t_primary - ambient) / (380.0 - ambient)
             hr_primary = max(0.0, min(1.0, hr_primary))
             
             # Suhu sekunder biasanya berkisar antara 25C hingga 280C

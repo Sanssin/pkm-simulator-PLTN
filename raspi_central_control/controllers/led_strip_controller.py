@@ -92,10 +92,22 @@ class LEDSegment:
                 gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
-        # Pipa primer: 1-27 (index 0-26) Merah (panas dari reaktor), 28-118 (index 27-117) Biru (dingin setelah SG)
+        # Pipa primer: Normalnya (hingga 320C, hr_primary ~0.83) batas merah di index 26.
+        # Saat LOFA (temp > 320C, hr_primary -> 1.0), air panas tidak didinginkan sehingga 
+        # titik perpotongan (batas) merah akan bergeser ke seluruh pipa (hingga self.length).
         if self.name == 'primer':
+            base_boundary = 27
+            hr_normal = 0.83
+            
+            if self.heat_ratio <= hr_normal:
+                hot_boundary = base_boundary
+            else:
+                # Pergeseran proporsional dari 0.83 (batas 27) hingga 1.0 (batas self.length)
+                excess_ratio = (self.heat_ratio - hr_normal) / (1.0 - hr_normal)
+                hot_boundary = base_boundary + int(excess_ratio * (self.length - base_boundary))
+                
             for i in range(self.length):
-                if i < 27:
+                if i < hot_boundary:
                     gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
                 else:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
