@@ -161,32 +161,19 @@ class ActuatorManager:
             
             # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
             sim_mode = getattr(state, 'simulation_mode', 'manual')
-            # Deteksi reset berdasarkan flag dari state_manager
-            is_reset = getattr(state, 'just_reset', False)
+            is_reset = (getattr(state, 'pressure', 1.0) == 0.0 and getattr(state, 'temperature_core', 26.0) == 25.0)
             
-            # Jika ada pompa yang menyala atau simulasi auto berjalan, maka sudah tidak reset lagi
-            if (getattr(state, 'pump_primary_status', 0) > 0 or 
-                getattr(state, 'pump_secondary_status', 0) > 0 or 
-                getattr(state, 'pump_tertiary_status', 0) > 0 or
-                getattr(state, 'auto_sim_running', False)):
-                state.just_reset = False
-                is_reset = False
-            
-            if is_reset or sim_mode == 'idle':
-                self.led_strip.set_active('primer', False)
-                self.led_strip.set_active('sekunder_in', False)
-                self.led_strip.set_active('tersier_in', False)
-                self.led_strip.set_active('kondenser', False)
-                self.led_strip.set_active('tersier_out', False)
-            else:
-                self.led_strip.set_active('primer', True)
-                self.led_strip.set_active('sekunder_in', True)
-                self.led_strip.set_active('tersier_in', True)
-                self.led_strip.set_active('kondenser', True)
-                self.led_strip.set_active('tersier_out', True)
-            
-            # Selain kondisi idle/reset, is_active diset True sehingga lampu tetap menyala 
-            # (namun tidak bergerak jika speed 0)
+            if sim_mode == 'idle' or is_reset:
+                if prim_speed == 0.0:
+                    self.led_strip.set_active('primer', False)
+                if sec_speed == 0.0:
+                    self.led_strip.set_active('sekunder_in', False)
+                if tert_speed == 0.0:
+                    self.led_strip.set_active('tersier_in', False)
+                    self.led_strip.set_active('kondenser', False)
+                    self.led_strip.set_active('tersier_out', False)
+            # Selain kondisi di atas, is_active tidak diset False meskipun pompa mati, 
+            # sehingga lampu tetap menyala (namun tidak bergerak karena speed 0)
             
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
             ambient = 25.0

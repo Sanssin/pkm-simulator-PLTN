@@ -100,6 +100,8 @@ class PanelState:
     
     show_credits: bool = False
     
+    just_reset: bool = True
+    
     # System running flag
     running: bool = True
     
@@ -111,6 +113,7 @@ class PanelState:
         """Reset state to initial values (except running flag)."""
         self.simulation_mode = 'manual'
         self.auto_sim_running = False
+        self.just_reset = True
         self.auto_sim_step = 0
         self.auto_sim_phase = ""
         self.pressure = 0.0
