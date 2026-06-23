@@ -192,5 +192,5 @@ class LOFASequence:
             with self._state_manager as state:
                 if state.auto_sim_running:
                     state.auto_sim_running = False
-                    state.simulation_mode = 'manual'
+                    state.simulation_mode = 'idle'
             logger.info("--- LOFA SIMULATION SEQUENCE ENDED ---")

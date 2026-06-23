@@ -12,7 +12,33 @@ import time
 import logging
 import threading
 from queue import Queue, Empty
-from typing import Callable, Optional, TYPE_CHECKING
+from enum import Enum
+
+class ButtonEvent(Enum):
+    """Button event types for queue-based processing."""
+    PRESSURE_UP = "PRESSURE_UP"
+    PRESSURE_DOWN = "PRESSURE_DOWN"
+    PUMP_PRIMARY_ON = "PUMP_PRIMARY_ON"
+    PUMP_PRIMARY_OFF = "PUMP_PRIMARY_OFF"
+    PUMP_SECONDARY_ON = "PUMP_SECONDARY_ON"
+    PUMP_SECONDARY_OFF = "PUMP_SECONDARY_OFF"
+    PUMP_TERTIARY_ON = "PUMP_TERTIARY_ON"
+    PUMP_TERTIARY_OFF = "PUMP_TERTIARY_OFF"
+    SAFETY_ROD_UP = "SAFETY_ROD_UP"
+    SAFETY_ROD_DOWN = "SAFETY_ROD_DOWN"
+    SHIM_ROD_UP = "SHIM_ROD_UP"
+    SHIM_ROD_DOWN = "SHIM_ROD_DOWN"
+    REGULATING_ROD_UP = "REGULATING_ROD_UP"
+    REGULATING_ROD_DOWN = "REGULATING_ROD_DOWN"
+    REACTOR_RESET = "REACTOR_RESET"
+    EMERGENCY = "EMERGENCY"
+    START_AUTO_SIMULATION = "START_AUTO_SIMULATION"
+    START_CINEMATIC_LOFA = "START_CINEMATIC_LOFA"
+    LOFA_SIMULATE_PRIMARY = "LOFA_SIMULATE_PRIMARY"
+    LOFA_SIMULATE_SECONDARY = "LOFA_SIMULATE_SECONDARY"
+    LOFA_SIMULATE_TERTIARY = "LOFA_SIMULATE_TERTIARY"
+    TOGGLE_CREDITS = "TOGGLE_CREDITS"
+from typing import Callable, Optional, TYPE_CHECKING, Any
 
 from .interlock_validator import InterlockValidator, PUMP_ON, PUMP_OFF, PUMP_STARTING, PUMP_SHUTTING_DOWN
 import raspi_config as config
@@ -53,25 +79,22 @@ class EventProcessor:
     
     def __init__(self,
                  state_manager: 'StateManager',
-                 event_queue: Queue,
                  interlock_validator: InterlockValidator,
                  scram_sequence: Optional['SCRAMSequence'] = None,
                  auto_simulator: Optional['AutoSimulator'] = None,
-                 lofa_sequence = None,
-                 buzzer = None):
+                 lofa_sequence: Optional[Any] = None,
+                 cinematic_lofa_sequence: Optional[Any] = None):
         """
         Initialize EventProcessor.
         
         Args:
             state_manager: StateManager instance for state access
-            event_queue: Queue to read button events from
             interlock_validator: InterlockValidator for safety checks
             scram_sequence: SCRAMSequence for emergency shutdown
             auto_simulator: AutoSimulator for auto startup
-            buzzer: BuzzerAlarm instance for audio feedback
+            cinematic_lofa_sequence: CinematicLOFASequence instance
         """
         self._state_manager = state_manager
-        self._event_queue = event_queue
         self._interlock_validator = interlock_validator
         
         from controllers.rod_controller import RodController
@@ -79,10 +102,8 @@ class EventProcessor:
         self._scram_sequence = scram_sequence
         self._auto_simulator = auto_simulator
         self._lofa_sequence = lofa_sequence
-        self._buzzer = buzzer
+        self._cinematic_lofa_sequence = cinematic_lofa_sequence
         
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
         self._last_button_time = time.time()
     
     @property
@@ -90,90 +111,22 @@ class EventProcessor:
         """Time of last button press (for inactivity tracking)."""
         return self._last_button_time
     
-    def start(self) -> threading.Thread:
-        """
-        Start event processing thread.
-        
-        Returns:
-            Thread object running the processor
-        """
-        self._running = True
-        self._thread = threading.Thread(
-            target=self._processor_thread,
-            daemon=True
-        )
-        self._thread.start()
-        return self._thread
-    
-    def stop(self) -> None:
-        """Stop event processing thread."""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2.0)
-    
     def _sound_warning(self, duration: float = 1.5) -> None:
-        """Play interlock warning buzzer."""
-        if self._buzzer:
-            try:
-                self._buzzer.sound_interlock_warning(duration=duration)
-            except Exception:
-                pass
+        """Log interlock warning."""
+        pass
     
     def _sound_procedure_warning(self, duration: float = 2.0) -> None:
-        """Play procedure violation buzzer."""
-        if self._buzzer:
-            try:
-                self._buzzer.sound_procedure_warning(duration=duration)
-            except Exception:
-                pass
+        """Log procedure violation."""
+        pass
     
-    def _processor_thread(self) -> None:
-        """Main event processing thread."""
-        try:
-            logger.info("Button event processor thread STARTING...")
-            logger.info("Button event processor thread started - waiting for events...")
-            
-            loop_count = 0
-            while self._running:
-                try:
-                    # Heartbeat every 60 seconds
-                    loop_count += 1
-                    if loop_count >= 6000:  # 6000 * 10ms = 60s
-                        logger.info(f"Event processor alive - Queue size: {self._event_queue.qsize()}")
-                        loop_count = 0
-                    
-                    # Wait for event with timeout
-                    try:
-                        event = self._event_queue.get(timeout=self.QUEUE_TIMEOUT)
-                    except Empty:
-                        continue
-                    
-                    # Process event
-                    self._process_event(event)
-                    
-                    # Mark task done
-                    self._event_queue.task_done()
-                    
-                except Exception as e:
-                    logger.error(f"Event processor error: {e}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-            
-            logger.info("Button event processor thread stopped")
-            
-        except Exception as e:
-            logger.critical(f"FATAL: Event processor thread crashed: {e}")
-            import traceback
-            logger.critical(traceback.format_exc())
-    
-    def _process_event(self, event) -> None:
+    def process_event(self, event) -> None:
         """
         Process a single button event.
         
         Args:
             event: ButtonEvent to process
         """
-        from io_handlers.button_handler import ButtonEvent
+
         
         # Update last button time
         self._last_button_time = time.time()
@@ -223,18 +176,18 @@ class EventProcessor:
                 if state.pump_tertiary_status == PUMP_ON:
                     state.pump_tertiary_status = PUMP_SHUTTING_DOWN
                     
+            elif event == ButtonEvent.START_CINEMATIC_LOFA:
+                if self._cinematic_lofa_sequence:
+                    self._cinematic_lofa_sequence.start()
+                    logger.info("Cinematic LOFA simulation sequence initiated")
+
             # LOFA Simulation events
             elif event == ButtonEvent.LOFA_SIMULATE_PRIMARY:
-                if self._lofa_sequence and not self._lofa_sequence.is_running:
-                    # Reset state first
-                    state.reset()
-                    # Start LOFA auto simulation
-                    self._lofa_sequence.start()
-                    logger.info("Automated LOFA simulation sequence started")
-                elif state.pump_primary_status == PUMP_ON:
-                    # If already in manual run, just shut down the pump directly
+                if state.pump_primary_status == PUMP_ON:
                     state.pump_primary_status = PUMP_SHUTTING_DOWN
                     logger.warning("Simulating Primary LOFA: Pump shutting down manually")
+                else:
+                    logger.warning("Cannot simulate Primary LOFA: Pump is not running")
             
             elif event == ButtonEvent.LOFA_SIMULATE_SECONDARY:
                 if state.pump_secondary_status == PUMP_ON:
@@ -261,23 +214,17 @@ class EventProcessor:
                 # Execute SCRAM sequence
                 if self._scram_sequence:
                     self._scram_sequence.execute()
-                
-                # Trigger emergency buzzer
-                if self._buzzer:
-                    logger.critical("   Triggering emergency buzzer...")
-                    try:
-                        self._buzzer.trigger_emergency_beep()
-                        logger.critical("Emergency buzzer triggered")
-                    except Exception as e:
-                        logger.error(f"Buzzer trigger failed: {e}")
+                logger.critical("Emergency sequence initiated")
             
             # Reset
             elif event == ButtonEvent.REACTOR_RESET:
                 # Stop auto simulation if running
-                if self._auto_simulator and self._auto_simulator.is_running:
+                if self._auto_simulator:
                     self._auto_simulator.cancel()
-                if self._lofa_sequence and self._lofa_sequence.is_running:
+                if self._lofa_sequence:
                     self._lofa_sequence.cancel()
+                if self._cinematic_lofa_sequence:
+                    self._cinematic_lofa_sequence.cancel()
                 
                 # Reset state
                 state.reset()
@@ -301,6 +248,12 @@ class EventProcessor:
                     logger.info("Simulasi akan berjalan otomatis dengan kecepatan lambat")
                     logger.info("untuk memudahkan pemahaman cara kerja PLTN")
                     logger.info("=" * 60)
+            
+            # Toggle credits
+            elif event == ButtonEvent.TOGGLE_CREDITS:
+                current = getattr(state, "show_credits", False)
+                setattr(state, "show_credits", not current)
+                logger.info(f"Toggled credits display to: {not current}")
             
             else:
                 logger.warning(f"Unknown event: {event}")

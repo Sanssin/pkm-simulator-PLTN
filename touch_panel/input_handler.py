@@ -194,12 +194,14 @@ CONTROL_EVENT_MAP: Dict[str, Tuple[str, Dict[str, Optional[str]]]] = {
     "PRESSURE_UP": ("PRESSURE", {"direction": "UP"}),
     "PRESSURE_DOWN": ("PRESSURE", {"direction": "DOWN"}),
     "START_AUTO_SIMULATION": ("START_AUTO", {}),
+    "START_CINEMATIC_LOFA": ("START_CINEMATIC_LOFA", {}),
     "REACTOR_RESET": ("RESET", {}),
     "EMERGENCY": ("EMERGENCY", {}),
     "LOFA_SIMULATE_PRIMARY": ("LOFA_SIMULATE", {"target": "PRIMARY"}),
     "LOFA_SIMULATE_SECONDARY": ("LOFA_SIMULATE", {"target": "SECONDARY"}),
     "LOFA_SIMULATE_TERTIARY": ("LOFA_SIMULATE", {"target": "TERTIARY"}),
     "LOFA_CANCEL": ("LOFA_CANCEL", {}),
+    "TOGGLE_CREDITS": ("TOGGLE_CREDITS", {}),
 }
 
 

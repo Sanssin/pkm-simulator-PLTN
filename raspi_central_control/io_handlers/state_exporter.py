@@ -57,12 +57,16 @@ class StateExporter:
                         "emergency": bool(state.emergency_active),
                         "lofa_primary": bool(state.lofa_primary),
                         "lofa_secondary": bool(state.lofa_secondary),
-                        "lofa_tertiary": bool(state.lofa_tertiary)
+                        "lofa_tertiary": bool(state.lofa_tertiary),
+                        "relief_valve_open": getattr(state, 'relief_valve_open', False),
+                        "spray_active": getattr(state, 'spray_active', False),
+                        "user_interacted": bool(getattr(state, 'user_interacted', False)),
+                        "show_credits": bool(getattr(state, 'show_credits', False)),
                     }
                 
                 temp_file = self.export_path.with_suffix('.tmp')
                 with open(temp_file, 'w') as f:
-                    json.dump(state_dict, f, indent=2)
+                    json.dump(state_dict, f)
                 temp_file.replace(self.export_path)
                 
             except Exception as e:

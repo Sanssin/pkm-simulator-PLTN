@@ -36,7 +36,7 @@ class InterlockValidator:
     
     Interlock Logic v3.4:
     - Rod movement requires: pressure >= 140 bar, all pumps ON, no emergency
-    - Pump start requires: pressure >= 40 bar, correct sequence (Tertiary → Secondary → Primary)
+    - Pump start requires: correct sequence (Tertiary → Secondary → Primary), Primary pump requires pressure >= 40 bar
     
     Usage:
         validator = InterlockValidator(on_violation=buzzer.sound_warning)
@@ -124,7 +124,7 @@ class InterlockValidator:
         """
         # Check 1: Pressure >= 140 bar
         if state.pressure < self.MIN_PRESSURE_FOR_ROD_MOVEMENT:
-            reason = f"Pressure too low ({state.pressure:.2f} bar < 140 bar)"
+            reason = f"Pressure too low ({state.pressure:.1f} bar < 140 bar)"
             logger.debug(f"Interlock: {reason}")
             if self._on_interlock_violation:
                 self._on_interlock_violation(reason)
@@ -168,7 +168,7 @@ class InterlockValidator:
         Check if pump can be started safely.
         
         Safety requirements:
-        1. Pressure >= 40 bar (prevent cavitation)
+        1. Pressure >= 40 bar (only for Primary pump) (prevent cavitation)
         2. Correct startup sequence: Tertiary → Secondary → Primary
         
         Args:
@@ -178,13 +178,13 @@ class InterlockValidator:
         Returns:
             True if safe to start pump
         """
-        # Check 1: Pressure must be >= 40 bar
-        if state.pressure < self.MIN_PRESSURE_FOR_PUMP_START:
+        # Check 1: Pressure must be >= 40 bar (only for Primary pump)
+        if pump_name == "Primary" and state.pressure < self.MIN_PRESSURE_FOR_PUMP_START:
             reason = (f"Pressure too low for {pump_name} pump start! "
-                      f"Current: {state.pressure:.2f} bar, Required: >= 40 bar")
+                      f"Current: {state.pressure:.1f} bar, Required: >= 40 bar")
             logger.warning(f"PUMP START BLOCKED: {pump_name} pump")
             logger.warning(f"   Reason: {reason}")
-            logger.warning(f"   Action: Raise pressure to 40 bar before starting pumps")
+            logger.warning(f"   Action: Raise pressure to 40 bar before starting {pump_name} pump")
             
             if self._on_procedure_violation:
                 self._on_procedure_violation(reason)
@@ -262,7 +262,7 @@ class InterlockValidator:
             Tuple of (is_satisfied, reason_if_not)
         """
         if state.pressure < self.MIN_PRESSURE_FOR_ROD_MOVEMENT:
-            return False, f"Pressure {state.pressure:.2f} bar < 140 bar required"
+            return False, f"Pressure {state.pressure:.1f} bar < 140 bar required"
         
         if state.emergency_active:
             return False, "Emergency shutdown active"

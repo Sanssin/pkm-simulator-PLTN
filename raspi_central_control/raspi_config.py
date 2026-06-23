@@ -10,9 +10,9 @@ PLTN Simulator v4.0 with UART Binary Protocol Architecture
 # Only hardware output pins are defined here (buzzer, etc.)
 
 # Output Pins
-BUZZER_PIN = 4           # GPIO 4 for passive buzzer alarm (software PWM) - dipindah dari 22
 LED_POWER_PIN = 13       # GPIO 13 for Power Output LED indicator (PWM)
 LED_CHERENKOV_PIN = 16   # GPIO 16 for Cherenkov Blue LED effect via 74HC245N (PWM)
+LED_TURBINE_PIN = 12     # GPIO 12 for Turbine decorative LED effect via 74HC245N (PWM)
 LED_RELIEF_GREEN_PIN = 5  # GPIO 5 for Relief Valve Safe (Green)
 LED_RELIEF_RED_PIN = 6    # GPIO 6 for Relief Valve Open (Red)
 
@@ -44,13 +44,17 @@ HUMIDIFIER_PINS = {
 # LED Strip Configuration (WS2812)
 # ============================================
 LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0) - Daisy Chained
-LED_STRIP_COUNT = 592    # Total number of LEDs (21 Pressurizer + 571 Pipa)
+LED_STRIP_COUNT = 334    # Total number of LEDs yang FISIKNYA SUDAH TERPASANG (313 + 21 pressurizer)
 
-# Segments: (start_index, length)
-LED_SEGMENT_PRESSURIZER = (0, 21)
-LED_SEGMENT_PRIMER = (21, 190)
-LED_SEGMENT_SEKUNDER = (211, 190)
-LED_SEGMENT_TERSIER = (401, 191)
+# Segments: (start_index, length) - Disusun BERURUTAN sesuai fisik kabel
+LED_SEGMENT_TERSIER_IN  = (0, 84)     # Baru: Pipa tersier masuk (Biru)
+LED_SEGMENT_KONDENSER   = (84, 46)    # Kondenser
+LED_SEGMENT_TERSIER_OUT = (130, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
+LED_SEGMENT_SEKUNDER_IN = (151, 45)   # Baru: Gabungan aliran sekunder dari kondenser (19 + 26)
+LED_SEGMENT_PRIMER      = (196, 117)  # Pipa Primer (disambung dari keluaran sekunder)
+LED_SEGMENT_PRESSURIZER = (313, 21)   # Pipa Pressurizer (disambung dari keluaran primer)
+
+# Segmen yang BELUM dipasang fisik (Kosong)
 
 # ============================================
 # System Parameters
@@ -83,13 +87,7 @@ PWM_SHUTDOWN_STEP = 5
 # ============================================
 DEBOUNCE_DELAY = 0.1
 PWM_UPDATE_INTERVAL = 0.1
-I2C_UPDATE_INTERVAL_FAST = 0.05    # ESP-B (critical)
-I2C_UPDATE_INTERVAL_NORMAL = 0.1   # ESP-C, ESP-E
 BLINK_INTERVAL = 0.25
-
-# I2C Timeout
-I2C_TIMEOUT = 1.0
-I2C_RETRY_COUNT = 3
 
 # ============================================
 # Logging Configuration

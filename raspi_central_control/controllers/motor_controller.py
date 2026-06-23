@@ -52,7 +52,7 @@ class MotorController:
                 try:
                     self.pi.set_mode(pin, pigpio.OUTPUT)
                     self.pi.set_PWM_frequency(pin, self.PWM_FREQUENCY)
-                    self.pi.set_PWM_range(pin, 100)  # 0-100% duty cycle
+                    self.pi.set_PWM_range(pin, 1000)  # 0-1000 for 0.1% resolution
                     self.pi.set_PWM_dutycycle(pin, 0)
                     logger.info(f"Initialized motor '{name}' on GPIO {pin}")
                 except Exception as e:
@@ -82,17 +82,14 @@ class MotorController:
         # Constrain speed between 0 and 100
         speed_percent = max(0.0, min(100.0, float(speed_percent)))
         
-        # Hardware safety limit: Cap turbine motor to 50% maximum
-        if motor_name == 'turbine':
-            speed_percent = speed_percent * 0.5  # Scale 0-100% input to 0-50% hardware output
-        
+        # No specific software cap needed; turbine is now a smaller motor safe at 100%
         self.current_speeds[motor_name] = speed_percent
         
         if not self.mock_mode:
             try:
                 pin = self.MOTOR_PINS[motor_name]
-                # pigpio range is 0-100 as set during initialization
-                self.pi.set_PWM_dutycycle(pin, int(speed_percent))
+                # pigpio range is 0-1000, so multiply percent by 10
+                self.pi.set_PWM_dutycycle(pin, int(speed_percent * 10.0))
             except Exception as e:
                 logger.error(f"Error setting speed for {motor_name}: {e}")
         else:

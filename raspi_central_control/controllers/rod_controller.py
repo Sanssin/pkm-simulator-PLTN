@@ -1,5 +1,5 @@
 import logging
-from io_handlers.button_handler import ButtonEvent
+from controllers.event_processor import ButtonEvent
 
 logger = logging.getLogger(__name__)
 
