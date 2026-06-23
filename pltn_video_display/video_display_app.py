@@ -1315,39 +1315,31 @@ class VideoDisplayApp:
         """Get instruction text for current step"""
         steps = [
             {
-                "text": ["Tahap 1: Nyalakan Pompa Tersier", "Silakan tekan tombol 'POMPA TERSIER ON' di panel kontrol untuk memulai sirkulasi air pendingin luar."],
+                "text": ["Tahap 1: Nyalakan Pompa Tersier", "Silakan tekan tombol 'POMPA TERSIER' di panel untuk memulai sirkulasi air pendingin luar."],
                 "check": lambda s: s.get("pump_tertiary", 0) >= 1
             },
             {
-                "text": ["Tahap 2: Nyalakan Pompa Sekunder", "Bagus! Selanjutnya, tekan tombol 'POMPA SEKUNDER ON' untuk mendinginkan uap dari turbin."],
+                "text": ["Tahap 2: Nyalakan Pompa Sekunder", "Bagus! Selanjutnya, tekan tombol 'POMPA SEKUNDER' untuk mendinginkan uap dari turbin."],
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
             },
             {
-                "text": ["Tahap 3: Naikkan Tekanan Awal", "Tekan dan tahan tombol 'TEKANAN NAIK' hingga pressurizer mencapai tekanan aman minimal 40 bar."],
-                "check": lambda s: s.get("pressure", 0) >= 40
-            },
-            {
-                "text": ["Tahap 4: Nyalakan Pompa Primer", "Tekanan sudah aman! Sekarang tekan tombol 'POMPA PRIMER ON' agar air pendingin reaktor mulai bersirkulasi."],
+                "text": ["Tahap 3: Nyalakan Pompa Primer", "Sekarang tekan tombol 'POMPA PRIMER' agar air pendingin reaktor mulai bersirkulasi."],
                 "check": lambda s: s.get("pump_primary", 0) >= 1
             },
             {
-                "text": ["Tahap 5: Capai Tekanan Operasi", "Kembali tekan dan tahan tombol 'TEKANAN NAIK' sampai mencapai target operasi normal di 140 bar."],
-                "check": lambda s: s.get("pressure", 0) >= 140
-            },
-            {
-                "text": ["Tahap 6: Angkat Safety Rod", "Tekanan optimal! Tarik penuh tuas 'SAFETY ROD UP' sampai 100% untuk menyiapkan kondisi kritis."],
+                "text": ["Tahap 4: Angkat Safety Rod", "Sirkulasi aman! Tarik perlahan tuas 'SAFETY ROD' ke atas hingga 100% untuk menyiapkan kondisi kritis."],
                 "check": lambda s: s.get("safety_rod", 0) >= 100
             },
             {
-                "text": ["Tahap 7: Posisikan Shim Rod", "Tarik batang kendali utama dengan tuas 'SHIM ROD UP' perlahan hingga mencapai posisi 50%."],
+                "text": ["Tahap 5: Posisikan Shim Rod", "Tarik batang kendali utama dengan tuas 'SHIM ROD' ke atas perlahan hingga mencapai posisi yang diinginkan (contoh 50%)."],
                 "check": lambda s: s.get("shim_rod", 0) >= 50
             },
             {
-                "text": ["Tahap 8: Naikkan Daya Reaktor", "Terakhir, tarik tuas pengatur 'REGULATING ROD UP' hingga 50% untuk mulai memanaskan air reaktor."],
+                "text": ["Tahap 6: Naikkan Daya Reaktor", "Terakhir, tarik tuas pengatur 'REGULATING ROD' ke atas untuk mulai memanaskan air reaktor dan menaikkan suhu."],
                 "check": lambda s: s.get("regulating_rod", 0) >= 50
             },
             {
-                "text": ["Selamat! Reaktor Beroperasi Normal", "PLTN kini siap menghasilkan listrik. Jaga agar suhu dan tekanan tetap stabil dalam batas aman."],
+                "text": ["Selamat! Reaktor Beroperasi", "PLTN kini siap menghasilkan panas. Jaga agar suhu dan aliran tetap stabil dalam batas aman."],
                 "check": lambda s: True
             }
         ]
