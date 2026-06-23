@@ -2041,7 +2041,8 @@ class VideoDisplayApp:
             if getattr(self, 'credits_screen', None) and self.credits_screen.active:
                 self.credits_screen.update()
                 self.credits_screen.draw(self.screen)
-                pygame.display.flip()
+            
+            pygame.display.flip()
             
             # 30 FPS sufficient for UI updates
             clock.tick(30)
