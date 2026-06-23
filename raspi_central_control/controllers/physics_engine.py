@@ -121,13 +121,15 @@ class PhysicsEngine:
         # Target core temperature based on rod (0 to 100%) -> (25C to 340C)
         target_core_temp = 25.0 + (effective_rod / 100.0) * 315.0
         
-        # LOFA / Cooling adjustments
-        if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
-        if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
+        # LOFA / Cooling adjustments (Only apply if reactor is active / rods are pulled)
+        if effective_rod > 0:
+            if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
+            if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
+            
         if state.spray_active: target_core_temp -= 50.0
         
-        # Pressurizer heating effect adds to target
-        target_core_temp += state.pressure * 0.1
+        # Pressurizer heating effect adds slightly to target
+        target_core_temp += state.pressure * 0.05
         
         target_core_temp = max(self.ambient_temp, target_core_temp)
         
