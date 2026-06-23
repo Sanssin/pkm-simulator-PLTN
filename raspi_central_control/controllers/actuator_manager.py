@@ -178,14 +178,14 @@ class ActuatorManager:
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
             ambient = 25.0
             
-            # Suhu primer normal berkisar 25C hingga 320C, saat LOFA bisa mencapai 380C
+            # Suhu primer normal bisa mencapai 320C, namun untuk visual kita buat merah solid (1.0) pada suhu 70C
             t_primary = getattr(state, 'temperature_coolant_primary', ambient)
-            hr_primary = (t_primary - ambient) / (380.0 - ambient)
+            hr_primary = (t_primary - ambient) / (70.0 - ambient)
             hr_primary = max(0.0, min(1.0, hr_primary))
             
-            # Suhu sekunder biasanya berkisar antara 25C hingga 280C
+            # Sama untuk sekunder, kita buat merah solid (1.0) pada suhu 70C
             t_secondary = getattr(state, 'temperature_coolant_secondary', ambient)
-            hr_secondary = (t_secondary - ambient) / (280.0 - ambient)
+            hr_secondary = (t_secondary - ambient) / (70.0 - ambient)
             hr_secondary = max(0.0, min(1.0, hr_secondary))
             
             self.led_strip.set_heat_ratio('primer', hr_primary)
