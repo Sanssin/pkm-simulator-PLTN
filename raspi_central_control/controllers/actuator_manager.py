@@ -161,17 +161,18 @@ class ActuatorManager:
             
             # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
             sim_mode = getattr(state, 'simulation_mode', 'manual')
-            is_reset = (getattr(state, 'pressure', 1.0) == 0.0 and getattr(state, 'temperature_core', 26.0) == 25.0)
+            # Deteksi reset: tekanan hampir 0 dan semua pompa mati
+            is_reset = (getattr(state, 'pressure', 1.0) < 5.0 and 
+                        getattr(state, 'pump_primary_status', 1) == 0 and
+                        getattr(state, 'pump_secondary_status', 1) == 0 and
+                        getattr(state, 'pump_tertiary_status', 1) == 0)
             
             if sim_mode == 'idle' or is_reset:
-                if prim_speed == 0.0:
-                    self.led_strip.set_active('primer', False)
-                if sec_speed == 0.0:
-                    self.led_strip.set_active('sekunder_in', False)
-                if tert_speed == 0.0:
-                    self.led_strip.set_active('tersier_in', False)
-                    self.led_strip.set_active('kondenser', False)
-                    self.led_strip.set_active('tersier_out', False)
+                self.led_strip.set_active('primer', False)
+                self.led_strip.set_active('sekunder_in', False)
+                self.led_strip.set_active('tersier_in', False)
+                self.led_strip.set_active('kondenser', False)
+                self.led_strip.set_active('tersier_out', False)
             # Selain kondisi di atas, is_active tidak diset False meskipun pompa mati, 
             # sehingga lampu tetap menyala (namun tidak bergerak karena speed 0)
             
