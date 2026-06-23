@@ -191,7 +191,7 @@ class AutoSimulator:
                 state.pump_primary_status = 0
                 state.pump_secondary_status = 0
                 state.pump_tertiary_status = 0
-                state.pressure = 0.0
+                state.pressure = 1.0
                 state.safety_rod = 0
                 state.shim_rod = 0
                 state.regulating_rod = 0
@@ -229,7 +229,7 @@ class AutoSimulator:
             self._set_phase(SimPhase.PRESSURE_140, "Pressurizer")
             logger.info("1:43 - Pressurizer Activation (Ramp to 155 bar)")
             # Ramp pressure from 1.43 to 2.18 (138s). Duration = 35s
-            if not self._ramp_value('pressure', 0.0, 155.0, 35.0): return
+            if not self._ramp_value('pressure', 1.0, 155.0, 35.0): return
             
             # 2.19 (139s) - Pompa primer
             if not wait_until(139.0): return
