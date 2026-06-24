@@ -44,15 +44,15 @@ HUMIDIFIER_PINS = {
 # LED Strip Configuration (WS2812)
 # ============================================
 LED_STRIP_PIN = 18       # Pin for WS2812 (PWM0) - Daisy Chained
-LED_STRIP_COUNT = 358    # Total number of LEDs yang FISIKNYA SUDAH TERPASANG (334 + 24 sekunder_in tambahan)
+LED_STRIP_COUNT = 369    # Total number of LEDs yang FISIKNYA SUDAH TERPASANG (sebelumnya 358 + 11 tersier_in)
 
 # Segments: (start_index, length) - Disusun BERURUTAN sesuai fisik kabel
-LED_SEGMENT_TERSIER_IN  = (0, 84)     # Baru: Pipa tersier masuk (Biru)
-LED_SEGMENT_KONDENSER   = (84, 46)    # Kondenser
-LED_SEGMENT_TERSIER_OUT = (130, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
-LED_SEGMENT_SEKUNDER_IN = (151, 69)   # Baru: Gabungan aliran sekunder dari kondenser (sebelumnya 45 + 24 = 69)
-LED_SEGMENT_PRIMER      = (220, 117)  # Pipa Primer (disambung dari keluaran sekunder)
-LED_SEGMENT_PRESSURIZER = (337, 21)   # Pipa Pressurizer (disambung dari keluaran primer)
+LED_SEGMENT_TERSIER_IN  = (0, 95)     # Baru: Pipa tersier masuk (Biru, ditambah 11 LED di awal)
+LED_SEGMENT_KONDENSER   = (95, 46)    # Kondenser
+LED_SEGMENT_TERSIER_OUT = (141, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
+LED_SEGMENT_SEKUNDER_IN = (162, 69)   # Baru: Gabungan aliran sekunder dari kondenser
+LED_SEGMENT_PRIMER      = (231, 117)  # Pipa Primer (disambung dari keluaran sekunder)
+LED_SEGMENT_PRESSURIZER = (348, 21)   # Pipa Pressurizer (disambung dari keluaran primer)
 
 # Segmen yang BELUM dipasang fisik (Kosong)
 
