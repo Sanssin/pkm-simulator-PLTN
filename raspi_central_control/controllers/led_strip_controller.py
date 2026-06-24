@@ -76,13 +76,19 @@ class LEDSegment:
                 gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             return gradient_colors
 
-        # Aliran balik sekunder (sekunder_in) dari kondenser: Hangat (sedikit merah) saat reaktor aktif
+        # Aliran balik sekunder (sekunder_in) dari kondenser: Orange cerah saat aktif
         if self.name == 'sekunder_in':
-            # Buat rasionya lebih kecil dari heat_ratio utama agar warnanya hanya "hangat", bukan mendidih
-            warm_ratio = self.heat_ratio * 0.4 
-            warm_r = int(blue[0] * (1.0 - warm_ratio) + target_hot[0] * warm_ratio)
-            warm_g = int(blue[1] * (1.0 - warm_ratio) + target_hot[1] * warm_ratio)
-            warm_b = int(blue[2] * (1.0 - warm_ratio) + target_hot[2] * warm_ratio)
+            if self.heat_ratio < 0.05:
+                # Masih dingin
+                warm_r, warm_g, warm_b = blue
+            else:
+                # Transisi langsung ke Orange Cerah (tanpa dicampur biru untuk menghindari warna Pink/Ungu)
+                # Intensitas terang menyesuaikan heat_ratio
+                intensity = 100 + (155 * self.heat_ratio)
+                warm_r = int(intensity)          # Max 255
+                warm_g = int(intensity * 0.5)    # Max ~127 (Orange)
+                warm_b = 0                       # Nol biru agar tidak pink
+            
             for i in range(self.length):
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
