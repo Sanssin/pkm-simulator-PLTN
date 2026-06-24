@@ -151,46 +151,22 @@ if _PYQT_AVAILABLE:
             super().mousePressEvent(event)
 
     class HoldButton(QPushButton):
-        """Button that triggers touch press and release, supporting repeat triggers for rods/pressure."""
+        """Button that triggers touch press and release using Qt's native auto-repeat for rods/pressure."""
 
         def __init__(self, text: str, action: str, parent_window: TouchPanelBaseWindow) -> None:
             super().__init__(text)
             self.action = action
             self.window_ref = parent_window
-            self.hold_timer = QTimer(self)
-            self.hold_timer.setInterval(50)  # 50ms = 20 Hz
-            self.hold_timer.timeout.connect(self._on_timeout)
-            self.press_time = 0.0
-            self.is_held = False
             
-            self.pressed.connect(self._on_pressed)
-            self.released.connect(self._on_released)
-
-        def _on_pressed(self) -> None:
-            self.press_time = time.time()
-            self.is_held = False
-            # Rod controls should begin touch immediately
-            if "ROD" in self.action:
-                self.window_ref._on_button_press(self.action)
-            self.hold_timer.start()
-
-        def _on_timeout(self) -> None:
-            if time.time() - self.press_time > 0.30:
-                if not self.is_held:
-                    self.is_held = True
-                    # Pressure controls start their touch when hold is confirmed
-                    if "ROD" not in self.action:
-                        self.window_ref._on_button_press(self.action)
-                self.window_ref._on_button_hold(self.action)
-
-        def _on_released(self) -> None:
-            self.hold_timer.stop()
-            if self.is_held or "ROD" in self.action:
-                self.window_ref._on_button_release(self.action)
+            self.setAutoRepeat(True)
+            self.setAutoRepeatDelay(300)
+            self.setAutoRepeatInterval(50)  # 20 Hz
             
-            # If not held, trigger a click action
-            if not self.is_held and (time.time() - self.press_time <= 0.30):
-                self.window_ref._on_button_click(self.action)
+            self.clicked.connect(self._on_clicked)
+
+        def _on_clicked(self) -> None:
+            self.window_ref._on_button_click(self.action)
+
 else:
     class HoldButton:  # type: ignore[no-redef]
         pass
@@ -1102,45 +1078,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._update_local_simulation(action)
         self._update_ui_displays()
 
-    def _on_button_press(self, action: str) -> None:
-        if self._is_auto_running():
-            return
-            
-        self._active_holds[action] = time.time()
-        
-        # Emit one event immediately for rods, so they feel responsive instantly
-        if "ROD" in action and self.input_handler is not None:
-            try:
-                self.input_handler.emit(action, duration=0.0)
-            except Exception as e:
-                logger.error("Failed to begin touch for %s: %s", action, e)
 
-        if self._footer_label is not None:
-            self._footer_label.setText(f"Menyesuaikan: {action}...")
-
-    def _on_button_hold(self, action: str) -> None:
-        if self._is_auto_running():
-            return
-            
-        # In local mode, apply gradual changes during hold timer tick
-        if self.local_mode:
-            self._update_local_simulation_hold(action)
-            self._update_ui_displays()
-            
-        # Send IPC event periodically for real-time update
-        if self.input_handler is not None:
-            try:
-                self.input_handler.emit(action, duration=0.0)
-            except Exception as e:
-                logger.error("Failed to write hold input event: %s", e)
-
-    def _on_button_release(self, action: str) -> None:
-        if action in self._active_holds:
-            start_ts = self._active_holds.pop(action)
-            duration = max(0.0, time.time() - start_ts)
-
-            if self._footer_label is not None:
-                self._footer_label.setText(f"Telah disesuaikan: {action} (durasi: {duration:.2f}d)")
 
     def _on_action(self, action: str) -> None:
         """Kept for backward compatibility and logging."""
@@ -1197,13 +1135,7 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
         elif action == "PRESSURE_DOWN":
             self.sim_pressure = max(0.0, self.sim_pressure - 0.05)
-
-    def _update_local_simulation_hold(self, action: str) -> None:
-        if self.sim_emergency:
-            return
-
-        # Gradual adjustment rate per tick (100ms)
-        if action == "SAFETY_ROD_UP":
+        elif action == "SAFETY_ROD_UP":
             self.sim_safety_rod = min(100, self.sim_safety_rod + 2)
         elif action == "SAFETY_ROD_DOWN":
             self.sim_safety_rod = max(0, self.sim_safety_rod - 2)
@@ -1215,10 +1147,7 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_regulating_rod = min(100, self.sim_regulating_rod + 2)
         elif action == "REGULATING_ROD_DOWN":
             self.sim_regulating_rod = max(0, self.sim_regulating_rod - 2)
-        elif action == "PRESSURE_UP":
-            self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
-        elif action == "PRESSURE_DOWN":
-            self.sim_pressure = max(0.0, self.sim_pressure - 0.05)
+
 
     def _run_local_simulation_step(self) -> None:
         self.tick_counter += 1

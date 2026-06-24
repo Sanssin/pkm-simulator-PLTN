@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 
 from touch_panel.input_handler import (
-    TouchGestureClassifier,
     TouchInputHandler,
     TouchInputWriter,
     TouchKind,
@@ -19,7 +18,7 @@ class TouchInputHandlerTests(unittest.TestCase):
             path = Path(tmpdir) / "pltn_input.json"
             handler = TouchInputHandler(writer=TouchInputWriter(path))
 
-            kind, events = handler.emit("PUMP_PRIMARY_ON", duration=0.0, timestamp=10.0)
+            kind, events = handler.emit("PUMP_PRIMARY_ON", timestamp=10.0)
 
             self.assertEqual(kind, TouchKind.TAP)
             self.assertEqual(len(events), 1)
@@ -33,10 +32,10 @@ class TouchInputHandlerTests(unittest.TestCase):
             path = Path(tmpdir) / "pltn_input.json"
             handler = TouchInputHandler(writer=TouchInputWriter(path))
 
-            kind, events = handler.emit("SAFETY_ROD_UP", duration=0.75, timestamp=20.0)
+            kind, events = handler.emit("SAFETY_ROD_UP", timestamp=20.0)
 
-            self.assertEqual(kind, TouchKind.HOLD)
-            self.assertGreater(len(events), 1)
+            self.assertEqual(kind, TouchKind.TAP)
+            self.assertEqual(len(events), 1)
 
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["events"][0]["type"], "ROD_MOVE")
@@ -47,11 +46,6 @@ class TouchInputHandlerTests(unittest.TestCase):
         handler = TouchInputHandler()
         with self.assertRaises(ValueError):
             handler.emit("NOT_A_CONTROL")
-
-    def test_classifier_threshold(self) -> None:
-        classifier = TouchGestureClassifier(hold_threshold=0.35)
-        self.assertEqual(classifier.classify(0.34), TouchKind.TAP)
-        self.assertEqual(classifier.classify(0.35), TouchKind.HOLD)
 
 
 if __name__ == "__main__":
