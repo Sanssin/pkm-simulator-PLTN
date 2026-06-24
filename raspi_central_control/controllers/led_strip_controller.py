@@ -85,11 +85,11 @@ class LEDSegment:
                 warm_r, warm_g, warm_b = blue
             else:
                 # Transisi bertahap, tanpa lompatan intensitas dasar (baseline 100) seperti sebelumnya.
-                # Agar tidak "terlalu cerah", kita batasi intensitas target max Orange: R=150, G=60
+                # Sesuaikan warna orange agar lebih cerah dari warna panas kondenser tapi tidak menyilaukan
                 prog = (self.heat_ratio - 0.2) / 0.8
                 
-                warm_r = int(150 * prog)       # Maksimal 150 (tidak menyilaukan)
-                warm_g = int(60 * prog)        # Maksimal 60 
+                warm_r = int(220 * prog)       # Maksimal 220 (cerah tapi orange)
+                warm_g = int(90 * prog)        # Maksimal 90 
                 # Biru di-fade out perlahan di separuh awal agar warna tidak bertabrakan jadi pink terang
                 warm_b = int(255 * max(0.0, 1.0 - (prog * 2.0)))
             
