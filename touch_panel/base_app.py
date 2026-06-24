@@ -1053,7 +1053,7 @@ class TouchPanelBaseWindow(QMainWindow):
     def _execute_action(self, action: str) -> None:
         if self.input_handler is not None:
             try:
-                self.input_handler.emit(action, duration=0.0)
+                self.input_handler.emit(action)
             except Exception as e:
                 logger.error("Failed to write input event: %s", e)
 
