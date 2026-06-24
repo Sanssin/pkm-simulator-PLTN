@@ -61,13 +61,13 @@ class LEDSegment:
 
         # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
         # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
-        # Lampu 24-46 (index 23-45) Merah/Panas: konstan, tidak bergantung suhu reaktor
+        # Lampu 24-46 (index 23-45) Merah/Panas: bergantung suhu reaktor
         if self.name == 'kondenser':
             for i in range(self.length):
                 if i < 23:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
                 else:
-                    gradient_colors[i] = Color(target_hot[0], target_hot[1], target_hot[2])
+                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
@@ -87,10 +87,10 @@ class LEDSegment:
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
 
-        # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid konstan
+        # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid sesuai reaktor
         if self.name == 'tersier_out':
             for i in range(self.length):
-                gradient_colors[i] = Color(target_hot[0], target_hot[1], target_hot[2])
+                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
             return gradient_colors
 
         # Pipa primer: Normalnya (hingga 320C, hr_primary ~0.83) batas merah di index 26.
