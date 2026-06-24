@@ -207,7 +207,7 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('primer', hr_primary)
             self.led_strip.set_heat_ratio('sekunder_in', hr_secondary)
             self.led_strip.set_heat_ratio('kondenser', hr_secondary)
-            self.led_strip.set_heat_ratio('tersier_out', hr_secondary * 0.5)
+            self.led_strip.set_heat_ratio('tersier_out', hr_secondary)
             
         # Update Pressurizer WS2812 Fill Level based on Pressure
         if hasattr(self, 'led_strip') and self.led_strip is not None and 'pressurizer' in self.led_strip.segments:
