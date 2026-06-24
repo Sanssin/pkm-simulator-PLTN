@@ -52,10 +52,11 @@ class LEDSegment:
         gradient_colors = [Color(0,0,0)] * self.length
         
         blue = (0, 0, 255)
-        # Warna panas bertransisi dari Biru (dingin) ke Merah (panas maksimum)
-        hot_r = int(blue[0] * (1.0 - self.heat_ratio) + 255 * self.heat_ratio)
-        hot_g = int(blue[1] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
-        hot_b = int(blue[2] * (1.0 - self.heat_ratio) + 0 * self.heat_ratio)
+        # Warna panas bertransisi dari Biru (dingin) ke Orange (panas maksimum)
+        target_hot = (255, 100, 0)
+        hot_r = int(blue[0] * (1.0 - self.heat_ratio) + target_hot[0] * self.heat_ratio)
+        hot_g = int(blue[1] * (1.0 - self.heat_ratio) + target_hot[1] * self.heat_ratio)
+        hot_b = int(blue[2] * (1.0 - self.heat_ratio) + target_hot[2] * self.heat_ratio)
         hot_color = (hot_r, hot_g, hot_b)
 
         # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
@@ -79,9 +80,9 @@ class LEDSegment:
         if self.name == 'sekunder_in':
             # Buat rasionya lebih kecil dari heat_ratio utama agar warnanya hanya "hangat", bukan mendidih
             warm_ratio = self.heat_ratio * 0.4 
-            warm_r = int(blue[0] * (1.0 - warm_ratio) + 255 * warm_ratio)
-            warm_g = int(blue[1] * (1.0 - warm_ratio) + 0 * warm_ratio)
-            warm_b = int(blue[2] * (1.0 - warm_ratio) + 0 * warm_ratio)
+            warm_r = int(blue[0] * (1.0 - warm_ratio) + target_hot[0] * warm_ratio)
+            warm_g = int(blue[1] * (1.0 - warm_ratio) + target_hot[1] * warm_ratio)
+            warm_b = int(blue[2] * (1.0 - warm_ratio) + target_hot[2] * warm_ratio)
             for i in range(self.length):
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
