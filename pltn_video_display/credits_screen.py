@@ -23,9 +23,10 @@ class CreditsScreen:
         # Page 3: 1 section (2 cols)
         
         page_groups = [
-            [CREDITS[0], CREDITS[1], CREDITS[2]],  # Page 1
-            [CREDITS[3]],                          # Page 2
-            [CREDITS[4]]                           # Page 3
+            [CREDITS[0], CREDITS[1]],              # Page 1
+            [CREDITS[2]],                          # Page 2
+            [CREDITS[3]],                          # Page 3
+            [CREDITS[4]]                           # Page 4
         ]
         
         for i, group in enumerate(page_groups):
@@ -49,7 +50,8 @@ class CreditsScreen:
             title_rect = title.get_rect(center=(self.width // 2, int(100 * self.app.scale)))
             surface.blit(title, title_rect)
             
-            if i == 0:
+            # Use 1 column layout if there are multiple sections or the name list is short
+            if len(group) > 1 or len(group[0]["names"]) <= 12:
                 self._render_page_1_col(surface, group)
             else:
                 self._render_page_3_cols(surface, group[0])
