@@ -1460,7 +1460,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # Backend values: 0=OFF, 1=STARTING, 2=ON, 3=SHUTTING_DOWN
         is_starting = (state_val == 1) or (0.0 < state_val < 1.0 and target_val > state_val)
         is_shutting_down = (state_val == 3) or (0.0 < state_val < 1.0 and target_val < state_val)
-        is_on = (state_val == 2) or (state_val >= 1.0 and not is_starting)
+        is_on = (state_val == 2) or (state_val >= 1.0 and not is_starting and not is_shutting_down)
         is_off = (state_val == 0) or (state_val <= 0.0)
         
         # Determine if pump failed (went from ON/STARTING directly to OFF without SHUTTING_DOWN)
