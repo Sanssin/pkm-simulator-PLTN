@@ -84,14 +84,14 @@ class LEDSegment:
                 # Reaktor belum cukup panas (atau mati), air masih fase biru (Dingin)
                 warm_r, warm_g, warm_b = blue
             else:
-                # Transisi bertahap, tanpa lompatan intensitas dasar (baseline 100) seperti sebelumnya.
-                # Sesuaikan warna orange agar lebih cerah dari warna panas kondenser tapi tidak menyilaukan
+                # Transisi bertahap dari biru (dingin) ke soft pink / peach (hangat)
+                # Menghindari warna orange menyala yang terlihat seperti sirup
                 prog = (self.heat_ratio - 0.2) / 0.8
                 
-                warm_r = int(220 * prog)       # Maksimal 220 (cerah tapi orange)
-                warm_g = int(90 * prog)        # Maksimal 90 
-                # Biru di-fade out perlahan di separuh awal agar warna tidak bertabrakan jadi pink terang
-                warm_b = int(255 * max(0.0, 1.0 - (prog * 2.0)))
+                # Target warna hangat: Soft Pink / Peach (R=200, G=80, B=100)
+                warm_r = int(200 * prog)       
+                warm_g = int(80 * prog)        
+                warm_b = int(255 - (155 * prog)) # Turun dari 255 ke 100
             
             for i in range(self.length):
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
