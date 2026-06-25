@@ -108,7 +108,7 @@ class LEDSegment:
         # titik perpotongan (batas) merah akan bergeser ke seluruh pipa (hingga self.length).
         if self.name == 'primer':
             # Samakan warna panas primer dengan kondenser (merah pekat)
-            hot_color = (red[0], red[1], red[2])
+            hot_color = (255, 0, 0)
             
             # Titik perpotongan panas ditambah 4 lampu led strip
             base_boundary = 31
