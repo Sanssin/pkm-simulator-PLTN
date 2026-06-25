@@ -111,8 +111,8 @@ class LEDSegment:
             # Bertransisi sangat cepat ke merah pekat ketika reaktor mulai bekerja.
             if self.heat_ratio < 0.05:
                 primer_r, primer_g, primer_b = blue
-            elif self.heat_ratio < 0.15:
-                prog = (self.heat_ratio - 0.05) / 0.10
+            elif self.heat_ratio < 0.40:
+                prog = (self.heat_ratio - 0.05) / 0.35
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
