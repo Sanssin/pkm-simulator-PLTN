@@ -16,7 +16,7 @@ except ImportError:
 class ServoController:
     # Typical standard servo pulse widths (microseconds)
     MIN_PW = 500   # 0 degrees
-    MAX_PW = 2500  # 180 degrees
+    MAX_PW = 2478  # 178 degrees (reduced from 2500/180deg to prevent rod breakage)
     
     def __init__(self, safety_pin=23, shim_pin=24, reg_pin=25):
         """
