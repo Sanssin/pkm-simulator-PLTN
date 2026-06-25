@@ -75,7 +75,15 @@ class PhysicsEngine:
             else:
                 state.turbine_speed = max(state.turbine_speed - (40.0 * dt), 0.0)
                     
-            state.thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
+            target_thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
+            
+            # Mencegah daya turun menjadi 0 seketika saat SCRAM atau control rod diturunkan paksa.
+            # Turbin masih memiliki gaya inersia/potensial yang perlahan melambat.
+            if target_thermal_kw < state.thermal_kw:
+                decay_rate = 300000.0 / 2.5 # Turun dari max ke 0 dalam ~2.5 detik
+                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
+            else:
+                state.thermal_kw = target_thermal_kw
 
 
         # =====================================================================
