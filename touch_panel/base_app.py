@@ -1485,8 +1485,8 @@ class TouchPanelBaseWindow(QMainWindow):
             btn_on.setText(f"{base_name} (START UP)")
             btn_off.setText(f"{base_name} OFF")
         elif is_shutting_down:
-            btn_on.setText(f"{base_name} ON")
-            btn_off.setText(f"{base_name} (SHUT DOWN)")
+            btn_on.setText(f"{base_name} (SHUT DOWN)")
+            btn_off.setText(f"{base_name} OFF")
         elif is_on:
             btn_on.setText(f"{base_name} ON")
             btn_off.setText(f"{base_name} OFF")
@@ -1526,11 +1526,11 @@ class TouchPanelBaseWindow(QMainWindow):
         elif is_shutting_down:
             btn_on.setProperty("active", "false")
             btn_on.setProperty("active_starting", "false")
+            btn_on.setProperty("active_off", "true" if self.flash_toggle else "false")
             btn_on.setEnabled(False)
             
-            btn_off.setProperty("active_off", "true" if self.flash_toggle else "false")
+            btn_off.setProperty("active_off", "false")
             btn_off.setEnabled(False)
-            btn_on.setProperty("active_off", "false")
             
         btn_on.style().unpolish(btn_on)
         btn_on.style().polish(btn_on)
