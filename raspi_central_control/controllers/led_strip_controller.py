@@ -109,10 +109,10 @@ class LEDSegment:
         if self.name == 'primer':
             # Jika reaktor belum panas (suhu ambient), tetap biru.
             # Bertransisi sangat cepat ke merah pekat ketika reaktor mulai bekerja.
-            if self.heat_ratio < 0.05:
+            if self.heat_ratio <= 0.0:
                 primer_r, primer_g, primer_b = blue
-            elif self.heat_ratio < 0.40:
-                prog = (self.heat_ratio - 0.05) / 0.35
+            elif self.heat_ratio < 0.13: # Setara dengan suhu ~70C
+                prog = self.heat_ratio / 0.13
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
