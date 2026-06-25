@@ -66,10 +66,9 @@ class CreditsScreen:
             surface.blit(header, header_rect)
             y_offset += int(80 * self.app.scale)
             
-            # Names
             for name in section["names"]:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-                name_rect = name_surf.get_rect(midleft=(self.width // 2 - int(150 * self.app.scale), y_offset))
+                name_rect = name_surf.get_rect(center=(self.width // 2, y_offset))
                 surface.blit(name_surf, name_rect)
                 y_offset += int(45 * self.app.scale)
             
@@ -92,30 +91,30 @@ class CreditsScreen:
         
         start_y = y_offset
         
-        # Column 1 (20% width)
-        x_col1 = (self.width // 6) - int(80 * self.app.scale)
+        # Column 1 (16.6% width, centered)
+        x_col1 = self.width // 6
         y = start_y
         for name in col1_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(midleft=(x_col1, y))
+            name_rect = name_surf.get_rect(center=(x_col1, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
             
-        # Column 2 (50% width)
-        x_col2 = (self.width // 2) - int(80 * self.app.scale)
+        # Column 2 (50% width, centered)
+        x_col2 = self.width // 2
         y = start_y
         for name in col2_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(midleft=(x_col2, y))
+            name_rect = name_surf.get_rect(center=(x_col2, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
 
-        # Column 3 (80% width)
-        x_col3 = (self.width * 5 // 6) - int(80 * self.app.scale)
+        # Column 3 (83.3% width, centered)
+        x_col3 = self.width * 5 // 6
         y = start_y
         for name in col3_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(midleft=(x_col3, y))
+            name_rect = name_surf.get_rect(center=(x_col3, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
 
