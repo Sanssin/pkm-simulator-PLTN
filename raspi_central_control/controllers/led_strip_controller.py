@@ -107,7 +107,11 @@ class LEDSegment:
         # Saat LOFA (temp > 320C, hr_primary -> 1.0), air panas tidak didinginkan sehingga 
         # titik perpotongan (batas) merah akan bergeser ke seluruh pipa (hingga self.length).
         if self.name == 'primer':
-            base_boundary = 27
+            # Samakan warna panas primer dengan kondenser (merah pekat)
+            hot_color = (red[0], red[1], red[2])
+            
+            # Titik perpotongan panas ditambah 4 lampu led strip
+            base_boundary = 31
             hr_normal = 0.83
             
             if self.heat_ratio <= hr_normal:
