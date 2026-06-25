@@ -29,12 +29,20 @@ class CreditsScreen:
         ]
         
         for i, group in enumerate(page_groups):
-            # Create a semi-transparent surface matching the app's light theme
-            # app.COLOR_BG is RGB (245, 248, 250). We add alpha 240.
-            bg_color = (*self.app.COLOR_BG, 240)
+            # Create a solid background
+            bg_color = self.app.COLOR_BG
             
-            surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            surface = pygame.Surface((self.width, self.height))
             surface.fill(bg_color)
+            
+            # Draw Logos
+            margin_x = int(50 * self.app.scale)
+            header_y = int(40 * self.app.scale)
+            if hasattr(self.app, 'logo_brin') and self.app.logo_brin:
+                surface.blit(self.app.logo_brin, (margin_x, header_y))
+            if hasattr(self.app, 'logo_poltek') and self.app.logo_poltek:
+                logo_x = self.width - getattr(self.app, 'logo_size_large', (150,150))[0] - margin_x
+                surface.blit(self.app.logo_poltek, (logo_x, header_y))
             
             # Common Title for all pages
             title = self.app.font_display.render("DAFTAR PENGEMBANG", True, self.app.COLOR_PRIMARY_BRIGHT)
@@ -61,7 +69,7 @@ class CreditsScreen:
             # Names
             for name in section["names"]:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-                name_rect = name_surf.get_rect(center=(self.width // 2, y_offset))
+                name_rect = name_surf.get_rect(midleft=(self.width // 2 - int(150 * self.app.scale), y_offset))
                 surface.blit(name_surf, name_rect)
                 y_offset += int(45 * self.app.scale)
             
@@ -85,29 +93,29 @@ class CreditsScreen:
         start_y = y_offset
         
         # Column 1 (20% width)
-        x_col1 = self.width // 5
+        x_col1 = (self.width // 6) - int(80 * self.app.scale)
         y = start_y
         for name in col1_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col1, y))
+            name_rect = name_surf.get_rect(midleft=(x_col1, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
             
         # Column 2 (50% width)
-        x_col2 = self.width // 2
+        x_col2 = (self.width // 2) - int(80 * self.app.scale)
         y = start_y
         for name in col2_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col2, y))
+            name_rect = name_surf.get_rect(midleft=(x_col2, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
 
         # Column 3 (80% width)
-        x_col3 = (self.width * 4) // 5
+        x_col3 = (self.width * 5 // 6) - int(80 * self.app.scale)
         y = start_y
         for name in col3_names:
             name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col3, y))
+            name_rect = name_surf.get_rect(midleft=(x_col3, y))
             surface.blit(name_surf, name_rect)
             y += int(50 * self.app.scale)
 
