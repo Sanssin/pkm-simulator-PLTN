@@ -1,4 +1,4 @@
-﻿"""
+"""
 PLTN Video Display Application
 Menampilkan video edukasi atau interactive guide
 Fullscreen ke HDMI monitor
@@ -940,8 +940,6 @@ class VideoDisplayApp:
             desc_text = self.font_small.render(line, True, self.COLOR_PRIMARY)
             desc_rect = desc_text.get_rect(center=(self.width//2, desc_y_start + i * int(40 * self.scale)))
             self.screen.blit(desc_text, desc_rect)
-        
-        pygame.display.flip()
     
     def draw_reactor_diagnostic_displays(self, state: Dict, start_x: int, start_y: int, width: int, height: int):
         """Draw Reactor Diagnostic Displays in a hierarchical layout"""
