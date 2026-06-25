@@ -199,9 +199,9 @@ class ActuatorManager:
             hr_primary = (t_primary - ambient) / (380.0 - ambient)
             hr_primary = max(0.0, min(1.0, hr_primary))
             
-            # Skalakan juga sekunder ke batas 380C agar warnanya konsisten
+            # Sama untuk sekunder, kita buat merah solid (1.0) pada suhu 70C agar animasi campuran warnanya bekerja dengan benar
             t_secondary = getattr(state, 'temperature_coolant_secondary', ambient)
-            hr_secondary = (t_secondary - ambient) / (380.0 - ambient)
+            hr_secondary = (t_secondary - ambient) / (70.0 - ambient)
             hr_secondary = max(0.0, min(1.0, hr_secondary))
             
             self.led_strip.set_heat_ratio('primer', hr_primary)
