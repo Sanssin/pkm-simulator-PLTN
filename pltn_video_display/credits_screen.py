@@ -23,10 +23,9 @@ class CreditsScreen:
         # Page 3: 1 section (2 cols)
         
         page_groups = [
-            [CREDITS[0], CREDITS[1]],              # Page 1
-            [CREDITS[2]],                          # Page 2
-            [CREDITS[3]],                          # Page 3
-            [CREDITS[4]]                           # Page 4
+            [CREDITS[0], CREDITS[1], CREDITS[2]],  # Page 1
+            [CREDITS[3]],                          # Page 2
+            [CREDITS[4]]                           # Page 3
         ]
         
         for i, group in enumerate(page_groups):
@@ -50,75 +49,93 @@ class CreditsScreen:
             title_rect = title.get_rect(center=(self.width // 2, int(100 * self.app.scale)))
             surface.blit(title, title_rect)
             
-            # Use 1 column layout if there are multiple sections or the name list is short
-            if len(group) > 1 or len(group[0]["names"]) <= 12:
-                self._render_page_1_col(surface, group)
-            else:
-                self._render_page_3_cols(surface, group[0])
-                
+            self._render_page(surface, group)
             self.pages.append(surface)
             
-    def _render_page_1_col(self, surface, sections):
-        y_offset = int(250 * self.app.scale)
-        
+    def _render_page(self, surface, sections):
+        # Start a bit higher if we have multiple sections to fit them
+        y_offset = int(220 * self.app.scale) if len(sections) > 1 else int(250 * self.app.scale)
         for section in sections:
-            # Header
-            header = self.app.font_idle_sub.render(section["section"], True, self.app.COLOR_PRIMARY)
-            header_rect = header.get_rect(center=(self.width // 2, y_offset))
-            surface.blit(header, header_rect)
-            y_offset += int(80 * self.app.scale)
+            y_offset = self._render_section(surface, section, y_offset)
             
-            for name in section["names"]:
+    def _render_section(self, surface, section, start_y):
+        y_offset = start_y
+        
+        # Header
+        header = self.app.font_idle_sub.render(section["section"], True, self.app.COLOR_PRIMARY)
+        header_rect = header.get_rect(center=(self.width // 2, y_offset))
+        surface.blit(header, header_rect)
+        y_offset += int(70 * self.app.scale)
+        
+        names = section["names"]
+        
+        # Choose layout based on number of names
+        if len(names) <= 2:
+            # 1 Column
+            for name in names:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(self.width // 2, y_offset))
                 surface.blit(name_surf, name_rect)
                 y_offset += int(45 * self.app.scale)
+        elif len(names) < 12:
+            # 2 Columns
+            mid = (len(names) + 1) // 2
+            col1 = names[:mid]
+            col2 = names[mid:]
             
-            y_offset += int(40 * self.app.scale) # Spacing between sections
-
-    def _render_page_3_cols(self, surface, section):
-        y_offset = int(250 * self.app.scale)
-        
-        # Header (centered)
-        header = self.app.font_idle_sub.render(section["section"], True, self.app.COLOR_PRIMARY)
-        header_rect = header.get_rect(center=(self.width // 2, y_offset))
-        surface.blit(header, header_rect)
-        y_offset += int(80 * self.app.scale)
-        
-        names = section["names"]
-        col_len = (len(names) + 2) // 3
-        col1_names = names[:col_len]
-        col2_names = names[col_len:col_len*2]
-        col3_names = names[col_len*2:]
-        
-        start_y = y_offset
-        
-        # Column 1 (16.6% width, centered)
-        x_col1 = self.width // 6
-        y = start_y
-        for name in col1_names:
-            name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col1, y))
-            surface.blit(name_surf, name_rect)
-            y += int(50 * self.app.scale)
+            x1 = self.width // 3
+            x2 = self.width * 2 // 3
             
-        # Column 2 (50% width, centered)
-        x_col2 = self.width // 2
-        y = start_y
-        for name in col2_names:
-            name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col2, y))
-            surface.blit(name_surf, name_rect)
-            y += int(50 * self.app.scale)
-
-        # Column 3 (83.3% width, centered)
-        x_col3 = self.width * 5 // 6
-        y = start_y
-        for name in col3_names:
-            name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
-            name_rect = name_surf.get_rect(center=(x_col3, y))
-            surface.blit(name_surf, name_rect)
-            y += int(50 * self.app.scale)
+            y_col1 = y_offset
+            for name in col1:
+                name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
+                name_rect = name_surf.get_rect(center=(x1, y_col1))
+                surface.blit(name_surf, name_rect)
+                y_col1 += int(45 * self.app.scale)
+                
+            y_col2 = y_offset
+            for name in col2:
+                name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
+                name_rect = name_surf.get_rect(center=(x2, y_col2))
+                surface.blit(name_surf, name_rect)
+                y_col2 += int(45 * self.app.scale)
+                
+            y_offset = max(y_col1, y_col2)
+        else:
+            # 3 Columns
+            col_len = (len(names) + 2) // 3
+            col1 = names[:col_len]
+            col2 = names[col_len:col_len*2]
+            col3 = names[col_len*2:]
+            
+            x1 = self.width // 6
+            x2 = self.width // 2
+            x3 = self.width * 5 // 6
+            
+            y_col1 = y_offset
+            for name in col1:
+                name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
+                name_rect = name_surf.get_rect(center=(x1, y_col1))
+                surface.blit(name_surf, name_rect)
+                y_col1 += int(45 * self.app.scale)
+                
+            y_col2 = y_offset
+            for name in col2:
+                name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
+                name_rect = name_surf.get_rect(center=(x2, y_col2))
+                surface.blit(name_surf, name_rect)
+                y_col2 += int(45 * self.app.scale)
+                
+            y_col3 = y_offset
+            for name in col3:
+                name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
+                name_rect = name_surf.get_rect(center=(x3, y_col3))
+                surface.blit(name_surf, name_rect)
+                y_col3 += int(45 * self.app.scale)
+                
+            y_offset = max(y_col1, y_col2, y_col3)
+            
+        return y_offset + int(40 * self.app.scale) # Spacing before next section
 
     def show(self):
         if not self.active:
