@@ -76,7 +76,7 @@ class CreditsScreen:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(self.width // 2, y_offset))
                 surface.blit(name_surf, name_rect)
-                y_offset += int(45 * self.app.scale)
+                y_offset += int(55 * self.app.scale)
         elif len(names) < 12:
             # 2 Columns
             mid = (len(names) + 1) // 2
@@ -91,14 +91,14 @@ class CreditsScreen:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(x1, y_col1))
                 surface.blit(name_surf, name_rect)
-                y_col1 += int(45 * self.app.scale)
+                y_col1 += int(55 * self.app.scale)
                 
             y_col2 = y_offset
             for name in col2:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(x2, y_col2))
                 surface.blit(name_surf, name_rect)
-                y_col2 += int(45 * self.app.scale)
+                y_col2 += int(55 * self.app.scale)
                 
             y_offset = max(y_col1, y_col2)
         else:
@@ -117,25 +117,25 @@ class CreditsScreen:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(x1, y_col1))
                 surface.blit(name_surf, name_rect)
-                y_col1 += int(45 * self.app.scale)
+                y_col1 += int(55 * self.app.scale)
                 
             y_col2 = y_offset
             for name in col2:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(x2, y_col2))
                 surface.blit(name_surf, name_rect)
-                y_col2 += int(45 * self.app.scale)
+                y_col2 += int(55 * self.app.scale)
                 
             y_col3 = y_offset
             for name in col3:
                 name_surf = self.app.font_idle_desc.render(name, True, self.app.COLOR_TEXT)
                 name_rect = name_surf.get_rect(center=(x3, y_col3))
                 surface.blit(name_surf, name_rect)
-                y_col3 += int(45 * self.app.scale)
+                y_col3 += int(55 * self.app.scale)
                 
             y_offset = max(y_col1, y_col2, y_col3)
             
-        return y_offset + int(40 * self.app.scale) # Spacing before next section
+        return y_offset + int(60 * self.app.scale) # Spacing before next section
 
     def show(self):
         if not self.active:
