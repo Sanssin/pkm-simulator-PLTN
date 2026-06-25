@@ -132,9 +132,19 @@ class LEDSegment:
                 excess_ratio = (self.heat_ratio - hr_normal) / (1.0 - hr_normal)
                 hot_boundary = base_boundary + int(excess_ratio * (self.length - base_boundary))
                 
+            blend_len = 20
+            grad_start = hot_boundary - blend_len // 2
+            grad_end = grad_start + blend_len
+            
             for i in range(self.length):
-                if i < hot_boundary:
+                if i < grad_start:
                     gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+                elif i <= grad_end:
+                    t = (i - grad_start) / max(1, blend_len)
+                    r = int(hot_color[0] * (1 - t) + blue[0] * t)
+                    g = int(hot_color[1] * (1 - t) + blue[1] * t)
+                    b = int(hot_color[2] * (1 - t) + blue[2] * t)
+                    gradient_colors[i] = Color(r, g, b)
                 else:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
             return gradient_colors
