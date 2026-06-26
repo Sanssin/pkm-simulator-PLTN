@@ -198,24 +198,20 @@ class VideoDisplayApp:
         
     def play_alarm(self, loop=False):
         try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            try:
-                pygame.mixer.music.load('/home/pkm/alarm_radiasi.mpeg')
-                pygame.mixer.music.play(loops=-1 if loop else 0)
-            except Exception as e:
-                print(f"Pygame mixer gagal memutar mpeg, fallback ke mplayer: {e}")
-                if self.alarm_proc:
-                    self.alarm_proc.kill()
-                cmd = ["mplayer", "-loop", "0" if loop else "1", "/home/pkm/alarm_radiasi.mpeg"]
-                self.alarm_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if self.alarm_proc:
+                self.alarm_proc.kill()
+                
+            cmd = ["mpv", "--no-video"]
+            if loop:
+                cmd.append("--loop=inf")
+                
+            cmd.append("/home/pkm/alarm_radiasi.mpeg")
+            self.alarm_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             print("Gagal memutar alarm:", e)
 
     def stop_alarm(self):
         try:
-            if pygame.mixer.get_init():
-                pygame.mixer.music.stop()
             if self.alarm_proc:
                 self.alarm_proc.kill()
                 self.alarm_proc = None
