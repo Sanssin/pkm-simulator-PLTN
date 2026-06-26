@@ -127,58 +127,71 @@ class PhysicsEngine:
         # =====================================================================
         # Use control rod directly to define heat target so it doesn't depend on turbine
         effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
+        power_fraction = effective_rod / 100.0
         
-        # Target core temperature based on rod (0 to 100%) -> (25C to 1200C)
-        target_core_temp = 25.0 + (effective_rod / 100.0) * 1175.0
+        # Power input (q_in) to fuel, arbitrary units scaled for simulator
+        q_in = power_fraction * 100.0 
         
-        # LOFA / Cooling adjustments (Only apply if reactor is active / rods are pulled)
-        if effective_rod > 0:
-            if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0 * (effective_rod / 100.0) + 100.0
-            if state.pump_secondary_status != PUMP_ON: target_core_temp += 150.0
-            
-        if state.spray_active: target_core_temp -= 100.0
+        # Heat transfer coefficients (k)
+        # Fuel to Cladding is relatively constant
+        k_fuel_clad = 0.116
         
-        # Pressurizer heating effect adds slightly to target
-        target_core_temp += state.pressure * 0.1
-        
-        target_core_temp = max(self.ambient_temp, target_core_temp)
-        
-        # Linear Temperature change
-        # Kecepatan naik turunnya suhu disesuaikan dengan posisi batang kendali (2.0 hingga ~40 deg/sec)
-        heat_up_rate = 2.0 + (effective_rod / 100.0) * 38.0
-        
-        if state.temperature_core < target_core_temp:
-            delta_temp = heat_up_rate * dt
-            if state.temperature_core + delta_temp > target_core_temp:
-                delta_temp = target_core_temp - state.temperature_core
-        else:
-            delta_temp = -45.0 * dt # Linear cool down rate (45 deg/sec)
-            if state.temperature_core + delta_temp < target_core_temp:
-                delta_temp = target_core_temp - state.temperature_core
-                
-        state.temperature_core += delta_temp
-        
-        # Normal heat transfer factor from fuel centerline to cladding
-        clad_factor = 0.27
-        if state.pump_primary_status != PUMP_ON:
-            # During LOFA, heat cannot escape cladding to coolant, so cladding heats up towards fuel temp
-            clad_factor = 0.85
-            
-        state.temperature_fuel_cladding = self.ambient_temp + (state.temperature_core - self.ambient_temp) * clad_factor
-        
+        # Cladding to Primary Coolant
         if state.pump_primary_status == PUMP_ON:
-            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.9
+            k_clad_prim = 4.0
+            k_prim_sec_base = 2.857
         else:
-            # DNB (Departure from Nucleate Boiling) effect: 
-            # Heat transfer drops sharply, cladding overheats without raising coolant temp as much
-            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.25
+            # DNB (Departure from Nucleate Boiling) -> film boiling drastically reduces heat transfer
+            k_clad_prim = 0.2  
+            # No circulation to Steam Generator
+            k_prim_sec_base = 0.1 
             
+        # Primary Coolant to Secondary Coolant (Steam Generator)
         if state.pump_secondary_status == PUMP_ON:
-            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.9
+            k_prim_sec = k_prim_sec_base
+            k_sec_env_base = 0.392
         else:
-            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.15
+            k_prim_sec = 0.1
+            k_sec_env_base = 0.05
             
+        # Secondary Coolant (Steam Generator) to Environment/Tertiary
+        if state.pump_tertiary_status == PUMP_ON:
+            k_sec_env = k_sec_env_base
+        else:
+            k_sec_env = 0.05
+            
+        # Calculate heat flows (Q = k * delta_T)
+        q_fuel_to_clad = k_fuel_clad * (state.temperature_core - state.temperature_fuel_cladding)
+        q_clad_to_prim = k_clad_prim * (state.temperature_fuel_cladding - state.temperature_coolant_primary)
+        q_prim_to_sec = k_prim_sec * (state.temperature_coolant_primary - state.temperature_coolant_secondary)
+        q_sec_to_env = k_sec_env * (state.temperature_coolant_secondary - self.ambient_temp)
+        
+        # Thermal capacities (C) - higher means slower temperature change
+        C_fuel = 2.0
+        C_clad = 1.0
+        C_prim = 10.0
+        C_sec = 15.0
+        
+        # Differential equations (Lumped Capacitance Model)
+        dT_fuel = (q_in - q_fuel_to_clad) / C_fuel * dt
+        dT_clad = (q_fuel_to_clad - q_clad_to_prim) / C_clad * dt
+        dT_prim = (q_clad_to_prim - q_prim_to_sec) / C_prim * dt
+        dT_sec = (q_prim_to_sec - q_sec_to_env) / C_sec * dt
+        
+        # Pressurizer Spray cooling effect on primary coolant
+        if state.spray_active:
+            dT_prim -= 10.0 * dt
+            
+        # Update temperatures safely
+        state.temperature_core = max(self.ambient_temp, state.temperature_core + dT_fuel)
+        state.temperature_fuel_cladding = max(self.ambient_temp, state.temperature_fuel_cladding + dT_clad)
+        state.temperature_coolant_primary = max(self.ambient_temp, state.temperature_coolant_primary + dT_prim)
+        state.temperature_coolant_secondary = max(self.ambient_temp, state.temperature_coolant_secondary + dT_sec)
+        
         state.temperature_coolant = state.temperature_coolant_primary
+        
+        # To affect pressure generation below
+        delta_temp = dT_prim / dt
         
         # =====================================================================
         # 5. PRESSURE DYNAMICS

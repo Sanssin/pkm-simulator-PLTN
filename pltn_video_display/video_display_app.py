@@ -1201,7 +1201,7 @@ class VideoDisplayApp:
             ("Bahan Bakar", core_temp, 1500.0),
             ("Cladding", clad_temp, 1000.0),
             ("Aliran Primer", prim_temp, 350.0),
-            ("Aliran Sekunder", sec_temp, 300.0)
+            ("Uap Sekunder", sec_temp, 300.0)
         ]
         
         temp_content_y = temp_y + int(80*self.scale)
@@ -1527,7 +1527,7 @@ class VideoDisplayApp:
         pygame.draw.rect(self.screen, self.COLOR_BG_TERTIARY, bar_rect, border_radius=int(8*self.scale))
         pygame.draw.rect(self.screen, self.COLOR_BORDER, bar_rect, max(int(3*self.scale), 1), border_radius=int(8*self.scale))
         
-        # Fill - lebar bisa berbeda dari background, di-center di tengahnya
+        # Fill - lebar bisa lebih kecil dari background agar pas di dalam border
         percentage = min(max(temp / max_temp, 0.0), 1.0)
         fill_h = int(percentage * h)
         
@@ -1541,12 +1541,17 @@ class VideoDisplayApp:
             fill_color = self.COLOR_ERROR
         
         if fill_h > 0:
-            fill_y = y + h - fill_h
-            # Center fill di tengah background
-            fill_x = bar_x + (bar_bg_w - bar_fill_w) // 2
-            fill_rect = pygame.Rect(fill_x, fill_y, bar_fill_w, fill_h)
-            pygame.draw.rect(self.screen, fill_color, fill_rect, border_radius=int(8*self.scale))
-            pygame.draw.rect(self.screen, self.COLOR_BORDER, fill_rect, max(int(2.7*self.scale), 1), border_radius=int(8*self.scale))
+            # Karena border background ketebalannya max(3*scale, 1), kita inset fill-nya
+            bw = max(int(3*self.scale), 1)
+            # Pastikan fill_h tidak menutupi border atas/bawah
+            actual_fill_h = max(fill_h - 2*bw, 1)
+            actual_fill_w = max(bar_bg_w - 2*bw, 1)
+            fill_x = bar_x + bw
+            fill_y = y + h - bw - actual_fill_h
+            
+            fill_rect = pygame.Rect(fill_x, fill_y, actual_fill_w, actual_fill_h)
+            pygame.draw.rect(self.screen, fill_color, fill_rect, border_radius=int(6*self.scale))
+            # Hapus stroke (border) pada fill agar warna tidak tertutup abu-abu pada nilai rendah
     
     def draw_gauge(self, center_x: int, center_y: int, value: float, max_val: float, subtitle: str, format_str: str, warn_val: float = None, crit_val: float = None):
         """Gauge Full Circle (360 derajat) dengan isian dari bawah dan Jarum Tepi"""
