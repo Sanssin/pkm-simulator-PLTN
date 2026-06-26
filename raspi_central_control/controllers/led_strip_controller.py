@@ -107,6 +107,25 @@ class LEDSegment:
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
 
+        # Aliran uap sekunder (sekunder_out) menuju turbin: Warna Peach
+        if self.name == 'sekunder_out':
+            if self.heat_ratio < 0.15:
+                # Reaktor belum cukup panas (atau mati), air masih fase biru (Dingin)
+                steam_r, steam_g, steam_b = blue
+            else:
+                # Transisi bertahap
+                prog = (self.heat_ratio - 0.15) / 0.45
+                prog = max(0.0, min(1.0, prog))
+                
+                # Target warna uap panas: Peach / Soft Pink (R=200, G=80, B=100)
+                steam_r = int(blue[0] * (1.0 - prog) + 200 * prog)       
+                steam_g = int(blue[1] * (1.0 - prog) + 80 * prog)        
+                steam_b = int(blue[2] * (1.0 - prog) + 100 * prog)
+            
+            for i in range(self.length):
+                gradient_colors[i] = Color(steam_r, steam_g, steam_b)
+            return gradient_colors
+
 
 
         # Pipa primer: Normalnya (hingga 320C, hr_primary ~0.83) batas merah di index 26.

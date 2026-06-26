@@ -53,6 +53,7 @@ class ActuatorManager:
             self.led_strip.add_segment('kondenser', config.LED_SEGMENT_KONDENSER[0], config.LED_SEGMENT_KONDENSER[1], flow_direction=1)
             self.led_strip.add_segment('tersier_out', config.LED_SEGMENT_TERSIER_OUT[0], config.LED_SEGMENT_TERSIER_OUT[1], flow_direction=1)
             self.led_strip.add_segment('sekunder_in', config.LED_SEGMENT_SEKUNDER_IN[0], config.LED_SEGMENT_SEKUNDER_IN[1], flow_direction=1)
+            self.led_strip.add_segment('sekunder_out', config.LED_SEGMENT_SEKUNDER_OUT[0], config.LED_SEGMENT_SEKUNDER_OUT[1], flow_direction=1)
             self.led_strip.add_segment('primer', config.LED_SEGMENT_PRIMER[0], config.LED_SEGMENT_PRIMER[1])
             self.led_strip.add_segment('pressurizer', config.LED_SEGMENT_PRESSURIZER[0], config.LED_SEGMENT_PRESSURIZER[1], flow_direction=1)
             
@@ -157,6 +158,7 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('kondenser', tert_speed / 100.0)
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
+            self.led_strip.set_flow_speed('sekunder_out', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
             # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
@@ -175,6 +177,7 @@ class ActuatorManager:
             if is_reset or sim_mode == 'idle':
                 self.led_strip.set_active('primer', False)
                 self.led_strip.set_active('sekunder_in', False)
+                self.led_strip.set_active('sekunder_out', False)
                 self.led_strip.set_active('tersier_in', False)
                 self.led_strip.set_active('kondenser', False)
                 self.led_strip.set_active('tersier_out', False)
@@ -183,6 +186,7 @@ class ActuatorManager:
                     self.led_strip.set_active('primer', True)
                 if sec_speed > 0.0:
                     self.led_strip.set_active('sekunder_in', True)
+                    self.led_strip.set_active('sekunder_out', True)
                 if tert_speed > 0.0:
                     self.led_strip.set_active('tersier_in', True)
                     self.led_strip.set_active('kondenser', True)
@@ -206,6 +210,7 @@ class ActuatorManager:
             
             self.led_strip.set_heat_ratio('primer', hr_primary)
             self.led_strip.set_heat_ratio('sekunder_in', hr_secondary)
+            self.led_strip.set_heat_ratio('sekunder_out', hr_secondary)
             self.led_strip.set_heat_ratio('kondenser', hr_secondary)
             self.led_strip.set_heat_ratio('tersier_out', hr_secondary)
             
