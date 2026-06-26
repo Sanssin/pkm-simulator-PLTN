@@ -240,6 +240,7 @@ class LedStripController:
             self.strip = None
         
         self.segments = {}
+        self.color_black = Color(0, 0, 0)
         self.pump_indicators = [(self.color_black, False)] * 3
         self.pump_inds_start = 327
         self.running = False
@@ -248,8 +249,6 @@ class LedStripController:
         self.pattern_total = 10
         self.pattern_on = 5
         self.update_interval = 0.05 # 50ms updates
-        
-        self.color_black = Color(0, 0, 0)
 
     def add_segment(self, name: str, start_idx: int, length: int, flow_direction: int = 1):
         """Menambahkan segmen aliran baru pada strip."""
