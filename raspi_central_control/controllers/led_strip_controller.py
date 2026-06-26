@@ -150,8 +150,8 @@ class LEDSegment:
             hot_color = (primer_r, primer_g, primer_b)
             return_color = (ret_r, ret_g, ret_b)
             
-            # Tambahkan 2 lampu untuk titik panasnya (base_boundary dinaikkan)
-            base_boundary = 33
+            # Geser titik panas bertambah 2 lampu sehingga aliran panas lebih panjang
+            base_boundary = 35
             hr_normal = 0.83
             
             if self.heat_ratio <= hr_normal:
