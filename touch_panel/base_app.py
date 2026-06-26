@@ -982,11 +982,11 @@ class TouchPanelBaseWindow(QMainWindow):
         sys_layout.setContentsMargins(16, 20, 16, 20)
         sys_layout.setSpacing(16)
 
-        btn_lofa_sim = QPushButton("Simulasi LOFA")
-        btn_lofa_sim.setProperty("emphasis", "primary")
-        btn_lofa_sim.setProperty("sys_op", "true")
-        btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
+        self.btn_lofa_sim = QPushButton("Simulasi LOFA")
+        self.btn_lofa_sim.setProperty("emphasis", "primary")
+        self.btn_lofa_sim.setProperty("sys_op", "true")
+        self.btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
         
         btn_reset = QPushButton("ATUR ULANG PANEL")
         btn_reset.setProperty("emphasis", "secondary")
@@ -994,15 +994,15 @@ class TouchPanelBaseWindow(QMainWindow):
         btn_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         btn_reset.clicked.connect(lambda: self._on_button_click("REACTOR_RESET"))
 
-        btn_emergency = QPushButton("[!] SCRAM DARURAT")
-        btn_emergency.setProperty("emphasis", "danger")
-        btn_emergency.setProperty("sys_op", "true")
-        btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
+        self.btn_emergency = QPushButton("[!] SCRAM DARURAT")
+        self.btn_emergency.setProperty("emphasis", "danger")
+        self.btn_emergency.setProperty("sys_op", "true")
+        self.btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
 
-        sys_layout.addWidget(btn_lofa_sim)
+        sys_layout.addWidget(self.btn_lofa_sim)
         sys_layout.addWidget(btn_reset)
-        sys_layout.addWidget(btn_emergency)
+        sys_layout.addWidget(self.btn_emergency)
         column.addWidget(sys_group)
 
         return column
@@ -1421,6 +1421,22 @@ class TouchPanelBaseWindow(QMainWindow):
         self._apply_pump_state("Sekunder", self.btn_pump_p2_on, self.btn_pump_p2_off, self.sim_pump_secondary, self.target_pump_secondary)
         self._apply_pump_state("Tersier", self.btn_pump_p3_on, self.btn_pump_p3_off, self.sim_pump_tertiary, self.target_pump_tertiary)
 
+        # 1.5 Update System Operation buttons (SCRAM & LOFA) enabled states
+        if hasattr(self, 'btn_emergency') and hasattr(self, 'btn_lofa_sim'):
+            # Reaktor dianggap beroperasi jika ada batang kendali yang ditarik atau ada daya thermal
+            reactor_operating = (self.sim_safety_rod > 0 or 
+                                 self.sim_shim_rod > 0 or 
+                                 self.sim_regulating_rod > 0 or 
+                                 self.sim_thermal_kw > 0)
+                                 
+            # Ketiga pompa dianggap hidup jika nilainya 2 (ON)
+            pumps_all_on = (self.sim_pump_primary == 2 and 
+                            self.sim_pump_secondary == 2 and 
+                            self.sim_pump_tertiary == 2)
+            
+            self.btn_emergency.setEnabled(reactor_operating)
+            self.btn_lofa_sim.setEnabled(reactor_operating and pumps_all_on)
+
         # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")
         self.badge_mode.setStyleSheet("background-color: #2c3e50; border: 2px solid #2c3e50; color: #ffffff;")
@@ -1647,6 +1663,11 @@ class TouchPanelBaseWindow(QMainWindow):
         QPushButton[emphasis="primary"]:hover {
             background-color: #1e6fa8;
         }
+        QPushButton[emphasis="primary"]:disabled {
+            background-color: rgba(41, 142, 216, 128); /* Transparan */
+            border: 2px solid rgba(30, 111, 168, 128);
+            color: rgba(255, 255, 255, 128);
+        }
 
         QPushButton[emphasis="secondary"] {
             background-color: #7f8c8d;
@@ -1675,6 +1696,11 @@ class TouchPanelBaseWindow(QMainWindow):
         }
         QPushButton[emphasis="danger"]:hover {
             background-color: #cc2f26;
+        }
+        QPushButton[emphasis="danger"]:disabled {
+            background-color: rgba(255, 59, 48, 128); /* Transparan */
+            border: 2px solid rgba(204, 47, 38, 128);
+            color: rgba(255, 255, 255, 128);
         }
 
         /* System Operations large buttons */
