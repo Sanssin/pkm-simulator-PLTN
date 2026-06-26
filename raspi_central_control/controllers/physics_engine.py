@@ -133,8 +133,8 @@ class PhysicsEngine:
         
         # LOFA / Cooling adjustments (Only apply if reactor is active / rods are pulled)
         if effective_rod > 0:
-            if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
-            if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
+            if state.pump_primary_status != PUMP_ON: target_core_temp += 1200.0 * (effective_rod / 100.0) + 300.0
+            if state.pump_secondary_status != PUMP_ON: target_core_temp += 200.0
             
         if state.spray_active: target_core_temp -= 50.0
         
@@ -163,12 +163,14 @@ class PhysicsEngine:
         if state.pump_primary_status == PUMP_ON:
             state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.85
         else:
-            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.4
+            # DNB (Departure from Nucleate Boiling) effect: 
+            # Heat transfer drops sharply, cladding overheats without raising coolant temp as much
+            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.25
             
         if state.pump_secondary_status == PUMP_ON:
             state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.7
         else:
-            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.2
+            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.15
             
         state.temperature_coolant = state.temperature_coolant_primary
         
@@ -236,8 +238,8 @@ class PhysicsEngine:
         if state.temperature_coolant_primary >= t_sat and not scram_reason:
             scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
         
-        if state.temperature_core >= 450.0 and not scram_reason:
-            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 450.0°C"
+        if state.temperature_core >= 1200.0 and not scram_reason:
+            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 1200.0°C"
             
         # Overpressure
         if state.pressure >= 200.0 and not scram_reason:
