@@ -132,8 +132,9 @@ class LEDSegment:
             if self.heat_ratio < 0.05:
                 primer_r, primer_g, primer_b = blue
             else:
-                # Transisi halus, memerah sempurna saat operasi maksimal normal (hr=0.8)
-                prog = (self.heat_ratio - 0.05) / 0.75
+                # Transisi halus, memerah sempurna saat operasi maksimal normal (hr=0.65)
+                # (t_primary saat 100% normal hanya mencapai ~280C atau hr_primary ~0.71)
+                prog = (self.heat_ratio - 0.05) / 0.60
                 prog = max(0.0, min(1.0, prog))
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
