@@ -114,6 +114,10 @@ class ActuatorManager:
             
         # Initialize relays
         self.relays = RelayController()
+        
+        # Inisialisasi ke nilai default state_manager agar tidak ada false trigger
+        # saat update_actuators pertama kali dipanggil
+        self._prev_sim_mode = 'manual'
 
     def update_actuators(self, state):
         """
