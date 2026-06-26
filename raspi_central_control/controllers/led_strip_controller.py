@@ -66,8 +66,8 @@ class LEDSegment:
             if self.heat_ratio < 0.2:
                 k_r, k_g, k_b = blue
             else:
-                # Transisi bertahap, memerah pada hr=0.8
-                prog = (self.heat_ratio - 0.2) / 0.6
+                # Transisi bertahap, memerah jauh lebih cepat pada hr=0.65
+                prog = (self.heat_ratio - 0.2) / 0.45
                 prog = max(0.0, min(1.0, prog))
                 k_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
                 k_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
@@ -93,8 +93,8 @@ class LEDSegment:
                 # Reaktor belum cukup panas (atau mati), air masih fase biru (Dingin)
                 warm_r, warm_g, warm_b = blue
             else:
-                # Transisi bertahap, mencapai maksimal pada hr=0.8
-                prog = (self.heat_ratio - 0.15) / 0.65
+                # Transisi bertahap, mencapai maksimal jauh lebih cepat pada hr=0.60
+                prog = (self.heat_ratio - 0.15) / 0.45
                 prog = max(0.0, min(1.0, prog))
                 
                 # Target warna hangat: Soft Pink / Peach (R=200, G=80, B=100)
@@ -112,8 +112,8 @@ class LEDSegment:
             if self.heat_ratio < 0.3:
                 t_r, t_g, t_b = blue
             else:
-                # Transisi bertahap, mencapai maksimal pada hr=0.8
-                prog = (self.heat_ratio - 0.3) / 0.5
+                # Transisi bertahap, mencapai maksimal jauh lebih cepat pada hr=0.70
+                prog = (self.heat_ratio - 0.3) / 0.40
                 prog = max(0.0, min(1.0, prog))
                 t_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
                 t_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
@@ -132,9 +132,9 @@ class LEDSegment:
             if self.heat_ratio < 0.05:
                 primer_r, primer_g, primer_b = blue
             else:
-                # Transisi halus, memerah sempurna saat operasi maksimal normal (hr=0.65)
-                # (t_primary saat 100% normal hanya mencapai ~280C atau hr_primary ~0.71)
-                prog = (self.heat_ratio - 0.05) / 0.60
+                # Transisi halus, memerah sempurna jauh lebih awal (hr=0.50)
+                # Agar aliran primer dijamin merah menyala kuat saat operasi
+                prog = (self.heat_ratio - 0.05) / 0.45
                 prog = max(0.0, min(1.0, prog))
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
