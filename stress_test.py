@@ -54,7 +54,7 @@ def run_stress_test(duration=30):
         
         # Trigger Auto Simulation to measure actual load
         try:
-            input_file = "C:/temp/pltn_input.json" if sys.platform == "win32" else "/tmp/pltn_input.json"
+            import socket
             now = time.time()
             data = {
                 "timestamp": now,
@@ -63,9 +63,9 @@ def run_stress_test(duration=30):
                     "timestamp": now
                 }]
             }
-            with open(input_file, 'w') as f:
-                json.dump(data, f)
-            print("-> Triggered Auto Simulation for stress testing.")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(json.dumps(data).encode("utf-8"), ("127.0.0.1", 9999))
+            print("-> Triggered Auto Simulation for stress testing via UDP.")
             time.sleep(1) # wait for processes to ramp up
         except Exception as e:
             print(f"Failed to trigger auto sim: {e}")

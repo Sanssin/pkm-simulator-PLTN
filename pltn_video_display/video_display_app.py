@@ -799,8 +799,7 @@ class VideoDisplayApp:
             return
         try:
             # Tell backend to clear the flag by sending TOGGLE_CREDITS event
-            import json, time, sys
-            input_file = Path("C:/temp/pltn_input.json") if sys.platform == 'win32' else Path("/tmp/pltn_input.json")
+            import json, time, sys, socket
             
             event_data = {
                 "timestamp": time.time(),
@@ -814,11 +813,11 @@ class VideoDisplayApp:
                     }
                 ]
             }
-            with open(input_file, 'w') as f:
-                json.dump(event_data, f)
-            print("Sent TOGGLE_CREDITS to backend to clear state.")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(json.dumps(event_data).encode("utf-8"), ("127.0.0.1", 9999))
+            print("Sent TOGGLE_CREDITS to backend to clear state via UDP.")
         except Exception as e:
-            print(f"Error clearing show_credits via input: {e}")
+            print(f"Error clearing show_credits via UDP: {e}")
 
     def stop_video(self):
         """Stop current video"""
