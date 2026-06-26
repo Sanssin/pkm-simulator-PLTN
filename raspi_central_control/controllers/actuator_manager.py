@@ -158,8 +158,18 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('kondenser', tert_speed / 100.0)
             self.led_strip.set_flow_speed('primer', prim_speed / 100.0)
             self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
-            self.led_strip.set_flow_speed('sekunder_out', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
+            
+            # Khusus sekunder_out (uap), baru bergerak jika reaktor menghasilkan daya (hr > 0.01)
+            hr_secondary_current = 0.0
+            t_secondary = getattr(state, 'temperature_coolant_secondary', 25.0)
+            if t_secondary > 25.0:
+                hr_secondary_current = (t_secondary - 25.0) / (250.0 - 25.0)
+            
+            if hr_secondary_current > 0.01:
+                self.led_strip.set_flow_speed('sekunder_out', sec_speed / 100.0)
+            else:
+                self.led_strip.set_flow_speed('sekunder_out', 0.0)
             
             # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
             sim_mode = getattr(state, 'simulation_mode', 'manual')

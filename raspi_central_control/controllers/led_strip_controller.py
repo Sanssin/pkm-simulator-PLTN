@@ -110,8 +110,8 @@ class LEDSegment:
         # Aliran uap sekunder (sekunder_out) menuju turbin: Warna Peach
         if self.name == 'sekunder_out':
             if self.heat_ratio <= 0.01:
-                # Reaktor benar-benar mati, air masih fase biru (Dingin)
-                steam_r, steam_g, steam_b = blue
+                # Reaktor benar-benar mati, warna putih menyala statis
+                steam_r, steam_g, steam_b = (255, 255, 255)
             else:
                 # Transisi SANGAT CEPAT ke Peach saat mulai ada daya sekecil apapun
                 prog = (self.heat_ratio - 0.01) / 0.04
@@ -357,8 +357,13 @@ class LedStripController:
                                 
                             # Pola aliran 5 nyala, 5 mati
                             # Jika speed 0, posisi stuck (diam)
-                            if ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                            # Khusus sekunder_out saat diam (belum ada uap), render solid (putih penuh) tanpa putus-putus
+                            if name == 'sekunder_out' and seg.speed <= 0.0:
                                 self.strip.setPixelColor(idx, seg.gradient[i])
+                            elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                self.strip.setPixelColor(idx, seg.gradient[i])
+                            else:
+                                self.strip.setPixelColor(idx, self.color_black)
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:
