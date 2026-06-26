@@ -321,7 +321,7 @@ class VideoDisplayApp:
 
         else:
             print("🚀 PRODUCTION MODE")
-            print(f"   Reading state from: {self.state_file}")
+            print("   Reading state from: UDP Port 9997")
         
         print(f"🎬 Video Display App initialized")
         print(f"   Screen: {self.width}x{self.height}")
