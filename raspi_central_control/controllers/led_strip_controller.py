@@ -131,6 +131,7 @@ class LEDSegment:
             # Primer menjadi aliran pertama yang berubah warna secara visual
             if self.heat_ratio < 0.05:
                 primer_r, primer_g, primer_b = blue
+                ret_r, ret_g, ret_b = blue
             else:
                 # Transisi halus, memerah sempurna jauh lebih awal (hr=0.50)
                 # Agar aliran primer dijamin merah menyala kuat saat operasi
@@ -140,7 +141,14 @@ class LEDSegment:
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
                 
+                # Warna balikan primer (setelah mentransfer panas) tidak dingin (biru)
+                # tetapi masih hangat (pink seperti sekunder_in)
+                ret_r = int(200 * prog)
+                ret_g = int(80 * prog)
+                ret_b = int(255 - (155 * prog))
+                
             hot_color = (primer_r, primer_g, primer_b)
+            return_color = (ret_r, ret_g, ret_b)
             
             # Tambahkan 2 lampu untuk titik panasnya (base_boundary dinaikkan)
             base_boundary = 33
@@ -163,12 +171,14 @@ class LEDSegment:
                     gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
                 elif i <= grad_end:
                     t = (i - grad_start) / max(1, blend_len)
-                    r = int(hot_color[0] * (1 - t) + blue[0] * t)
-                    g = int(hot_color[1] * (1 - t) + blue[1] * t)
-                    b = int(hot_color[2] * (1 - t) + blue[2] * t)
+                    r = int(hot_color[0] * (1-t) + return_color[0] * t)
+                    g = int(hot_color[1] * (1-t) + return_color[1] * t)
+                    b = int(hot_color[2] * (1-t) + return_color[2] * t)
                     gradient_colors[i] = Color(r, g, b)
                 else:
-                    gradient_colors[i] = Color(blue[0], blue[1], blue[2])
+                    # Akhir: Warna Balikan Primer (hangat, bukan dingin)
+                    gradient_colors[i] = Color(return_color[0], return_color[1], return_color[2])
+                    
             return gradient_colors
 
         # Default: Gradien halus untuk segmen lain (sekunder, tersier)
