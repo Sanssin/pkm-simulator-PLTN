@@ -151,6 +151,9 @@ class PLTNPanelController:
             if self.alarm_proc:
                 self.alarm_proc.kill()
                 self.alarm_proc = None
+            # explicitly kill any lingering mpv alarm processes because shell=True orphans them
+            import os
+            os.system("pkill -f 'mpv.*alarm_radiasi'")
         except Exception as e:
             pass
             
@@ -378,12 +381,10 @@ class PLTNPanelController:
                             self.alarm_state = "idle"
                     else:
                         if is_scram:
-                            if self.alarm_state == "lofa_loop":
-                                self.stop_alarm()
-                                self.alarm_state = "scram_done"
-                            elif self.alarm_state == "idle":
+                            if self.alarm_state == "idle":
                                 self.play_alarm(loop=False)
                                 self.alarm_state = "scram_once"
+                            # If it was already in lofa_loop, let it keep looping until reset (safe)
                         elif is_lofa:
                             if self.alarm_state == "idle":
                                 self.play_alarm(loop=True)

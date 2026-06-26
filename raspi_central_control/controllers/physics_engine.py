@@ -144,15 +144,15 @@ class PhysicsEngine:
         target_core_temp = max(self.ambient_temp, target_core_temp)
         
         # Linear Temperature change
-        # Kecepatan naik turunnya suhu disesuaikan dengan posisi batang kendali (0.5 hingga 10 deg/sec)
-        heat_up_rate = 0.5 + (effective_rod / 100.0) * 9.5
+        # Kecepatan naik turunnya suhu disesuaikan dengan posisi batang kendali (2.0 hingga ~40 deg/sec)
+        heat_up_rate = 2.0 + (effective_rod / 100.0) * 38.0
         
         if state.temperature_core < target_core_temp:
             delta_temp = heat_up_rate * dt
             if state.temperature_core + delta_temp > target_core_temp:
                 delta_temp = target_core_temp - state.temperature_core
         else:
-            delta_temp = -15.0 * dt # Linear cool down rate (15 deg/sec)
+            delta_temp = -45.0 * dt # Linear cool down rate (45 deg/sec)
             if state.temperature_core + delta_temp < target_core_temp:
                 delta_temp = target_core_temp - state.temperature_core
                 
