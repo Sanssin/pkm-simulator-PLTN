@@ -198,14 +198,16 @@ class PhysicsEngine:
         def check_lofa(pump_status, was_on, lofa_flag_attr, name, check_scram):
             if reactor_active and was_on:
                 if pump_status != PUMP_ON:
-                    if not getattr(state, lofa_flag_attr):
-                        setattr(state, lofa_flag_attr, True)
-                        logger.warning(f"⚠️ LOFA {name.upper()} DETECTED! {name} pump failed.")
+                    # Do NOT auto-set LOFA flag here anymore! 
+                    # If it was a safe manual shutdown, it will just scram due to overheat.
+                    # LOFA flag is now explicitly set by LOFA simulation buttons/sequences.
                     return check_scram()
                 else:
+                    # Clear the LOFA flag if the pump is successfully turned back ON
                     setattr(state, lofa_flag_attr, False)
             else:
-                setattr(state, lofa_flag_attr, False)
+                if pump_status == PUMP_ON:
+                    setattr(state, lofa_flag_attr, False)
             return None
 
         # Primary
