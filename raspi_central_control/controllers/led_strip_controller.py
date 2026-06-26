@@ -107,12 +107,11 @@ class LEDSegment:
         # Saat LOFA (temp > 320C, hr_primary -> 1.0), air panas tidak didinginkan sehingga 
         # titik perpotongan (batas) merah akan bergeser ke seluruh pipa (hingga self.length).
         if self.name == 'primer':
-            # Jika reaktor belum panas (suhu ambient), tetap biru.
-            # Bertransisi sangat cepat ke merah pekat ketika reaktor mulai bekerja.
-            if self.heat_ratio <= 0.0:
+            # Jika reaktor mati/hanya hangat (< 0.2 heat ratio ~ 100C), kembalikan ke warna biru.
+            if self.heat_ratio < 0.2:
                 primer_r, primer_g, primer_b = blue
-            elif self.heat_ratio < 0.13: # Setara dengan suhu ~70C
-                prog = self.heat_ratio / 0.13
+            elif self.heat_ratio < 0.3: # Transisi cepat dari biru ke merah
+                prog = (self.heat_ratio - 0.2) / 0.1
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
@@ -121,19 +120,20 @@ class LEDSegment:
                 
             hot_color = (primer_r, primer_g, primer_b)
             
-            # Titik perpotongan panas ditambah 4 lampu led strip
-            base_boundary = 31
+            # Tambahkan 2 lampu untuk titik panasnya (base_boundary dinaikkan)
+            base_boundary = 33
             hr_normal = 0.83
             
             if self.heat_ratio <= hr_normal:
                 hot_boundary = base_boundary
             else:
-                # Pergeseran proporsional dari 0.83 (batas 27) hingga 1.0 (batas self.length)
+                # Pergeseran proporsional dari 0.83 hingga 1.0 (batas self.length)
                 excess_ratio = (self.heat_ratio - hr_normal) / (1.0 - hr_normal)
                 hot_boundary = base_boundary + int(excess_ratio * (self.length - base_boundary))
                 
-            blend_len = 20
-            grad_start = hot_boundary - blend_len // 2
+            # Gradasinya digeser untuk titik perubahan suhunya
+            blend_len = 16  # Mempersempit area gradasi sedikit agar transisi lebih jelas
+            grad_start = hot_boundary - (blend_len // 2)
             grad_end = grad_start + blend_len
             
             for i in range(self.length):
