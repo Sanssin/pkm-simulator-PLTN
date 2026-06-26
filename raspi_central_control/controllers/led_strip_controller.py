@@ -390,16 +390,18 @@ class LedStripController:
                             else:
                                 self.strip.setPixelColor(idx, self.color_black)
 
-            # Render pump indicators
-            blink_state = int(current_time * 4) % 2 == 0 # 4 Hz blink
-            for i in range(3):
-                idx = self.pump_inds_start + i
-                if idx < self.count:
-                    color, blink = self.pump_indicators[i]
-                    if blink and not blink_state:
-                        self.strip.setPixelColor(idx, self.color_black)
-                    else:
-                        self.strip.setPixelColor(idx, color)
+            # Pump indicator rendering DINONAKTIFKAN SEMENTARA
+            # (3 LED pompa digabung ke segmen primer untuk tes aliran)
+            # Aktifkan kembali setelah konfirmasi aliran primer OK
+            # blink_state = int(current_time * 4) % 2 == 0
+            # for i in range(3):
+            #     idx = self.pump_inds_start + i
+            #     if idx < self.count:
+            #         color, blink = self.pump_indicators[i]
+            #         if blink and not blink_state:
+            #             self.strip.setPixelColor(idx, self.color_black)
+            #         else:
+            #             self.strip.setPixelColor(idx, color)
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:

@@ -52,9 +52,10 @@ LED_SEGMENT_KONDENSER    = (95, 46)    # Kondenser
 LED_SEGMENT_TERSIER_OUT  = (141, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
 LED_SEGMENT_SEKUNDER_IN  = (162, 69)   # Gabungan aliran sekunder dari kondenser
 LED_SEGMENT_SEKUNDER_OUT = (231, 96)   # Aliran uap sekunder ke turbin (Peach)
-LED_SEGMENT_PUMP_INDS    = (327, 3)    # Indikator Pompa 1,2,3 (Primary, Secondary, Tertiary)
-LED_SEGMENT_PRIMER       = (330, 117)  # Pipa Primer (disambung dari indikator pompa)
-LED_SEGMENT_PRESSURIZER  = (447, 21)   # Pipa Pressurizer (disambung dari keluaran primer)
+# LED_SEGMENT_PUMP_INDS dinonaktifkan sementara — 3 LED pompa digabung ke primer
+LED_SEGMENT_PUMP_INDS    = (327, 3)    # (nonaktif sementara, lihat catatan di bawah)
+LED_SEGMENT_PRIMER       = (327, 120)  # Pipa Primer TERMASUK 3 LED pompa (327-329 + 330-446)
+LED_SEGMENT_PRESSURIZER  = (447, 21)   # Pipa Pressurizer
 
 # Segmen yang BELUM dipasang fisik (Kosong)
 
