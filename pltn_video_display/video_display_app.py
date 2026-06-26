@@ -821,32 +821,7 @@ class VideoDisplayApp:
         except Exception as e:
             pass
 
-    def _clear_show_credits(self):
-        """Clear show_credits flag in state file"""
-        if self.test_mode and hasattr(self, 'mock_state'):
-            self.mock_state["show_credits"] = False
-            return
-        try:
-            # Tell backend to clear the flag by sending TOGGLE_CREDITS event
-            import json, time, sys, socket
-            
-            event_data = {
-                "timestamp": time.time(),
-                "events": [
-                    {
-                        "type": "TOGGLE_CREDITS",
-                        "target": None,
-                        "rod": None,
-                        "direction": None,
-                        "timestamp": time.time()
-                    }
-                ]
-            }
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(json.dumps(event_data).encode("utf-8"), ("127.0.0.1", 9999))
-            print("Sent TOGGLE_CREDITS to backend to clear state via UDP.")
-        except Exception as e:
-            print(f"Error clearing show_credits via UDP: {e}")
+
 
     def stop_video(self):
         """Stop current video"""
@@ -1827,19 +1802,34 @@ class VideoDisplayApp:
         
         show_credits = state.get("show_credits", False) if state else False
         
-        # Handle Credits trigger
+        # Handle Credits trigger (Strictly map to state.show_credits)
         if show_credits:
             if not getattr(self, 'credits_screen_active', False):
                 self.credits_screen_active = True
                 self.pause_video()
                 self.credits_screen.show()
-                # Clear flag immediately so it won't loop forever
-                self._clear_show_credits()
-        
-        # Check if it was closed
-        if getattr(self, 'credits_screen_active', False) and not self.credits_screen.active:
-            self.credits_screen_active = False
-            self.resume_video()
+                # DO NOT clear the flag; the Touchscreen controls the state.
+            
+            # Check if it closed itself locally (timed out or mouse tap)
+            elif not self.credits_screen.active:
+                # Tell backend to sync state to False
+                try:
+                    import json, time, socket
+                    event_data = {
+                        "timestamp": time.time(),
+                        "events": [{"type": "TOGGLE_CREDITS", "target": None, "rod": None, "direction": None, "timestamp": time.time()}]
+                    }
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.sendto(json.dumps(event_data).encode("utf-8"), ("127.0.0.1", 9999))
+                except Exception:
+                    pass
+                self.credits_screen_active = False
+                self.resume_video()
+        else:
+            if getattr(self, 'credits_screen_active', False):
+                self.credits_screen_active = False
+                self.credits_screen.hide()
+                self.resume_video()
             
         # DEBUG: Print state info (less frequent)
         if state and hasattr(self, '_debug_counter'):
