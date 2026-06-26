@@ -203,8 +203,8 @@ class ActuatorManager:
                     state.just_reset = False
                     is_reset = False
 
-            # show_indicators: tampilkan status pompa hanya di mode aktif setelah interaksi
-            show_indicators = (sim_mode in ('manual', 'auto', 'cinematic_lofa')) and not is_reset
+            # show_indicators: tampilkan status pompa di mode aktif (manual/auto/cinematic_lofa), tidak peduli is_reset
+            show_indicators = sim_mode in ('manual', 'auto', 'cinematic_lofa')
 
 
             if is_reset or sim_mode == 'idle':
