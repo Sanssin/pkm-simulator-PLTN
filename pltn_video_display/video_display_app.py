@@ -1850,7 +1850,7 @@ class VideoDisplayApp:
         # Periksa Kondisi Alarm (SCRAM / LOFA)
         if state:
             is_lofa = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
-            is_scram = state.get("emergency_active", False)
+            is_scram = state.get("emergency", False)
             
             if is_scram:
                 if self.alarm_state == "lofa_loop":
