@@ -224,6 +224,25 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('kondenser', hr_secondary)
             self.led_strip.set_heat_ratio('tersier_out', hr_secondary)
             
+            # Update Pump Indicators
+            pumps = [
+                (0, getattr(state, 'pump_primary_status', 0), getattr(state, 'lofa_primary', False)),
+                (1, getattr(state, 'pump_secondary_status', 0), getattr(state, 'lofa_secondary', False)),
+                (2, getattr(state, 'pump_tertiary_status', 0), getattr(state, 'lofa_tertiary', False))
+            ]
+            
+            for idx, p_status, is_lofa in pumps:
+                if is_lofa:
+                    self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=True) # Red blink
+                elif p_status == 0: # PUMP_OFF
+                    self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=False) # Red solid
+                elif p_status == 2: # PUMP_ON
+                    self.led_strip.set_pump_indicator(idx, 0, 255, 0, blink=False) # Green solid
+                elif p_status in (1, 3): # PUMP_STARTING, PUMP_SHUTTING_DOWN
+                    self.led_strip.set_pump_indicator(idx, 255, 255, 0, blink=True) # Yellow blink
+                else:
+                    self.led_strip.set_pump_indicator(idx, 0, 0, 0, blink=False) # Off
+            
         # Update Pressurizer WS2812 Fill Level based on Pressure
         if hasattr(self, 'led_strip') and self.led_strip is not None and 'pressurizer' in self.led_strip.segments:
             pressure_val = getattr(state, 'pressure', 0.0)

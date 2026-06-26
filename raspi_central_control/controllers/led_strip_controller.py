@@ -240,6 +240,8 @@ class LedStripController:
             self.strip = None
         
         self.segments = {}
+        self.pump_indicators = [(self.color_black, False)] * 3
+        self.pump_inds_start = 327
         self.running = False
         self._thread = None
         
@@ -281,6 +283,11 @@ class LedStripController:
             self.segments[name].fill_level = max(0.0, min(1.0, level))
             self.segments[name].fill_color = Color(r, g, b)
             self.segments[name].fill_rgb = (r, g, b)
+
+    def set_pump_indicator(self, pump_idx: int, r: int, g: int, b: int, blink: bool):
+        """Mengatur warna dan status kedip untuk indikator pompa (0=primer, 1=sekunder, 2=tersier)."""
+        if 0 <= pump_idx < 3:
+            self.pump_indicators[pump_idx] = (Color(r, g, b), blink)
 
     def clear(self):
         """Mematikan seluruh LED."""
@@ -364,6 +371,17 @@ class LedStripController:
                                 self.strip.setPixelColor(idx, seg.gradient[i])
                             else:
                                 self.strip.setPixelColor(idx, self.color_black)
+
+            # Render pump indicators
+            blink_state = int(current_time * 4) % 2 == 0 # 4 Hz blink
+            for i in range(3):
+                idx = self.pump_inds_start + i
+                if idx < self.count:
+                    color, blink = self.pump_indicators[i]
+                    if blink and not blink_state:
+                        self.strip.setPixelColor(idx, self.color_black)
+                    else:
+                        self.strip.setPixelColor(idx, color)
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:
