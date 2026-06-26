@@ -97,10 +97,10 @@ class LEDSegment:
                 prog = (self.heat_ratio - 0.15) / 0.45
                 prog = max(0.0, min(1.0, prog))
                 
-                # Target warna hangat: Soft Pink / Peach (R=200, G=80, B=100)
-                warm_r = int(200 * prog)       
-                warm_g = int(80 * prog)        
-                warm_b = int(255 - (155 * prog)) # Turun dari 255 ke 100
+                # Target warna air hangat (Liquid): Deep Purple / Violet (R=150, G=0, B=150)
+                warm_r = int(150 * prog)       
+                warm_g = 0        
+                warm_b = int(255 - (105 * prog)) # Turun dari 255 ke 150
             
             for i in range(self.length):
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
@@ -142,10 +142,10 @@ class LEDSegment:
                 primer_b = int(blue[2] * (1 - prog))
                 
                 # Warna balikan primer (setelah mentransfer panas) tidak dingin (biru)
-                # tetapi masih hangat (pink seperti sekunder_in)
-                ret_r = int(200 * prog)
-                ret_g = int(80 * prog)
-                ret_b = int(255 - (155 * prog))
+                # tetapi masih hangat (Deep Purple / Violet) merepresentasikan air cair
+                ret_r = int(150 * prog)
+                ret_g = 0
+                ret_b = int(255 - (105 * prog))
                 
             hot_color = (primer_r, primer_g, primer_b)
             return_color = (ret_r, ret_g, ret_b)
