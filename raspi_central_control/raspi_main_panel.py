@@ -366,25 +366,32 @@ class PLTNPanelController:
                         if hasattr(self, 'video_player') and self.video_player.is_playing():
                             self.video_player.stop()
 
-                    # Manage Alarm Audio
+                    # Manage Alarm Audio (Hanya di mode Manual agar tidak menutupi suara video edukasi)
                     is_lofa = state.lofa_primary or state.lofa_secondary or state.lofa_tertiary
                     is_scram = state.emergency_active
+                    is_auto_mode = state.simulation_mode in ('auto', 'cinematic_lofa') or state.auto_sim_running
                     
-                    if is_scram:
-                        if self.alarm_state == "lofa_loop":
-                            self.stop_alarm()
-                            self.alarm_state = "scram_done"
-                        elif self.alarm_state == "idle":
-                            self.play_alarm(loop=False)
-                            self.alarm_state = "scram_once"
-                    elif is_lofa:
-                        if self.alarm_state == "idle":
-                            self.play_alarm(loop=True)
-                            self.alarm_state = "lofa_loop"
-                    else:
+                    if is_auto_mode:
+                        # Stop alarm immediately if running when entering auto mode
                         if self.alarm_state != "idle":
                             self.stop_alarm()
                             self.alarm_state = "idle"
+                    else:
+                        if is_scram:
+                            if self.alarm_state == "lofa_loop":
+                                self.stop_alarm()
+                                self.alarm_state = "scram_done"
+                            elif self.alarm_state == "idle":
+                                self.play_alarm(loop=False)
+                                self.alarm_state = "scram_once"
+                        elif is_lofa:
+                            if self.alarm_state == "idle":
+                                self.play_alarm(loop=True)
+                                self.alarm_state = "lofa_loop"
+                        else:
+                            if self.alarm_state != "idle":
+                                self.stop_alarm()
+                                self.alarm_state = "idle"
 
                     # Physics are now fully handled by PhysicsEngine above.
                     # Actuators will read the updated state (thermal_kw, turbine_speed, etc.) directly.
