@@ -118,6 +118,7 @@ class ActuatorManager:
         # Inisialisasi ke nilai default state_manager agar tidak ada false trigger
         # saat update_actuators pertama kali dipanggil
         self._prev_sim_mode = 'manual'
+        self._pump_indicators_active = False
 
     def update_actuators(self, state):
         """
@@ -196,15 +197,24 @@ class ActuatorManager:
                 if sim_mode in ('manual', 'auto', 'cinematic_lofa') and is_reset:
                     state.just_reset = False
                     is_reset = False
+                
+                # Aktifkan indikator pompa jika berubah dari idle ke mode aktif
+                if prev_sim_mode == 'idle' and sim_mode in ('manual', 'auto', 'cinematic_lofa'):
+                    self._pump_indicators_active = True
 
             # Bersihkan juga saat ada pompa menyala atau auto aktif
             if any_pump_on or sim_mode in ('auto', 'cinematic_lofa'):
                 if is_reset:
                     state.just_reset = False
                     is_reset = False
+                self._pump_indicators_active = True
 
-            # show_indicators: tampilkan status pompa di mode aktif (manual/auto/cinematic_lofa), tidak peduli is_reset
-            show_indicators = sim_mode in ('manual', 'auto', 'cinematic_lofa')
+            # Matikan indikator pompa jika masuk mode idle
+            if sim_mode == 'idle':
+                self._pump_indicators_active = False
+
+            # show_indicators: tampilkan status pompa jika indikator aktif
+            show_indicators = self._pump_indicators_active and sim_mode in ('manual', 'auto', 'cinematic_lofa')
 
 
             if is_reset or sim_mode == 'idle':
