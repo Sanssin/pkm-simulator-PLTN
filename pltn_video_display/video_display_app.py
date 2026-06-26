@@ -531,14 +531,14 @@ class VideoDisplayApp:
                     self.user_has_interacted = True
                     print("👤 User interaction detected - enabling MANUAL mode")
                     if self.display_mode == DisplayMode.IDLE:
-                        self.change_mode(DisplayMode.MANUAL)
+                        self.display_mode = DisplayMode.MANUAL_GUIDE
                         
             # Also check if HUD manual mode was started via file flag
             if not self.user_has_interacted and hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
                 self.user_has_interacted = True
                 print("👤 Touch panel HUD started - enabling MANUAL mode")
                 if self.display_mode == DisplayMode.IDLE:
-                    self.change_mode(DisplayMode.MANUAL)
+                    self.display_mode = DisplayMode.MANUAL_GUIDE
                 
             # Update last known values
             self.last_pressure = current_pressure
