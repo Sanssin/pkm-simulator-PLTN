@@ -1,105 +1,123 @@
 """
 Script diagnostik untuk menguji lampu LED indikator pompa secara langsung.
 Jalankan dengan: sudo python3 raspi_central_control/test_pump_leds.py
+
+CATATAN: Script ini akan otomatis menghentikan service jika sedang berjalan,
+         menjalankan tes, lalu TIDAK merestart service (restart manual).
 """
 import time
 import sys
 import os
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Pastikan tidak ada service lain yang memakai DMA
+print("[INIT] Menghentikan service sementara untuk akses DMA eksklusif...")
+subprocess.run(['systemctl', 'stop', 'pkm-simulator.service'], 
+               capture_output=True, timeout=10)
+time.sleep(2)
 
 try:
     import raspi_config as config
     print(f"[OK] raspi_config dimuat")
-    print(f"     LED_STRIP_COUNT    = {config.LED_STRIP_COUNT}")
+    print(f"     LED_STRIP_COUNT       = {config.LED_STRIP_COUNT}")
     print(f"     LED_SEGMENT_PUMP_INDS = {config.LED_SEGMENT_PUMP_INDS}")
-    print(f"     LED_SEGMENT_SEKUNDER_OUT = {config.LED_SEGMENT_SEKUNDER_OUT}")
-    print(f"     LED_SEGMENT_PRIMER = {config.LED_SEGMENT_PRIMER}")
     pump_start = config.LED_SEGMENT_PUMP_INDS[0]
     pump_count = config.LED_SEGMENT_PUMP_INDS[1]
     total      = config.LED_STRIP_COUNT
+    strip_pin  = config.LED_STRIP_PIN
 except Exception as e:
     print(f"[ERROR] Gagal load raspi_config: {e}")
     sys.exit(1)
 
-# Cek apakah indeks pompa masuk akal
-sek_out_end = config.LED_SEGMENT_SEKUNDER_OUT[0] + config.LED_SEGMENT_SEKUNDER_OUT[1]
-primer_start = config.LED_SEGMENT_PRIMER[0]
-print(f"\n[INFO] Cek urutan fisik LED:")
-print(f"       sekunder_out berakhir di  : LED {sek_out_end - 1}")
-print(f"       pump_inds mulai dari      : LED {pump_start}")
-print(f"       pump_inds berakhir di     : LED {pump_start + pump_count - 1}")
-print(f"       primer mulai dari         : LED {primer_start}")
-
-if sek_out_end != pump_start:
-    print(f"[WARNING] ADA GAP atau OVERLAP antara sekunder_out dan pump_inds!")
-if pump_start + pump_count != primer_start:
-    print(f"[WARNING] ADA GAP atau OVERLAP antara pump_inds dan primer!")
+print(f"\n[INFO] Konfigurasi LED:")
+print(f"       Total LED strip : {total}")
+print(f"       Pin data        : GPIO {strip_pin}")
+print(f"       Pump ind start  : LED {pump_start}")
+print(f"       Pump ind end    : LED {pump_start + pump_count - 1}")
+print(f"       Primer start    : LED {config.LED_SEGMENT_PRIMER[0]}")
+print(f"       Pressurizer end : LED {config.LED_SEGMENT_PRESSURIZER[0] + config.LED_SEGMENT_PRESSURIZER[1] - 1}")
 
 try:
     from rpi_ws281x import PixelStrip, Color
-    print(f"\n[OK] Library rpi_ws281x ditemukan")
-    HARDWARE = True
+    print(f"\n[OK] Library rpi_ws281x tersedia (hardware mode)")
 except ImportError:
-    print(f"\n[WARNING] rpi_ws281x tidak tersedia - running in mock mode")
-    HARDWARE = False
-    class Color:
-        def __new__(cls, r, g, b): return (r, g, b)
-    class PixelStrip:
-        def __init__(self, *a, **k): self._n = a[0]
-        def begin(self): pass
-        def show(self): pass
-        def setPixelColor(self, n, c): pass
-        def numPixels(self): return self._n
+    print(f"\n[ERROR] Library rpi_ws281x tidak tersedia. Harus dijalankan di Raspberry Pi dengan sudo.")
+    sys.exit(1)
 
-if not HARDWARE:
-    print("[INFO] Tidak ada hardware. Hanya cek konfigurasi saja.")
-    print("\n=== HASIL DIAGNOSTIK ===")
-    ok = True
-    if sek_out_end != pump_start:
-        print(f"[MASALAH] Urutan LED TIDAK BERURUTAN: sekunder_out berakhir {sek_out_end-1}, pump_inds mulai {pump_start}")
-        ok = False
-    if pump_start + pump_count != primer_start:
-        print(f"[MASALAH] Urutan LED TIDAK BERURUTAN: pump_inds berakhir {pump_start+pump_count-1}, primer mulai {primer_start}")
-        ok = False
-    if ok:
-        print("[OK] Urutan konfigurasi LED sudah benar secara logika software.")
-        print("     Kemungkinan masalah ada di KABEL FISIK (putusnya daisy-chain).")
-    sys.exit(0)
-
-# Kalau ada hardware, jalankan tes nyala-mati langsung
-print(f"\n[TEST] Menginisialisasi strip ({total} LED) di pin {config.LED_STRIP_PIN}...")
+print(f"\n[INIT] Menginisialisasi strip ({total} LED) di GPIO {strip_pin}...")
 try:
-    strip = PixelStrip(total, config.LED_STRIP_PIN, 800000, 10, False, 255, 0)
+    strip = PixelStrip(total, strip_pin, 800000, 10, False, 100, 0)  # brightness=100 for safety
     strip.begin()
-    print("[OK] Strip berhasil diinisialisasi")
+    print(f"[OK] Strip berhasil diinisialisasi")
 except Exception as e:
     print(f"[ERROR] Gagal inisialisasi strip: {e}")
     sys.exit(1)
 
-# Matikan semua LED dulu
-for i in range(total):
-    strip.setPixelColor(i, Color(0, 0, 0))
-strip.show()
-print(f"\n[TEST] Semua LED dimatikan. Mulai tes pompa di LED {pump_start}-{pump_start+pump_count-1}...")
+def all_off():
+    for i in range(total):
+        strip.setPixelColor(i, Color(0, 0, 0))
+    strip.show()
+
+def set_pump_inds(r, g, b):
+    for i in range(pump_count):
+        strip.setPixelColor(pump_start + i, Color(r, g, b))
+    strip.show()
+
+# --- MULAI TES ---
+print(f"\n{'='*50}")
+print(f"[TEST] Memulai tes. Matikan semua LED...")
+all_off()
 time.sleep(1)
 
-COLORS = [
-    ("MERAH (Pompa Mati)", Color(255, 0, 0)),
-    ("HIJAU (Pompa Hidup)", Color(0, 255, 0)),
-    ("KUNING (Starting)", Color(255, 255, 0)),
-    ("MATI (Off)", Color(0, 0, 0)),
-]
+print(f"\n[TEST 1] MERAH SOLID di LED {pump_start}-{pump_start+pump_count-1}")
+print(f"         Apakah TEPAT 3 lampu (pompa primer/sekunder/tersier) menyala MERAH?")
+set_pump_inds(255, 0, 0)
+time.sleep(3)
 
-for label, color in COLORS:
-    print(f"  -> Menyalakan {label} di LED {pump_start},{pump_start+1},{pump_start+2}...")
-    for i in range(pump_count):
-        strip.setPixelColor(pump_start + i, color)
-    strip.show()
-    time.sleep(2)
+print(f"\n[TEST 2] HIJAU SOLID")
+print(f"         Apakah 3 lampu yang sama menyala HIJAU?")
+set_pump_inds(0, 255, 0)
+time.sleep(3)
 
-print("\n[TEST] Tes selesai. Matikan semua LED.")
-for i in range(total):
-    strip.setPixelColor(i, Color(0, 0, 0))
+print(f"\n[TEST 3] KUNING SOLID")
+set_pump_inds(255, 255, 0)
+time.sleep(3)
+
+print(f"\n[TEST 4] BIRU SOLID - memastikan tidak ada konflik dengan segmen primer (LED 330+)")
+set_pump_inds(0, 0, 255)
+# Juga nyalakan LED 330 (awal primer) dengan MERAH untuk membedakan
+strip.setPixelColor(330, Color(255, 0, 0))
+strip.setPixelColor(331, Color(255, 0, 0))
+strip.setPixelColor(332, Color(255, 0, 0))
 strip.show()
-print("Selesai. Periksa apakah lampu 327, 328, 329 menyala sesuai warna di atas.")
+print(f"         LED 327-329 = BIRU, LED 330-332 = MERAH (awal primer)")
+print(f"         Pastikan warna sesuai posisi fisik!")
+time.sleep(4)
+
+print(f"\n[TEST 5] Kedip 10x untuk memastikan respon")
+for _ in range(10):
+    set_pump_inds(255, 0, 0)
+    time.sleep(0.3)
+    set_pump_inds(0, 0, 0)
+    time.sleep(0.3)
+
+print(f"\n[SELESAI] Matikan semua LED.")
+all_off()
+print(f"""
+{'='*50}
+HASIL YANG DIHARAPKAN:
+  Test 1: LED 327, 328, 329 = MERAH (3 lampu kecil di maket)
+  Test 2: LED 327, 328, 329 = HIJAU
+  Test 3: LED 327, 328, 329 = KUNING
+  Test 4: LED 327-329 = BIRU, LED 330+ = MERAH (pisah jelas)
+  Test 5: Ketiga lampu kedip merah
+
+Jika warna yang menyala TIDAK SESUAI posisi fisik lampu pompa,
+kemungkinan indeks 327-329 di raspi_config.py perlu disesuaikan.
+
+CATATAN: Service sudah dihentikan. Restart manual dengan:
+  sudo systemctl start pkm-simulator.service
+{'='*50}
+""")

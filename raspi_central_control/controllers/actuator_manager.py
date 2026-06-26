@@ -57,8 +57,10 @@ class ActuatorManager:
             self.led_strip.add_segment('primer', config.LED_SEGMENT_PRIMER[0], config.LED_SEGMENT_PRIMER[1])
             self.led_strip.add_segment('pressurizer', config.LED_SEGMENT_PRESSURIZER[0], config.LED_SEGMENT_PRESSURIZER[1], flow_direction=1)
             
-            if self.hardware_active:
-                self.led_strip.start()
+            # PENTING: start() HARUS selalu dipanggil — tidak bergantung pada GPIO/RPi status
+            # karena LED strip menggunakan DMA/PWM hardware tersendiri (rpi_ws281x)
+            self.led_strip.start()
+            logger.info("ActuatorManager: LedStripController started.")
         except Exception as e:
             logger.warning(f"ActuatorManager: Failed to initialize LedStripController: {e}")
             self.led_strip = None
@@ -191,9 +193,11 @@ class ActuatorManager:
                 self.led_strip.set_active('tersier_in', False)
                 self.led_strip.set_active('kondenser', False)
                 self.led_strip.set_active('tersier_out', False)
+                self.led_strip.set_active('pressurizer', False)
             else:
                 if prim_speed > 0.0:
                     self.led_strip.set_active('primer', True)
+                    self.led_strip.set_active('pressurizer', True)
                 if sec_speed > 0.0:
                     self.led_strip.set_active('sekunder_in', True)
                     self.led_strip.set_active('sekunder_out', True)
