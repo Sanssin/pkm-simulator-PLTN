@@ -59,25 +59,26 @@ class LEDSegment:
         hot_b = int(blue[2] * (1.0 - self.heat_ratio) + target_hot[2] * self.heat_ratio)
         hot_color = (hot_r, hot_g, hot_b)
 
-        # Khusus untuk kondenser: transisi warna tajam di tengah (perpotongan)
-        # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
-        # Lampu 24-46 (index 23-45) Merah/Panas: bergantung suhu reaktor
-        if self.name == 'kondenser':
+        # Aliran Tersier (Kondenser & Cooling Tower): Dihubungkan menjadi satu logika
+        # Lampu 1-23 di kondenser: Biru solid (pasokan air laut dingin)
+        # Sisa kondenser & tersier_out: Warna panas bergantung suhu uap sekunder
+        if self.name in ['kondenser', 'tersier_out']:
             if self.heat_ratio < 0.2:
-                k_r, k_g, k_b = blue
+                hot_t = blue
             else:
                 # Transisi bertahap, memerah jauh lebih cepat pada hr=0.65
                 prog = (self.heat_ratio - 0.2) / 0.45
                 prog = max(0.0, min(1.0, prog))
-                k_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
-                k_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
-                k_b = int(blue[2] * (1.0 - prog) + target_hot[2] * prog)
+                t_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
+                t_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
+                t_b = int(blue[2] * (1.0 - prog) + target_hot[2] * prog)
+                hot_t = (t_r, t_g, t_b)
                 
             for i in range(self.length):
-                if i < 23:
+                if self.name == 'kondenser' and i < 23:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
                 else:
-                    gradient_colors[i] = Color(k_r, k_g, k_b)
+                    gradient_colors[i] = Color(hot_t[0], hot_t[1], hot_t[2])
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
@@ -106,22 +107,7 @@ class LEDSegment:
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
 
-        # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid sesuai reaktor
-        if self.name == 'tersier_out':
-            # Tersier adalah yang terakhir panas setelah uap sekunder melewati turbin
-            if self.heat_ratio < 0.3:
-                t_r, t_g, t_b = blue
-            else:
-                # Transisi bertahap, mencapai maksimal jauh lebih cepat pada hr=0.70
-                prog = (self.heat_ratio - 0.3) / 0.40
-                prog = max(0.0, min(1.0, prog))
-                t_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
-                t_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
-                t_b = int(blue[2] * (1.0 - prog) + target_hot[2] * prog)
-                
-            for i in range(self.length):
-                gradient_colors[i] = Color(t_r, t_g, t_b)
-            return gradient_colors
+
 
         # Pipa primer: Normalnya (hingga 320C, hr_primary ~0.83) batas merah di index 26.
         # Saat LOFA (temp > 320C, hr_primary -> 1.0), air panas tidak didinginkan sehingga 
