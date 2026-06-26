@@ -1346,28 +1346,22 @@ class VideoDisplayApp:
                 "check": lambda s: s.get("regulating_rod", 0) >= 50
             },
             {
-                "text": ["Reaktor Beroperasi!", "Jaga suhu dan aliran stabil."],
+                "text": ["Pertahankan Performa!", "Atur daya dengan tuas kendali.", "Tekan RESET untuk mulai dari awal."],
                 "check": lambda s: True
             }
         ]
         
-        # Check if current step completed
-        if self.current_step < len(steps):
-            step = steps[self.current_step]
-            if step["check"](state):
-                self.current_step += 1
-                if self.test_mode:
-                    print(f"✅ Step {self.current_step} completed!")
-        
-        if self.current_step < len(steps):
-            return steps[self.current_step]["text"]
+        # Evaluate dynamically from the first step
+        self.current_step = 0
+        for i, step in enumerate(steps):
+            if not step["check"](state):
+                self.current_step = i
+                break
         else:
-            # Final step: Manual control instructions
-            return [
-                "Pertahankan Performa!",
-                "Atur daya dengan tuas kendali.",
-                "Tekan RESET untuk mulai dari awal."
-            ]
+            # All checks passed
+            self.current_step = len(steps) - 1
+            
+        return steps[self.current_step]["text"]
     
     def wrap_text(self, text: str, font: pygame.font.Font, max_width: int) -> list:
         """
