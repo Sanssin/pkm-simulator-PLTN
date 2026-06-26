@@ -241,11 +241,19 @@ class LedStripController:
         
         self.segments = {}
         self.color_black = Color(0, 0, 0)
-        self.pump_indicators = [(Color(0, 0, 0), False)] * 3
+        # PENTING: Jangan gunakan `* 3` — itu membuat 3 referensi ke objek yang SAMA!
+        self.pump_indicators = [
+            (Color(0, 0, 0), False),
+            (Color(0, 0, 0), False),
+            (Color(0, 0, 0), False),
+        ]
         
         # Ambil index pompa langsung dari config jika tersedia
         import raspi_config as config
-        self.pump_inds_start = getattr(config, 'LED_SEGMENT_PUMP_INDS', (327, 3))[0]
+        pump_inds_cfg = getattr(config, 'LED_SEGMENT_PUMP_INDS', (327, 3))
+        self.pump_inds_start = pump_inds_cfg[0]
+        self.pump_inds_count = pump_inds_cfg[1]  # Seharusnya 3
+        self.pump_inds_set = set(range(self.pump_inds_start, self.pump_inds_start + pump_inds_cfg[1]))
         
         self.running = False
         self._thread = None
@@ -343,6 +351,9 @@ class LedStripController:
                     for i in range(seg.length):
                         idx = seg.start_idx + i
                         if idx < self.count:
+                            # Lewati index yang dipakai pump indicators
+                            if idx in self.pump_inds_set:
+                                continue
                             if i < lit_count:
                                 # Jika animasi berjalan, buat efek gelembung/pola
                                 if seg.speed > 0.0 and ((i + int_offset) % self.pattern_total) >= self.pattern_on:
@@ -361,6 +372,10 @@ class LedStripController:
                     for i in range(seg.length):
                         idx = seg.start_idx + i
                         if idx < self.count:
+                            # Lewati index yang dipakai pump indicators — akan dirender terpisah
+                            if idx in self.pump_inds_set:
+                                continue
+                                
                             if not seg.is_active:
                                 self.strip.setPixelColor(idx, self.color_black)
                                 continue
