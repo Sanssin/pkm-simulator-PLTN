@@ -128,18 +128,18 @@ class PhysicsEngine:
         # Use control rod directly to define heat target so it doesn't depend on turbine
         effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
         
-        # Target core temperature based on rod (0 to 100%) -> (25C to 340C)
-        target_core_temp = 25.0 + (effective_rod / 100.0) * 315.0
+        # Target core temperature based on rod (0 to 100%) -> (25C to 1200C)
+        target_core_temp = 25.0 + (effective_rod / 100.0) * 1175.0
         
         # LOFA / Cooling adjustments (Only apply if reactor is active / rods are pulled)
         if effective_rod > 0:
-            if state.pump_primary_status != PUMP_ON: target_core_temp += 1200.0 * (effective_rod / 100.0) + 300.0
-            if state.pump_secondary_status != PUMP_ON: target_core_temp += 200.0
+            if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0 * (effective_rod / 100.0) + 100.0
+            if state.pump_secondary_status != PUMP_ON: target_core_temp += 150.0
             
-        if state.spray_active: target_core_temp -= 50.0
+        if state.spray_active: target_core_temp -= 100.0
         
         # Pressurizer heating effect adds slightly to target
-        target_core_temp += state.pressure * 0.05
+        target_core_temp += state.pressure * 0.1
         
         target_core_temp = max(self.ambient_temp, target_core_temp)
         
@@ -158,17 +158,23 @@ class PhysicsEngine:
                 
         state.temperature_core += delta_temp
         
-        state.temperature_fuel_cladding = state.temperature_core * 0.95 + self.ambient_temp * 0.05
+        # Normal heat transfer factor from fuel centerline to cladding
+        clad_factor = 0.27
+        if state.pump_primary_status != PUMP_ON:
+            # During LOFA, heat cannot escape cladding to coolant, so cladding heats up towards fuel temp
+            clad_factor = 0.85
+            
+        state.temperature_fuel_cladding = self.ambient_temp + (state.temperature_core - self.ambient_temp) * clad_factor
         
         if state.pump_primary_status == PUMP_ON:
-            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.85
+            state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.9
         else:
             # DNB (Departure from Nucleate Boiling) effect: 
             # Heat transfer drops sharply, cladding overheats without raising coolant temp as much
             state.temperature_coolant_primary = self.ambient_temp + (state.temperature_fuel_cladding - self.ambient_temp) * 0.25
             
         if state.pump_secondary_status == PUMP_ON:
-            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.7
+            state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.9
         else:
             state.temperature_coolant_secondary = self.ambient_temp + (state.temperature_coolant_primary - self.ambient_temp) * 0.15
             
@@ -238,8 +244,8 @@ class PhysicsEngine:
         if state.temperature_coolant_primary >= t_sat and not scram_reason:
             scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
         
-        if state.temperature_core >= 1200.0 and not scram_reason:
-            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 1200.0°C"
+        if state.temperature_core >= 1800.0 and not scram_reason:
+            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 1800.0°C"
             
         # Overpressure
         if state.pressure >= 200.0 and not scram_reason:

@@ -1193,15 +1193,15 @@ class VideoDisplayApp:
         default_temp = state.get("temperature", max(ambient_temp, (state.get("pressure", 0) / 160.0) * 300.0))
         
         core_temp = max(ambient_temp, state.get("temperature_core", default_temp))
-        clad_temp = max(ambient_temp, state.get("temperature_fuel_cladding", ambient_temp + (core_temp - ambient_temp) * 0.95))
-        prim_temp = max(ambient_temp, state.get("temperature_coolant_primary", ambient_temp + (clad_temp - ambient_temp) * 0.85))
-        sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.70))
+        clad_temp = max(ambient_temp, state.get("temperature_fuel_cladding", ambient_temp + (core_temp - ambient_temp) * 0.27))
+        prim_temp = max(ambient_temp, state.get("temperature_coolant_primary", ambient_temp + (clad_temp - ambient_temp) * 0.90))
+        sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.90))
         
         temps = [
-            ("Bahan Bakar", core_temp, 350.0),
-            ("Cladding", clad_temp, 350.0),
-            ("Aliran Primer", prim_temp, 300.0),
-            ("Aliran Sekunder", sec_temp, 250.0)
+            ("Bahan Bakar", core_temp, 1500.0),
+            ("Cladding", clad_temp, 1000.0),
+            ("Aliran Primer", prim_temp, 350.0),
+            ("Aliran Sekunder", sec_temp, 300.0)
         ]
         
         temp_content_y = temp_y + int(80*self.scale)
