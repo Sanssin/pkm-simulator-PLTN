@@ -63,11 +63,19 @@ class LEDSegment:
         # Lampu 1-23 (index 0-22) Biru: air pasokan dingin dari tersier
         # Lampu 24-46 (index 23-45) Merah/Panas: bergantung suhu reaktor
         if self.name == 'kondenser':
+            if self.heat_ratio < 0.2:
+                k_r, k_g, k_b = blue
+            else:
+                prog = (self.heat_ratio - 0.2) / 0.8
+                k_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
+                k_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
+                k_b = int(blue[2] * (1.0 - prog) + target_hot[2] * prog)
+                
             for i in range(self.length):
                 if i < 23:
                     gradient_colors[i] = Color(blue[0], blue[1], blue[2])
                 else:
-                    gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+                    gradient_colors[i] = Color(k_r, k_g, k_b)
             return gradient_colors
 
         # Pipa air laut (tersier_in) menuju kondenser: Biru solid (dingin)
