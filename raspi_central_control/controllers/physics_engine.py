@@ -198,10 +198,14 @@ class PhysicsEngine:
         def check_lofa(pump_status, was_on, lofa_flag_attr, name, check_scram):
             if reactor_active and was_on:
                 if pump_status != PUMP_ON:
-                    # Do NOT auto-set LOFA flag here anymore! 
-                    # If it was a safe manual shutdown, it will just scram due to overheat.
-                    # LOFA flag is now explicitly set by LOFA simulation buttons/sequences.
-                    return check_scram()
+                    # Do NOT auto-set LOFA flag immediately on manual shutdown.
+                    # Wait to see if it causes a dangerous condition.
+                    reason = check_scram()
+                    if reason:
+                        # It overheated/overpressured! Now it's a real LOFA failure.
+                        setattr(state, lofa_flag_attr, True)
+                        logger.warning(f"⚠️ LOFA {name.upper()} TRIGGERED due to dangerous conditions: {reason}")
+                    return reason
                 else:
                     # Clear the LOFA flag if the pump is successfully turned back ON
                     setattr(state, lofa_flag_attr, False)
