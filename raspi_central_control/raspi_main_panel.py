@@ -88,8 +88,10 @@ class PLTNPanelController:
         self.state_manager = StateManager()
         self.state_lock = self.state_manager.lock  # Alias for compatibility
         
-        from io_handlers.state_exporter import StateExporter
-        self.state_exporter = StateExporter(self.state_manager)
+        import socket
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_ports = (9998, 9997)
+        self.udp_ip = "127.0.0.1"
         
         # Initialize hardware components
         self._init_hardware()
@@ -389,7 +391,43 @@ class PLTNPanelController:
                     # Physics are now fully handled by PhysicsEngine above.
                     # Actuators will read the updated state (thermal_kw, turbine_speed, etc.) directly.
                     # Update hardware actuators
+                    # Update hardware actuators
                     self.actuator_manager.update_actuators(state)
+                    
+                    # ---------------------------------------------------------
+                    # Broadcast State via UDP
+                    # ---------------------------------------------------------
+                    state_dict = {
+                        "timestamp": time.time(),
+                        "mode": state.simulation_mode,
+                        "auto_running": state.auto_sim_running,
+                        "auto_phase": state.auto_sim_phase,
+                        "pressure": float(state.pressure),
+                        "safety_rod": float(state.safety_rod),
+                        "shim_rod": float(state.shim_rod),
+                        "regulating_rod": float(state.regulating_rod),
+                        "pump_primary": int(state.pump_primary_status),
+                        "pump_secondary": int(state.pump_secondary_status),
+                        "pump_tertiary": int(state.pump_tertiary_status),
+                        "thermal_kw": float(state.thermal_kw),
+                        "temperature_core": float(state.temperature_core),
+                        "temperature_coolant": float(state.temperature_coolant),
+                        "turbine_speed": float(state.turbine_speed),
+                        "emergency": bool(state.emergency_active),
+                        "lofa_primary": bool(state.lofa_primary),
+                        "lofa_secondary": bool(state.lofa_secondary),
+                        "lofa_tertiary": bool(state.lofa_tertiary),
+                        "relief_valve_open": getattr(state, 'relief_valve_open', False),
+                        "spray_active": getattr(state, 'spray_active', False),
+                        "user_interacted": bool(getattr(state, 'user_interacted', False)),
+                        "show_credits": bool(getattr(state, 'show_credits', False)),
+                    }
+                    try:
+                        payload = json.dumps(state_dict).encode('utf-8')
+                        for port in self.udp_ports:
+                            self.udp_sock.sendto(payload, (self.udp_ip, port))
+                    except Exception as e:
+                        logger.error(f"UDP export error: {e}")
                 
                 time.sleep(0.05)  # 20Hz logic cycle (down from 100Hz) to save huge CPU
                 
@@ -417,8 +455,7 @@ class PLTNPanelController:
             threading.Thread(target=self.control_logic_thread, daemon=True, name="ControlThread")
         ]
         
-        # Start state exporter natively
-        self.state_exporter.start()
+        # UDP socket is already initialized in __init__
         
         for t in threads:
             t.start()
