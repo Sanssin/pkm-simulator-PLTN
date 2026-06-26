@@ -119,6 +119,7 @@ class VideoDisplayApp:
         # Set environment variables BEFORE init
         os.environ['SDL_VIDEO_DISPLAY_INDEX'] = str(display_idx)
         os.environ['SDL_VIDEO_WAYLAND_WMCLASS'] = "pltn_video_display"
+        os.environ['SDL_AUDIODRIVER'] = "dummy" # Cegah Pygame membajak audio device
             
         pygame.init()
         
@@ -193,31 +194,6 @@ class VideoDisplayApp:
         self.manual_flag_file = Path("C:/temp/pltn_manual_started") if sys.platform == 'win32' else Path("/tmp/pltn_manual_started")
         self._clear_manual_flag()
         
-        self.alarm_state = "idle" # idle, lofa_loop, scram_once, scram_done
-        self.alarm_proc = None
-        
-    def play_alarm(self, loop=False):
-        try:
-            if self.alarm_proc:
-                self.alarm_proc.kill()
-                
-            cmd = ["mpv", "--no-video"]
-            if loop:
-                cmd.append("--loop=inf")
-                
-            cmd.append("/home/pkm/alarm_radiasi.mpeg")
-            self.alarm_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception as e:
-            print("Gagal memutar alarm:", e)
-
-    def stop_alarm(self):
-        try:
-            if self.alarm_proc:
-                self.alarm_proc.kill()
-                self.alarm_proc = None
-        except Exception as e:
-            pass
-            
     def _clear_manual_flag(self):
         try:
             if hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
@@ -1847,31 +1823,7 @@ class VideoDisplayApp:
         elif not hasattr(self, '_debug_counter'):
             self._debug_counter = 0
             
-        # Periksa Kondisi Alarm (SCRAM / LOFA)
-        if state:
-            is_lofa = state.get("lofa_primary", False) or state.get("lofa_secondary", False) or state.get("lofa_tertiary", False)
-            is_scram = state.get("emergency", False)
-            
-            if is_scram:
-                if self.alarm_state == "lofa_loop":
-                    # SCRAM tercapai dari LOFA, hentikan alarm segera sesuai permintaan
-                    self.stop_alarm()
-                    self.alarm_state = "scram_done"
-                elif self.alarm_state == "idle":
-                    # SCRAM mendadak dari idle (manual/tombol SCRAM ditekan), putar sekali
-                    self.play_alarm(loop=False)
-                    self.alarm_state = "scram_once"
-            elif is_lofa:
-                if self.alarm_state == "idle":
-                    # LOFA terdeteksi, putar berulang hingga SCRAM
-                    self.play_alarm(loop=True)
-                    self.alarm_state = "lofa_loop"
-            else:
-                # Normal operasi (Reset)
-                if self.alarm_state != "idle":
-                    self.stop_alarm()
-                    self.alarm_state = "idle"
-        
+
         # In test mode, check mock_mode first
         if self.test_mode:
             if self.mock_mode == "idle":

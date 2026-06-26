@@ -100,6 +100,9 @@ class PLTNPanelController:
         # Initialize video player (Thread 9 concept, non-blocking)
         self.video_player = VideoPlayer()
         
+        self.alarm_state = "idle"
+        self.alarm_proc = None
+        
         # Initialize video player (Thread 9 concept, non-blocking)
 
         
@@ -126,7 +129,30 @@ class PLTNPanelController:
             self.humidifier = None
         
 
-    
+    def play_alarm(self, loop=False):
+        try:
+            if self.alarm_proc:
+                self.alarm_proc.kill()
+                
+            # Menggunakan subprocess dengan mpv
+            import subprocess
+            cmd = ["mpv", "--no-video"]
+            if loop:
+                cmd.append("--loop=inf")
+                
+            cmd.append("/home/pkm/alarm_radiasi.mpeg")
+            self.alarm_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            logger.error(f"Gagal memutar alarm: {e}")
+
+    def stop_alarm(self):
+        try:
+            if self.alarm_proc:
+                self.alarm_proc.kill()
+                self.alarm_proc = None
+        except Exception as e:
+            pass
+            
     def _init_modules(self):
         """Initialize refactored modules."""
         logger.info("Phase 2: Module initialization...")
@@ -338,6 +364,26 @@ class PLTNPanelController:
                     else:
                         if hasattr(self, 'video_player') and self.video_player.is_playing():
                             self.video_player.stop()
+
+                    # Manage Alarm Audio
+                    is_lofa = state.lofa_primary or state.lofa_secondary or state.lofa_tertiary
+                    is_scram = state.emergency_active
+                    
+                    if is_scram:
+                        if self.alarm_state == "lofa_loop":
+                            self.stop_alarm()
+                            self.alarm_state = "scram_done"
+                        elif self.alarm_state == "idle":
+                            self.play_alarm(loop=False)
+                            self.alarm_state = "scram_once"
+                    elif is_lofa:
+                        if self.alarm_state == "idle":
+                            self.play_alarm(loop=True)
+                            self.alarm_state = "lofa_loop"
+                    else:
+                        if self.alarm_state != "idle":
+                            self.stop_alarm()
+                            self.alarm_state = "idle"
 
                     # Physics are now fully handled by PhysicsEngine above.
                     # Actuators will read the updated state (thermal_kw, turbine_speed, etc.) directly.
