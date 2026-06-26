@@ -1314,31 +1314,39 @@ class VideoDisplayApp:
         """Get instruction text for current step"""
         steps = [
             {
-                "text": ["Tahap 1: Nyalakan Pompa Tersier", "Silakan tekan tombol 'POMPA TERSIER' di panel untuk memulai sirkulasi air pendingin luar."],
+                "text": ["Tahap 1: Nyalakan Pompa Tersier", "Tekan tombol 'POMPA TERSIER' untuk memulai sirkulasi air luar."],
                 "check": lambda s: s.get("pump_tertiary", 0) >= 1
             },
             {
-                "text": ["Tahap 2: Nyalakan Pompa Sekunder", "Bagus! Selanjutnya, tekan tombol 'POMPA SEKUNDER' untuk mendinginkan uap dari turbin."],
+                "text": ["Tahap 2: Nyalakan Pompa Sekunder", "Tekan tombol 'POMPA SEKUNDER' untuk mendinginkan uap dari turbin."],
                 "check": lambda s: s.get("pump_secondary", 0) >= 1
             },
             {
-                "text": ["Tahap 3: Nyalakan Pompa Primer", "Sekarang tekan tombol 'POMPA PRIMER' agar air pendingin reaktor mulai bersirkulasi."],
+                "text": ["Tahap 3: Naikkan Tekanan 40 Bar", "Naikkan tekanan Pressurizer hingga minimal 40 bar sebelum menyalakan Pompa Primer."],
+                "check": lambda s: s.get("pressure", 0) >= 40
+            },
+            {
+                "text": ["Tahap 4: Nyalakan Pompa Primer", "Tekan tombol 'POMPA PRIMER' agar pendingin reaktor bersirkulasi."],
                 "check": lambda s: s.get("pump_primary", 0) >= 1
             },
             {
-                "text": ["Tahap 4: Angkat Safety Rod", "Sirkulasi aman! Tarik perlahan tuas 'SAFETY ROD' ke atas hingga 100% untuk menyiapkan kondisi kritis."],
+                "text": ["Tahap 5: Naikkan Tekanan 140 Bar", "Naikkan terus tekanan Pressurizer hingga 140 bar sebelum menarik batang kendali."],
+                "check": lambda s: s.get("pressure", 0) >= 140
+            },
+            {
+                "text": ["Tahap 6: Angkat Safety Rod", "Tarik perlahan tuas 'SAFETY ROD' hingga 100% untuk kondisi kritis."],
                 "check": lambda s: s.get("safety_rod", 0) >= 100
             },
             {
-                "text": ["Tahap 5: Posisikan Shim Rod", "Tarik batang kendali utama dengan tuas 'SHIM ROD' ke atas perlahan hingga mencapai posisi yang diinginkan (contoh 50%)."],
+                "text": ["Tahap 7: Posisikan Shim Rod", "Tarik batang kendali utama 'SHIM ROD' ke atas perlahan (contoh 50%)."],
                 "check": lambda s: s.get("shim_rod", 0) >= 50
             },
             {
-                "text": ["Tahap 6: Naikkan Daya Reaktor", "Terakhir, tarik tuas pengatur 'REGULATING ROD' ke atas untuk mulai memanaskan air reaktor dan menaikkan suhu."],
+                "text": ["Tahap 8: Naikkan Daya Reaktor", "Tarik tuas 'REGULATING ROD' ke atas untuk memanaskan air reaktor."],
                 "check": lambda s: s.get("regulating_rod", 0) >= 50
             },
             {
-                "text": ["Selamat! Reaktor Beroperasi", "PLTN kini siap menghasilkan panas. Jaga agar suhu dan aliran tetap stabil dalam batas aman."],
+                "text": ["Reaktor Beroperasi!", "Jaga suhu dan aliran stabil."],
                 "check": lambda s: True
             }
         ]
@@ -1356,8 +1364,9 @@ class VideoDisplayApp:
         else:
             # Final step: Manual control instructions
             return [
-                "Pertahankan Performa Optimal!", "Gunakan tuas batang kendali untuk mengatur daya sesuai kebutuhan.", "",
-                "Jika ingin memulai dari awal, tekan tombol RESET kapan saja."
+                "Pertahankan Performa!",
+                "Atur daya dengan tuas kendali.",
+                "Tekan RESET untuk mulai dari awal."
             ]
     
     def wrap_text(self, text: str, font: pygame.font.Font, max_width: int) -> list:
