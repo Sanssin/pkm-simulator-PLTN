@@ -110,13 +110,12 @@ class LEDSegment:
             # Jika reaktor mati/hanya hangat (< 0.2 heat ratio ~ 100C), kembalikan ke warna biru.
             if self.heat_ratio < 0.2:
                 primer_r, primer_g, primer_b = blue
-            elif self.heat_ratio < 0.3: # Transisi cepat dari biru ke merah
-                prog = (self.heat_ratio - 0.2) / 0.1
+            else:
+                # Transisi halus dari biru ke merah sepanjang sisa rentang panas
+                prog = (self.heat_ratio - 0.2) / 0.8
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
-            else:
-                primer_r, primer_g, primer_b = 255, 0, 0
                 
             hot_color = (primer_r, primer_g, primer_b)
             
