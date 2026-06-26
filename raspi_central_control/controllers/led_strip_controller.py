@@ -78,15 +78,13 @@ class LEDSegment:
 
         # Aliran balik sekunder (sekunder_in) dari kondenser: Orange meredup dan gradual
         if self.name == 'sekunder_in':
-            # Air keluaran kondenser harusnya tetap biru jika reaktor belum beroperasi memanaskan sistem.
-            # Kita buat batas heat_ratio = 0.2 (~34C) sebagai titik dimulainya pemanasan visual.
-            if self.heat_ratio < 0.2:
+            # Sekunder baru menghangat setelah panas primer ditransfer
+            if self.heat_ratio < 0.15:
                 # Reaktor belum cukup panas (atau mati), air masih fase biru (Dingin)
                 warm_r, warm_g, warm_b = blue
             else:
                 # Transisi bertahap dari biru (dingin) ke soft pink / peach (hangat)
-                # Menghindari warna orange menyala yang terlihat seperti sirup
-                prog = (self.heat_ratio - 0.2) / 0.8
+                prog = (self.heat_ratio - 0.15) / 0.85
                 
                 # Target warna hangat: Soft Pink / Peach (R=200, G=80, B=100)
                 warm_r = int(200 * prog)       
@@ -99,20 +97,30 @@ class LEDSegment:
 
         # Keluaran kondenser (tersier_out) ke cooling tower: Panas solid sesuai reaktor
         if self.name == 'tersier_out':
+            # Tersier adalah yang terakhir panas setelah uap sekunder melewati turbin
+            if self.heat_ratio < 0.3:
+                t_r, t_g, t_b = blue
+            else:
+                prog = (self.heat_ratio - 0.3) / 0.7
+                t_r = int(blue[0] * (1.0 - prog) + target_hot[0] * prog)
+                t_g = int(blue[1] * (1.0 - prog) + target_hot[1] * prog)
+                t_b = int(blue[2] * (1.0 - prog) + target_hot[2] * prog)
+                
             for i in range(self.length):
-                gradient_colors[i] = Color(hot_color[0], hot_color[1], hot_color[2])
+                gradient_colors[i] = Color(t_r, t_g, t_b)
             return gradient_colors
 
         # Pipa primer: Normalnya (hingga 320C, hr_primary ~0.83) batas merah di index 26.
         # Saat LOFA (temp > 320C, hr_primary -> 1.0), air panas tidak didinginkan sehingga 
         # titik perpotongan (batas) merah akan bergeser ke seluruh pipa (hingga self.length).
         if self.name == 'primer':
-            # Jika reaktor mati/hanya hangat (< 0.2 heat ratio ~ 100C), kembalikan ke warna biru.
-            if self.heat_ratio < 0.2:
+            # Jika reaktor mati/hanya hangat (< 0.05 heat ratio ~ 42C), kembalikan ke warna biru.
+            # Primer menjadi aliran pertama yang berubah warna secara visual
+            if self.heat_ratio < 0.05:
                 primer_r, primer_g, primer_b = blue
             else:
                 # Transisi halus dari biru ke merah sepanjang sisa rentang panas
-                prog = (self.heat_ratio - 0.2) / 0.8
+                prog = (self.heat_ratio - 0.05) / 0.95
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))
                 primer_b = int(blue[2] * (1 - prog))
