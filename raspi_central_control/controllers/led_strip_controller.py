@@ -241,8 +241,12 @@ class LedStripController:
         
         self.segments = {}
         self.color_black = Color(0, 0, 0)
-        self.pump_indicators = [(self.color_black, False)] * 3
-        self.pump_inds_start = 327
+        self.pump_indicators = [((0, 0, 0), False)] * 3
+        
+        # Ambil index pompa langsung dari config jika tersedia
+        import raspi_config as config
+        self.pump_inds_start = getattr(config, 'LED_SEGMENT_PUMP_INDS', (327, 3))[0]
+        
         self.running = False
         self._thread = None
         
@@ -286,7 +290,7 @@ class LedStripController:
     def set_pump_indicator(self, pump_idx: int, r: int, g: int, b: int, blink: bool):
         """Mengatur warna dan status kedip untuk indikator pompa (0=primer, 1=sekunder, 2=tersier)."""
         if 0 <= pump_idx < 3:
-            self.pump_indicators[pump_idx] = (Color(r, g, b), blink)
+            self.pump_indicators[pump_idx] = ((r, g, b), blink)
 
     def clear(self):
         """Mematikan seluruh LED."""
@@ -376,11 +380,11 @@ class LedStripController:
             for i in range(3):
                 idx = self.pump_inds_start + i
                 if idx < self.count:
-                    color, blink = self.pump_indicators[i]
+                    (r, g, b), blink = self.pump_indicators[i]
                     if blink and not blink_state:
-                        self.strip.setPixelColor(idx, self.color_black)
+                        self.strip.setPixelColorRGB(idx, 0, 0, 0)
                     else:
-                        self.strip.setPixelColor(idx, color)
+                        self.strip.setPixelColorRGB(idx, r, g, b)
             
             # Use lock to prevent hardware conflict between two PWM channels
             with ws281x_lock:
