@@ -134,14 +134,15 @@ class PLTNPanelController:
             if self.alarm_proc:
                 self.alarm_proc.kill()
                 
-            # Menggunakan subprocess dengan mpv
             import subprocess
-            cmd = ["mpv", "--no-video"]
-            if loop:
-                cmd.append("--loop=inf")
-                
-            cmd.append("/home/pkm/alarm_radiasi.mpeg")
-            self.alarm_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            loop_flag = "--loop=inf" if loop else "--loop=no"
+            
+            # Karena default OS adalah avjack, dan hwdec video memaksa HDMI, 
+            # kita harus memaksa mpv audio alarm ini ke HDMI juga menggunakan ALSA bypass.
+            # Mencoba vc4hdmi0 (HDMI pertama), jika gagal coba vc4hdmi1 (HDMI kedua)
+            bash_cmd = f"mpv --no-video {loop_flag} --audio-device=alsa/sysdefault:CARD=vc4hdmi0 /home/pkm/alarm_radiasi.mpeg || mpv --no-video {loop_flag} --audio-device=alsa/sysdefault:CARD=vc4hdmi1 /home/pkm/alarm_radiasi.mpeg"
+            
+            self.alarm_proc = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             logger.error(f"Gagal memutar alarm: {e}")
 
