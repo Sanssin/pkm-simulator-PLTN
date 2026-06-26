@@ -208,10 +208,13 @@ class PLTNPanelController:
                 if hasattr(p, 'cpu_affinity'): p.cpu_affinity([1])
         except Exception:
             pass
+            
+        import socket
         
-        touch_input_file = Path("/tmp/pltn_input.json")
-        last_processed_timestamp = time.time()  # Ignore old events on startup
-        
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("127.0.0.1", 9999))
+        sock.settimeout(0.05)
+
         EVENT_MAPPING = {
             ("PUMP_ON", "PRIMARY", None, None): ButtonEvent.PUMP_PRIMARY_ON,
             ("PUMP_ON", "SECONDARY", None, None): ButtonEvent.PUMP_SECONDARY_ON,
@@ -240,51 +243,39 @@ class PLTNPanelController:
         
         while self.state_manager.running:
             try:
-                if touch_input_file.exists():
-                    try:
-                        with open(touch_input_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
+                data_bytes, _ = sock.recvfrom(4096)
+                try:
+                    data = json.loads(data_bytes.decode('utf-8'))
+                    events = data.get("events", [])
+                    
+                    for evt in events:
+                        evt_ts = evt.get("timestamp", 0.0)
+                        evt_type = evt.get("type")
+                        target = evt.get("target")
+                        rod = evt.get("rod")
+                        direction = evt.get("direction")
+                        
+                        button_event = EVENT_MAPPING.get((evt_type, target, rod, direction))
                             
-                        file_timestamp = data.get("timestamp", 0.0)
-                        if file_timestamp > last_processed_timestamp:
-                            events = data.get("events", [])
-                            newest_timestamp = last_processed_timestamp
+                        if button_event is not None:
+                            self.event_processor.process_event(button_event)
+                            # --- Latency Measurement ---
+                            latency_ms = (time.time() - evt_ts) * 1000.0
+                            try:
+                                with open("/tmp/latency_log.txt", "a") as f:
+                                    f.write(f"{evt_ts:.3f},{time.time():.3f},{latency_ms:.2f},{button_event.name}\n")
+                            except Exception:
+                                pass
+                            logger.info(f"Touch event received from HMI: {button_event.name} (Latency: {latency_ms:.2f}ms)")
                             
-                            for evt in events:
-                                evt_ts = evt.get("timestamp", 0.0)
-                                if evt_ts <= last_processed_timestamp:
-                                    continue
-                                    
-                                if evt_ts > newest_timestamp:
-                                    newest_timestamp = evt_ts
-                                    
-                                evt_type = evt.get("type")
-                                target = evt.get("target")
-                                rod = evt.get("rod")
-                                direction = evt.get("direction")
-                                
-                                button_event = EVENT_MAPPING.get((evt_type, target, rod, direction))
-                                    
-                                if button_event is not None:
-                                    self.event_processor.process_event(button_event)
-                                    # --- Latency Measurement ---
-                                    latency_ms = (time.time() - evt_ts) * 1000.0
-                                    try:
-                                        with open("/tmp/latency_log.txt", "a") as f:
-                                            f.write(f"{evt_ts:.3f},{time.time():.3f},{latency_ms:.2f},{button_event.name}\n")
-                                    except Exception:
-                                        pass
-                                    logger.info(f"Touch event received from HMI: {button_event.name} (Latency: {latency_ms:.2f}ms)")
-                                    
-                            last_processed_timestamp = newest_timestamp
-                            
-                    except json.JSONDecodeError:
-                        pass # Ignore partially written file
+                except json.JSONDecodeError:
+                    pass # Ignore malformed packets
+            except socket.timeout:
+                pass # Expected timeout if no data is received
             except Exception as e:
                 logger.debug(f"Touch polling error: {e}")
-                
-            time.sleep(0.05)  # 20 FPS is enough for touch polling
             
+        sock.close()
         logger.info("Touch input polling thread stopped")
     
     def control_logic_thread(self):

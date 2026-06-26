@@ -214,12 +214,8 @@ class TouchPanelBaseWindow(QMainWindow):
         if TouchInputHandler is None or TouchInputWriter is None:
             return
 
-        # Setup platform paths
-        if sys.platform == "win32":
-            self.input_writer = TouchInputWriter(Path("C:/temp/pltn_input.json"))
-        else:
-            self.input_writer = TouchInputWriter(Path("/tmp/pltn_input.json"))
-
+        # Setup UDP IPC
+        self.input_writer = TouchInputWriter(port=9999)
         self.input_handler = TouchInputHandler(writer=self.input_writer)
 
     def _reset_sim_state_for_auto(self) -> None:

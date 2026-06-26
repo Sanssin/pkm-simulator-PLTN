@@ -48,13 +48,14 @@ class TouchEvent:
 
 
 class TouchInputWriter:
-    """Atomic writer for the shared PLTN touch input JSON file."""
+    """UDP writer for the shared PLTN touch input IPC."""
 
-    def __init__(self, path: Optional[Path] = None) -> None:
-        self.path = path or Path(tempfile.gettempdir()) / "pltn_input.json"
-        self._lock = threading.Lock()
+    def __init__(self, port: int = 9999) -> None:
+        import socket
+        self.address = ("127.0.0.1", port)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def write_events(self, events: Sequence[TouchEvent]) -> Path:
+    def write_events(self, events: Sequence[TouchEvent]) -> str:
         if not events:
             raise ValueError("events tidak boleh kosong")
 
@@ -63,37 +64,12 @@ class TouchInputWriter:
             "events": [event.to_dict() for event in events],
         }
 
-        with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp_path = self.path.with_suffix(self.path.suffix + ".tmp")
-            tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-            tmp_path.replace(self.path)
+        self.sock.sendto(json.dumps(payload).encode("utf-8"), self.address)
+        return f"udp://{self.address[0]}:{self.address[1]}"
 
-        return self.path
-
-    def append_events(self, events: Sequence[TouchEvent]) -> Path:
-        if not events:
-            raise ValueError("events tidak boleh kosong")
-
-        with self._lock:
-            current = {"timestamp": 0.0, "events": []}
-            if self.path.exists():
-                try:
-                    current = json.loads(self.path.read_text(encoding="utf-8"))
-                except json.JSONDecodeError as exc:
-                    raise ValueError(f"JSON input sentuh tidak valid di {self.path}: {exc}") from exc
-
-            current_events = list(current.get("events", []))
-            current_events.extend(event.to_dict() for event in events)
-            current["timestamp"] = events[-1].timestamp
-            current["events"] = current_events
-
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp_path = self.path.with_suffix(self.path.suffix + ".tmp")
-            tmp_path.write_text(json.dumps(current, indent=2), encoding="utf-8")
-            tmp_path.replace(self.path)
-
-        return self.path
+    def append_events(self, events: Sequence[TouchEvent]) -> str:
+        # In UDP stream mode, append is just sending another datagram
+        return self.write_events(events)
 
 
 class TouchInputHandler:
