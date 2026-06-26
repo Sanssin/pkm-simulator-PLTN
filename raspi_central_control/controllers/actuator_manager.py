@@ -232,7 +232,9 @@ class ActuatorManager:
             ]
             
             for idx, p_status, is_lofa in pumps:
-                if is_lofa:
+                if sim_mode == 'idle' or is_reset:
+                    self.led_strip.set_pump_indicator(idx, 0, 0, 0, blink=False) # Off in idle
+                elif is_lofa:
                     self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=True) # Red blink
                 elif p_status == 0: # PUMP_OFF
                     self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=False) # Red solid
