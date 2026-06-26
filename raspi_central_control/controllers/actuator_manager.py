@@ -186,6 +186,10 @@ class ActuatorManager:
                 state.just_reset = False
                 is_reset = False
             
+            # Jika mode aktif (manual/auto), is_reset TIDAK berlaku — tampilkan status pompa langsung
+            if sim_mode in ('manual', 'auto'):
+                is_reset = False
+            
             if is_reset or sim_mode == 'idle':
                 self.led_strip.set_active('primer', False)
                 self.led_strip.set_active('sekunder_in', False)
@@ -229,10 +233,11 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('tersier_out', hr_secondary)
             
             # Update Pump Indicators
+            # Urutan fisik: LED 303=Tersier, LED 304=Sekunder, LED 305=Primer
             pumps = [
-                (0, getattr(state, 'pump_primary_status', 0), getattr(state, 'lofa_primary', False)),
+                (0, getattr(state, 'pump_tertiary_status', 0), getattr(state, 'lofa_tertiary', False)),
                 (1, getattr(state, 'pump_secondary_status', 0), getattr(state, 'lofa_secondary', False)),
-                (2, getattr(state, 'pump_tertiary_status', 0), getattr(state, 'lofa_tertiary', False))
+                (2, getattr(state, 'pump_primary_status', 0),  getattr(state, 'lofa_primary', False)),
             ]
             for idx, p_status, is_lofa in pumps:
                 if sim_mode == 'idle' or is_reset:
