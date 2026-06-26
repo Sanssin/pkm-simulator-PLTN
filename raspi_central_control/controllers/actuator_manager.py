@@ -173,23 +173,36 @@ class ActuatorManager:
             else:
                 self.led_strip.set_flow_speed('sekunder_out', 0.0)
             
-            # Jika mode idle atau baru direset (pressure 0 & temp 25), matikan lampu jika pompa mati
-            sim_mode = getattr(state, 'simulation_mode', 'manual')
-            # Deteksi reset berdasarkan flag dari state_manager
-            is_reset = getattr(state, 'just_reset', False)
-            
-            # Jika ada pompa yang menyala atau simulasi auto berjalan, maka sudah tidak reset lagi
-            if (getattr(state, 'pump_primary_status', 0) > 0 or 
-                getattr(state, 'pump_secondary_status', 0) > 0 or 
+            sim_mode = getattr(state, 'simulation_mode', 'idle')
+            is_reset = getattr(state, 'just_reset', True)
+
+            any_pump_on = (
+                getattr(state, 'pump_primary_status', 0) > 0 or
+                getattr(state, 'pump_secondary_status', 0) > 0 or
                 getattr(state, 'pump_tertiary_status', 0) > 0 or
-                getattr(state, 'auto_sim_running', False)):
-                state.just_reset = False
-                is_reset = False
-            
-            # Jika mode aktif (manual/auto), is_reset TIDAK berlaku — tampilkan status pompa langsung
-            if sim_mode in ('manual', 'auto'):
-                is_reset = False
-            
+                getattr(state, 'auto_sim_running', False)
+            )
+
+            # Deteksi apakah user baru saja berpindah ke mode aktif
+            # Simpan sim_mode sebelumnya untuk mendeteksi perubahan
+            prev_sim_mode = getattr(self, '_prev_sim_mode', None)
+            if prev_sim_mode != sim_mode:
+                self._prev_sim_mode = sim_mode
+                # User berpindah ke mode aktif → tampilkan indikator segera
+                if sim_mode in ('manual', 'auto', 'cinematic_lofa') and is_reset:
+                    state.just_reset = False
+                    is_reset = False
+
+            # Bersihkan juga saat ada pompa menyala atau auto aktif
+            if any_pump_on or sim_mode in ('auto', 'cinematic_lofa'):
+                if is_reset:
+                    state.just_reset = False
+                    is_reset = False
+
+            # show_indicators: tampilkan status pompa hanya di mode aktif setelah interaksi
+            show_indicators = (sim_mode in ('manual', 'auto', 'cinematic_lofa')) and not is_reset
+
+
             if is_reset or sim_mode == 'idle':
                 self.led_strip.set_active('primer', False)
                 self.led_strip.set_active('sekunder_in', False)
@@ -240,10 +253,10 @@ class ActuatorManager:
                 (2, getattr(state, 'pump_primary_status', 0),  getattr(state, 'lofa_primary', False)),
             ]
             for idx, p_status, is_lofa in pumps:
-                if sim_mode == 'idle' or is_reset:
-                    self.led_strip.set_pump_indicator(idx, 0, 0, 0, blink=False)       # Off
+                if not show_indicators:
+                    self.led_strip.set_pump_indicator(idx, 0, 0, 0, blink=False)       # Off (idle / belum interaksi)
                 elif is_lofa:
-                    self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=True)      # Merah kedip
+                    self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=True)      # Merah kedip (LOFA)
                 elif p_status == 0:   # PUMP_OFF
                     self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=False)     # Merah solid
                 elif p_status == 2:   # PUMP_ON
