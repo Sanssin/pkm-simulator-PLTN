@@ -180,14 +180,16 @@ class VideoDisplayApp:
         print(f"🖥️  Display: {self.width}x{self.height}")
         print(f"📏 Scale factor: {self.scale:.2f}x")
         
-        # State file path (cross-platform)
-        if sys.platform == 'win32':
-            # Windows: use temp folder
-            self.state_file = Path("C:/temp/pltn_state.json")
-            self.state_file.parent.mkdir(exist_ok=True)
-        else:
-            # Linux/RPi: use /tmp
-            self.state_file = Path("/tmp/pltn_state.json")
+        # State UDP Socket Setup
+        import socket
+        try:
+            self.state_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.state_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.state_sock.bind(("0.0.0.0", 9997))
+            self.state_sock.setblocking(False)
+        except Exception as e:
+            print(f"⚠️ Error binding UDP 9997: {e}")
+            self.state_sock = None
         
         self.last_state = {}
         
@@ -476,48 +478,74 @@ class VideoDisplayApp:
                 recalculated_state["show_credits"] = True
             return recalculated_state
         
-        # Production mode: read from file
-        try:
-            if not self.state_file.exists():
-                return {}
+        # Production mode: read from UDP
+        if not hasattr(self, 'state_sock') or self.state_sock is None:
+            return {}
             
-            with open(self.state_file, 'r') as f:
-                state = json.load(f)
-            
-            # Check if state has changed significantly (user interaction)
-            if not self.user_has_interacted:
-                current_pressure = state.get("pressure", 0)
-                current_rods = (state.get("safety_rod", 0) + 
-                              state.get("shim_rod", 0) + 
-                              state.get("regulating_rod", 0))
-                current_pumps = (state.get("pump_primary", 0) + 
-                               state.get("pump_secondary", 0) + 
-                               state.get("pump_tertiary", 0))
+        latest_data = None
+        while True:
+            try:
+                data, _ = self.state_sock.recvfrom(4096)
+                latest_data = data
+            except BlockingIOError:
+                break
+            except Exception:
+                break
                 
-                # Detect user interaction (significant state change)
-                if (abs(current_pressure - self.last_pressure) > 0.1 or
-                    abs(current_rods - self.last_rods_sum) > 10):
+        if latest_data:
+            try:
+                state = json.loads(latest_data.decode('utf-8'))
+                
+                # Check age
+                if time.time() - state.get("timestamp", 0) > 4.0:
+                    return {}
                     
-                    # Only consider as interaction if not during auto simulation
-                    auto_running = state.get("auto_running", False)
-                    if not auto_running:
-                        self.user_has_interacted = True
-                        print("👤 User interaction detected - enabling MANUAL mode")
+                # Cache it in case we don't receive data next frame
+                self.last_parsed_state = state
+            except Exception as e:
+                print(f"UDP Parse error: {e}")
+                state = getattr(self, 'last_parsed_state', {})
+        else:
+            state = getattr(self, 'last_parsed_state', {})
+            
+        if not state:
+            return {}
+            
+        # Check if state has changed significantly (user interaction)
+        if not self.user_has_interacted:
+            current_pressure = state.get("pressure", 0)
+            current_rods = (state.get("safety_rod", 0) + 
+                          state.get("shim_rod", 0) + 
+                          state.get("regulating_rod", 0))
+            current_pumps = (state.get("pump_primary", 0) + 
+                           state.get("pump_secondary", 0) + 
+                           state.get("pump_tertiary", 0))
                 
+            # Detect user interaction (significant state change)
+            if (abs(current_pressure - self.last_pressure) > 0.1 or
+                abs(current_rods - self.last_rods_sum) > 10):
+                
+                # Only consider as interaction if not during auto simulation
+                auto_running = state.get("auto_running", False)
+                if not auto_running:
+                    self.user_has_interacted = True
+                    print("👤 User interaction detected - enabling MANUAL mode")
+                    if self.display_mode == DisplayMode.IDLE:
+                        self.change_mode(DisplayMode.MANUAL)
+                        
             # Also check if HUD manual mode was started via file flag
             if not self.user_has_interacted and hasattr(self, 'manual_flag_file') and self.manual_flag_file.exists():
                 self.user_has_interacted = True
                 print("👤 Touch panel HUD started - enabling MANUAL mode")
+                if self.display_mode == DisplayMode.IDLE:
+                    self.change_mode(DisplayMode.MANUAL)
                 
-                # Update last known values
-                self.last_pressure = current_pressure
-                self.last_rods_sum = current_rods
-                self.last_pumps_sum = current_pumps
+            # Update last known values
+            self.last_pressure = current_pressure
+            self.last_rods_sum = current_rods
+            self.last_pumps_sum = current_pumps
             
-            return state
-        except Exception as e:
-            print(f"⚠️  Failed to read state: {e}")
-            return {}
+        return state
     
     def handle_test_mode_keys(self, event):
         """Handle keyboard input for test mode - 17 button simulation"""

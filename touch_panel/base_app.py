@@ -214,9 +214,20 @@ class TouchPanelBaseWindow(QMainWindow):
         if TouchInputHandler is None or TouchInputWriter is None:
             return
 
-        # Setup UDP IPC
+        # Setup UDP IPC for Output (Sending user input)
         self.input_writer = TouchInputWriter(port=9999)
         self.input_handler = TouchInputHandler(writer=self.input_writer)
+        
+        # Setup UDP IPC for Input (Receiving simulation state)
+        import socket
+        try:
+            self.state_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.state_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.state_sock.bind(("0.0.0.0", 9998))
+            self.state_sock.setblocking(False)
+        except Exception as e:
+            logger.error(f"Gagal membuka UDP port 9998 untuk status reaktor: {e}")
+            self.state_sock = None
 
     def _reset_sim_state_for_auto(self) -> None:
         """Resets target and history to prevent false failures when starting automatic simulations"""
@@ -1244,97 +1255,99 @@ class TouchPanelBaseWindow(QMainWindow):
     # ============================================
 
     def _check_and_load_state(self) -> None:
-        # Look for active telemetry state exports
-        paths = []
-        if sys.platform == "win32":
-            paths.append(Path("C:/temp/pltn_state.json"))
+        if not hasattr(self, 'state_sock') or self.state_sock is None:
+            return
+            
+        latest_data = None
+        while True:
+            try:
+                data, _ = self.state_sock.recvfrom(4096)
+                latest_data = data
+            except BlockingIOError:
+                break
+            except Exception as e:
+                break
+                
+        if latest_data:
+            try:
+                state_data = json.loads(latest_data.decode("utf-8"))
+                
+                # Verify age (timestamp from backend)
+                if time.time() - state_data.get("timestamp", 0) > 4.0:
+                    self.local_mode = True
+                    return
+                    
+                self.local_mode = False
+                
+                # Parse state keys
+                self.sim_pressure = state_data.get("pressure", self.sim_pressure)
+                self.sim_safety_rod = state_data.get("rod_safety", state_data.get("safety_rod", self.sim_safety_rod))
+                self.sim_shim_rod = state_data.get("rod_shim", state_data.get("shim_rod", self.sim_shim_rod))
+                self.sim_regulating_rod = state_data.get("rod_regulating", state_data.get("regulating_rod", self.sim_regulating_rod))
+                
+                self.sim_pump_primary = state_data.get("pump_primary", self.sim_pump_primary)
+                self.sim_pump_secondary = state_data.get("pump_secondary", self.sim_pump_secondary)
+                self.sim_pump_tertiary = state_data.get("pump_tertiary", self.sim_pump_tertiary)
+                
+                self.sim_thermal_kw = state_data.get("thermal_kw", self.sim_thermal_kw)
+                self.sim_turbine_speed = state_data.get("turbine_speed", self.sim_turbine_speed)
+                self.sim_emergency = state_data.get("emergency", state_data.get("emergency_active", self.sim_emergency))
+                
+                # Set mode
+                auto_running = state_data.get("auto_running", False)
+                json_mode = state_data.get("mode", "")
+                
+                if not hasattr(self, 'last_auto_running'):
+                    self.last_auto_running = False
+                    
+                # Detect any transition into an automatic simulation (Normal Auto, LOFA, Cinematic LOFA)
+                is_any_auto = auto_running or json_mode == "cinematic_lofa"
+                
+                # If we just started any auto simulation, clear pump states to prevent false failures
+                if is_any_auto and not self.last_auto_running:
+                    self._reset_sim_state_for_auto()
+                    
+                self.last_auto_running = is_any_auto
+                
+                if self.sim_emergency:
+                    self.sim_mode = "SCRAM"
+                elif json_mode == "cinematic_lofa":
+                    self.sim_mode = "Simulasi LOFA"
+                elif auto_running:
+                    self.sim_mode = "Otomatis"
+                else:
+                    self.sim_mode = "Manual"
+                    
+                # Ext coolant variables
+                self.sim_coolant_temp_primary = state_data.get("coolant_temp_primary", self.sim_coolant_temp_primary)
+                self.sim_coolant_temp_secondary = state_data.get("coolant_temp_secondary", self.sim_coolant_temp_secondary)
+                self.sim_fuel_cladding_temp = state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp)
+                self.sim_condenser_pressure = state_data.get("condenser_pressure", self.sim_condenser_pressure)
+
+                # Auto-clear pump failures if the reactor is fully reset/cold
+                if self.sim_thermal_kw < 1.0 and self.sim_pressure < 10.0:
+                    self.Primer_failed = False
+                    self.Sekunder_failed = False
+                    self.Tersier_failed = False
+                    self.last_pump_states = {}
+                    
+                # Set alarm
+                is_lofa = (state_data.get("lofa_primary", False) or 
+                           state_data.get("lofa_secondary", False) or 
+                           state_data.get("lofa_tertiary", False))
+                
+                if self.sim_emergency:
+                    self.sim_alarm = "SCRAM DARURAT!"
+                elif is_lofa:
+                    self.sim_alarm = "LOFA AKTIF!"
+                else:
+                    self.sim_alarm = "Tidak Ada"
+
+            except Exception as e:
+                logger.error(f"Error parsing UDP state JSON: {e}")
+                pass
         else:
-            paths.append(Path("/tmp/pltn_state.json"))
-        paths.append(Path(tempfile.gettempdir()) / "pltn_state.json")
-
-        state_loaded = False
-        for path in paths:
-            if path.exists():
-                try:
-                    # Verify modification age (must be refreshed within 4 seconds)
-                    mtime = os.path.getmtime(path)
-                    if time.time() - mtime < 4.0:
-                        with open(path, "r", encoding="utf-8") as f:
-                            state_data = json.load(f)
-
-                        # Parse state keys
-                        self.sim_pressure = state_data.get("pressure", self.sim_pressure)
-                        self.sim_safety_rod = state_data.get("rod_safety", state_data.get("safety_rod", self.sim_safety_rod))
-                        self.sim_shim_rod = state_data.get("rod_shim", state_data.get("shim_rod", self.sim_shim_rod))
-                        self.sim_regulating_rod = state_data.get("rod_regulating", state_data.get("regulating_rod", self.sim_regulating_rod))
-                        
-                        self.sim_pump_primary = state_data.get("pump_primary", self.sim_pump_primary)
-                        self.sim_pump_secondary = state_data.get("pump_secondary", self.sim_pump_secondary)
-                        self.sim_pump_tertiary = state_data.get("pump_tertiary", self.sim_pump_tertiary)
-                        
-                        self.sim_thermal_kw = state_data.get("thermal_kw", self.sim_thermal_kw)
-                        self.sim_turbine_speed = state_data.get("turbine_speed", self.sim_turbine_speed)
-                        self.sim_emergency = state_data.get("emergency", state_data.get("emergency_active", self.sim_emergency))
-                        
-                        # Set mode
-                        auto_running = state_data.get("auto_running", False)
-                        json_mode = state_data.get("mode", "")
-                        
-                        if not hasattr(self, 'last_auto_running'):
-                            self.last_auto_running = False
-                            
-                        # Detect any transition into an automatic simulation (Normal Auto, LOFA, Cinematic LOFA)
-                        is_any_auto = auto_running or json_mode == "cinematic_lofa"
-                        
-                        # If we just started any auto simulation, clear pump states to prevent false failures
-                        if is_any_auto and not self.last_auto_running:
-                            self._reset_sim_state_for_auto()
-                            
-                        self.last_auto_running = is_any_auto
-                        
-                        if self.sim_emergency:
-                            self.sim_mode = "SCRAM"
-                        elif json_mode == "cinematic_lofa":
-                            self.sim_mode = "Simulasi LOFA"
-                        elif auto_running:
-                            self.sim_mode = "Otomatis"
-                        else:
-                            self.sim_mode = "Manual"
-                            
-                        # Ext coolant variables
-                        self.sim_coolant_temp_primary = state_data.get("coolant_temp_primary", self.sim_coolant_temp_primary)
-                        self.sim_coolant_temp_secondary = state_data.get("coolant_temp_secondary", self.sim_coolant_temp_secondary)
-                        self.sim_fuel_cladding_temp = state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp)
-                        self.sim_condenser_pressure = state_data.get("condenser_pressure", self.sim_condenser_pressure)
-
-                        # Auto-clear pump failures if the reactor is fully reset/cold
-                        if self.sim_thermal_kw < 1.0 and self.sim_pressure < 10.0:
-                            self.Primer_failed = False
-                            self.Sekunder_failed = False
-                            self.Tersier_failed = False
-                            self.last_pump_states = {}
-
-                        # Set alarm
-                        is_lofa = (state_data.get("lofa_primary", False) or 
-                                   state_data.get("lofa_secondary", False) or 
-                                   state_data.get("lofa_tertiary", False))
-                        if self.sim_emergency:
-                            self.sim_alarm = "SCRAM DARURAT!"
-                        elif is_lofa:
-                            self.sim_alarm = "LOFA AKTIF!"
-                        else:
-                            self.sim_alarm = "Tidak Ada"
-
-                        self.local_mode = False
-                        state_loaded = True
-                        break
-                except Exception as e:
-                    logger.error("Failed reading state from %s: %s", path, e)
-
-        if not state_loaded:
-            # Switch back to local demo sandbox
             self.local_mode = True
-
     def _on_timer_tick(self) -> None:
         # Check if our target monitor was disconnected
         if _PYQT_AVAILABLE:

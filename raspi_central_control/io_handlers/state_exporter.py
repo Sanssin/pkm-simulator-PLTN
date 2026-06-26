@@ -3,28 +3,30 @@ import time
 import threading
 import logging
 import os
-from pathlib import Path
+import socket
 
 logger = logging.getLogger(__name__)
 
 class StateExporter:
     """
-    Exports the current system state to a JSON file periodically.
-    Used by the video display client to show real-time metrics.
+    Exports the current system state over UDP socket periodically.
+    Used by the video display client and touch panel to show real-time metrics.
     """
-    def __init__(self, state_manager, export_path="/tmp/pltn_state.json"):
+    def __init__(self, state_manager, target_ip="127.0.0.1", ports=(9998, 9997)):
         self.state_manager = state_manager
-        self.export_path = Path(export_path)
+        self.target_ip = target_ip
+        self.ports = ports
         self._thread = None
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
     def start(self):
         """Start the background export thread."""
         self._thread = threading.Thread(target=self._export_loop, daemon=True, name="StateExportThread")
         self._thread.start()
-        logger.info(f"StateExporter started. Exporting to {self.export_path}")
+        logger.info(f"StateExporter started. Broadcasting to {self.target_ip} on ports {self.ports}")
         
     def _export_loop(self):
-        """Background loop to write state to JSON."""
+        """Background loop to broadcast state via UDP."""
         # Config System IO affinity (Core 0)
         try:
             import psutil
@@ -64,10 +66,9 @@ class StateExporter:
                         "show_credits": bool(getattr(state, 'show_credits', False)),
                     }
                 
-                temp_file = self.export_path.with_suffix('.tmp')
-                with open(temp_file, 'w') as f:
-                    json.dump(state_dict, f)
-                temp_file.replace(self.export_path)
+                payload = json.dumps(state_dict).encode('utf-8')
+                for port in self.ports:
+                    self.sock.sendto(payload, (self.target_ip, port))
                 
             except Exception as e:
                 logger.error(f"State export error: {e}")
