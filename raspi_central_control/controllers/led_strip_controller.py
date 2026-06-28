@@ -109,21 +109,18 @@ class LEDSegment:
 
         # Aliran uap sekunder (sekunder_out) menuju turbin: Warna Peach
         if self.name == 'sekunder_out':
-            if self.heat_ratio <= 0.01:
-                # Reaktor benar-benar mati, warna putih menyala statis
-                steam_r, steam_g, steam_b = (255, 255, 255)
-            else:
-                # Transisi SANGAT CEPAT ke Peach saat mulai ada daya sekecil apapun
-                prog = (self.heat_ratio - 0.01) / 0.04
-                prog = max(0.0, min(1.0, prog))
-                
-                # Target warna uap panas: Peach / Soft Pink (R=200, G=80, B=100)
-                steam_r = int(blue[0] * (1.0 - prog) + 200 * prog)       
-                steam_g = int(blue[1] * (1.0 - prog) + 80 * prog)        
-                steam_b = int(blue[2] * (1.0 - prog) + 100 * prog)
+            # Transisi mulus: panjang pipa yang terisi uap peach bertambah dari ujung kiri ke kanan 
+            # seiring naiknya heat_ratio (dari 0.0 ke 1.0)
+            peach_len = int(self.length * self.heat_ratio)
             
             for i in range(self.length):
-                gradient_colors[i] = Color(steam_r, steam_g, steam_b)
+                if i <= peach_len and self.heat_ratio > 0.0:
+                    # Terisi uap panas (Peach / Soft Pink)
+                    gradient_colors[i] = Color(200, 80, 100)
+                else:
+                    # Belum mencapai tahap uap (Putih Statis)
+                    gradient_colors[i] = Color(255, 255, 255)
+                    
             return gradient_colors
 
 

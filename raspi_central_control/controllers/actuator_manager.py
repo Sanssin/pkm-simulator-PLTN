@@ -25,7 +25,7 @@ from controllers.raspi_relay_controller import RelayController
 logger = logging.getLogger(__name__)
 
 # TODO: tune if visual steam needs to appear earlier or later
-STEAM_ANIM_THRESHOLD_C = 100.0
+STEAM_ANIM_THRESHOLD_C = 80.0
 
 try:
     import RPi.GPIO as GPIO
@@ -275,10 +275,13 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('primer', hr_primary)
             self.led_strip.set_heat_ratio('sekunder_in', hr_secondary_display)
             
-            # Khusus segmen uap (sekunder_out), jangan kirim heat_ratio (jangan ubah warna jadi Peach) 
-            # jika suhunya belum mencapai threshold uap. Kirim 0.0 agar tetap putih statis/mati.
+            # Khusus segmen uap (sekunder_out), kirim nilai heat_ratio yang merangkak naik perlahan 
+            # dari 0.0 ke 1.0 tepat saat suhu melewati ambang batas uap.
+            # Ini akan dipakai led_strip_controller untuk menambah panjang uap perlahan dari kiri ke kanan.
             if t_secondary > STEAM_ANIM_THRESHOLD_C:
-                self.led_strip.set_heat_ratio('sekunder_out', hr_secondary_display)
+                hr_steam = (t_secondary - STEAM_ANIM_THRESHOLD_C) / (120.0 - STEAM_ANIM_THRESHOLD_C)
+                hr_steam = max(0.0, min(1.0, hr_steam))
+                self.led_strip.set_heat_ratio('sekunder_out', hr_steam)
             else:
                 self.led_strip.set_heat_ratio('sekunder_out', 0.0)
                 
