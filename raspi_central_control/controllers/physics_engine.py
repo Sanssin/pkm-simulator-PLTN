@@ -101,28 +101,35 @@ class PhysicsEngine:
             else:
                 reactor_thermal_capacity = 0.0
                     
-            if not state.emergency_active:
-                temp_sec = getattr(state, 'temperature_coolant_secondary', 25.0)
-                if temp_sec > 80.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
-                    # Turbine speed matches secondary temperature (from 80C to 230C)
-                    target_speed = ((temp_sec - 80.0) / 150.0) * 100.0
-                    target_speed = min(max(target_speed, 10.0), 100.0)
-                    
-                    if state.turbine_speed < target_speed:
-                        state.turbine_speed = min(state.turbine_speed + (4.0 * dt), target_speed)
-                    else:
-                        state.turbine_speed = max(state.turbine_speed - (10.0 * dt), target_speed)
+            temp_sec = getattr(state, 'temperature_coolant_secondary', 25.0)
+            if temp_sec > 80.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+                # Turbine speed matches secondary temperature (from 80C to 230C)
+                target_speed = ((temp_sec - 80.0) / 150.0) * 100.0
+                target_speed = min(max(target_speed, 10.0), 100.0)
+                
+                if state.emergency_active:
+                    # Saat SCRAM, turbin tetap berputar menggunakan uap sisa tapi melemah
+                    target_speed *= 0.6
+                
+                if state.turbine_speed < target_speed:
+                    state.turbine_speed = min(state.turbine_speed + (4.0 * dt), target_speed)
                 else:
-                    state.turbine_speed = max(state.turbine_speed - (10.0 * dt), 0.0)
+                    # Melambat natural mengikuti turunnya suhu uap
+                    state.turbine_speed = max(state.turbine_speed - (5.0 * dt), target_speed)
             else:
-                state.turbine_speed = max(state.turbine_speed - (40.0 * dt), 0.0)
+                # Uap habis atau pompa sekunder mati, turbin berputar turun karena inersia
+                state.turbine_speed = max(state.turbine_speed - (5.0 * dt), 0.0)
                     
             target_thermal_kw = min(reactor_thermal_capacity * 0.34 * (state.turbine_speed / 100.0), 300000.0)
             
             # Mencegah daya turun menjadi 0 seketika saat SCRAM atau control rod diturunkan paksa.
             # Turbin masih memiliki gaya inersia/potensial yang perlahan melambat.
             if target_thermal_kw < state.thermal_kw:
-                decay_rate = 300000.0 / 2.5 # Turun dari max ke 0 dalam ~2.5 detik
+                if state.emergency_active:
+                    decay_rate = 300000.0 / 20.0 # Turun perlahan dari max ke 0 dalam ~20 detik karena uap sisa
+                else:
+                    decay_rate = 300000.0 / 2.5 # Normal rod drop
+
                 state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
             else:
                 state.thermal_kw = target_thermal_kw
@@ -355,3 +362,12 @@ class PhysicsEngine:
                 logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
                 if self.trigger_scram:
                     self.trigger_scram()
+                    
+        # Matikan alarm secara otomatis jika kondisi reaktor sudah kembali aman
+        if state.emergency_active:
+            is_safe = (state.temperature_coolant_primary < 330.0 and 
+                       state.temperature_core < 1000.0 and 
+                       state.pressure < 170.0)
+            if is_safe:
+                state.emergency_active = False
+
