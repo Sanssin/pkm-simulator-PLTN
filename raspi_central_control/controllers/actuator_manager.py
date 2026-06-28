@@ -227,19 +227,20 @@ class ActuatorManager:
             # (namun tidak bergerak jika speed 0)
             
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
-            ambient = 25.0
+            # Suhu batas bawah agar visual mulai berubah (bukan 25C agar tidak terlalu cepat merah)
+            temp_base = 50.0 
             
-            # Basis normalisasi untuk semua loop (T - ambient) / (T_MAX - ambient)
-            t_primary = getattr(state, 'temperature_coolant_primary', ambient)
-            hr_primary_raw = (t_primary - ambient) / (380.0 - ambient)
+            # Basis normalisasi untuk semua loop (T - temp_base) / (T_MAX - temp_base)
+            t_primary = getattr(state, 'temperature_coolant_primary', 25.0)
+            hr_primary_raw = (t_primary - temp_base) / (345.0 - temp_base)
             hr_primary = max(0.0, min(1.0, hr_primary_raw))
             
-            t_secondary = getattr(state, 'temperature_coolant_secondary', ambient)
-            hr_secondary_raw = (t_secondary - ambient) / (250.0 - ambient)
+            t_secondary = getattr(state, 'temperature_coolant_secondary', 25.0)
+            hr_secondary_raw = (t_secondary - temp_base) / (280.0 - temp_base)
             hr_secondary = max(0.0, min(1.0, hr_secondary_raw))
             
-            t_tertiary = getattr(state, 'temperature_coolant_tertiary', ambient)
-            hr_tertiary_raw = (t_tertiary - ambient) / (150.0 - ambient)
+            t_tertiary = getattr(state, 'temperature_coolant_tertiary', 25.0)
+            hr_tertiary_raw = (t_tertiary - temp_base) / (100.0 - temp_base)
             hr_tertiary = max(0.0, min(1.0, hr_tertiary_raw))
             
             # Paksa ketaatan fisika secara visual: primer >= sekunder >= tersier

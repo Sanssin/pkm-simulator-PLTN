@@ -1198,10 +1198,10 @@ class VideoDisplayApp:
         sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.90))
         
         temps = [
-            ("Bahan Bakar", core_temp, 1500.0),
-            ("Cladding", clad_temp, 1000.0),
-            ("Aliran Primer", prim_temp, 350.0),
-            ("Uap Sekunder", sec_temp, 300.0)
+            ("Bahan Bakar", core_temp, 2800.0),
+            ("Cladding", clad_temp, 1200.0),
+            ("Aliran Primer", prim_temp, 345.0),
+            ("Uap Sekunder", sec_temp, 280.0)
         ]
         
         temp_content_y = temp_y + int(80*self.scale)
