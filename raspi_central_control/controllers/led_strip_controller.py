@@ -136,8 +136,10 @@ class LEDSegment:
                 ret_r, ret_g, ret_b = blue
             else:
                 # Transisi halus, memerah sempurna jauh lebih awal (hr=0.50)
-                # Agar aliran primer dijamin merah menyala kuat saat operasi
-                prog = (self.heat_ratio - 0.05) / 0.45
+                # Normalisasi rasio panas:
+                # Mulai memerah di 0.05, dan puncaknya 100% merah persis di suhu operasi normal (hr_normal = 0.83)
+                # Sehingga saat SCRAM, warnanya akan langsung terlihat menurun redup bersamaan dengan turunnya suhu
+                prog = (self.heat_ratio - 0.05) / 0.78
                 prog = max(0.0, min(1.0, prog))
                 primer_r = int(blue[0] * (1 - prog) + 255 * prog)
                 primer_g = int(blue[1] * (1 - prog))

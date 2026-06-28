@@ -334,7 +334,7 @@ class PhysicsEngine:
         scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
 
         # General Overheat & Saturation Check
-        t_sat = 100.0 * (max(1.0, state.pressure) ** 0.25)
+        t_sat = 110.0 * (max(1.0, state.pressure) ** 0.25)
         
         if state.temperature_coolant_primary >= t_sat and not scram_reason:
             scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
