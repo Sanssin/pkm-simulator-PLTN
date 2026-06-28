@@ -1096,6 +1096,7 @@ class VideoDisplayApp:
         current_pressure = state.get("pressure", 0)
         default_temp = state.get("temperature", (current_pressure / 160.0) * 300.0)
         core_temp = state.get("temperature_core", default_temp)
+        prim_temp = state.get("temperature_coolant_primary", default_temp)
         
         import time
         blink_on = int(time.time() * 2) % 2 == 0
