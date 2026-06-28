@@ -257,7 +257,8 @@ class PhysicsEngine:
         # =====================================================================
         # 5. PRESSURE DYNAMICS
         # =====================================================================
-        pressure_generation = (delta_temp * 0.1) if delta_temp > 0 else (delta_temp * 0.2)
+        # Kurangi sensitivitas (multiplier) drastis agar tidak mudah SCRAM saat batang kendali ditarik
+        pressure_generation = (delta_temp * 0.02) if delta_temp > 0 else (delta_temp * 0.05)
         pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
         if state.relief_valve_open:
             pressure_generation -= 1.5 * dt  # Relieve pressure more slowly
