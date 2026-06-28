@@ -118,7 +118,6 @@ class ActuatorManager:
         # Inisialisasi ke nilai default state_manager agar tidak ada false trigger
         # saat update_actuators pertama kali dipanggil
         self._prev_sim_mode = 'manual'
-        self._pump_indicators_active = False
 
     def update_actuators(self, state):
         """
@@ -193,28 +192,16 @@ class ActuatorManager:
             prev_sim_mode = getattr(self, '_prev_sim_mode', None)
             if prev_sim_mode != sim_mode:
                 self._prev_sim_mode = sim_mode
-                # User berpindah ke mode aktif → tampilkan indikator segera
+                # User berpindah ke mode aktif
                 if sim_mode in ('manual', 'auto', 'cinematic_lofa') and is_reset:
                     state.just_reset = False
                     is_reset = False
-                
-                # Aktifkan indikator pompa jika berubah dari idle ke mode aktif
-                if prev_sim_mode == 'idle' and sim_mode in ('manual', 'auto', 'cinematic_lofa'):
-                    self._pump_indicators_active = True
 
             # Bersihkan juga saat ada pompa menyala atau auto aktif
             if any_pump_on or sim_mode in ('auto', 'cinematic_lofa'):
                 if is_reset:
                     state.just_reset = False
                     is_reset = False
-                self._pump_indicators_active = True
-
-            # Matikan indikator pompa jika masuk mode idle
-            if sim_mode == 'idle':
-                self._pump_indicators_active = False
-
-            # show_indicators: tampilkan status pompa jika indikator aktif
-            show_indicators = self._pump_indicators_active and sim_mode in ('manual', 'auto', 'cinematic_lofa')
 
 
             if is_reset or sim_mode == 'idle':
@@ -267,9 +254,7 @@ class ActuatorManager:
                 (2, getattr(state, 'pump_primary_status', 0),  getattr(state, 'lofa_primary', False)),
             ]
             for idx, p_status, is_lofa in pumps:
-                if not show_indicators:
-                    self.led_strip.set_pump_indicator(idx, 0, 0, 0, blink=False)       # Off (idle / belum interaksi)
-                elif is_lofa:
+                if is_lofa:
                     self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=True)      # Merah kedip (LOFA)
                 elif p_status == 0:   # PUMP_OFF
                     self.led_strip.set_pump_indicator(idx, 255, 0, 0, blink=False)     # Merah solid
