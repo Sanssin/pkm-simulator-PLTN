@@ -1188,7 +1188,7 @@ class VideoDisplayApp:
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITORING SUHU")
         
         # Read temperatures from state (fallback to calculated if not available)
-        ambient_temp = 28.0  # Suhu ruangan normal
+        ambient_temp = 25.0  # Disamakan dengan suhu ruangan di perhitungan fisika reaktor
         # Jika belum beroperasi, suhu minimal adalah suhu ruangan
         default_temp = state.get("temperature", max(ambient_temp, (state.get("pressure", 0) / 160.0) * 300.0))
         
