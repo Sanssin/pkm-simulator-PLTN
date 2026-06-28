@@ -231,10 +231,19 @@ class ActuatorManager:
             temp_base_sec = 50.0
             temp_base_tert = 30.0
             
-            # Basis normalisasi (T - temp_base) / (T_MAX - temp_base)
-            # Primer kita patok T_MAX warnanya di 120C agar di suhu 100C sudah terlihat sangat memerah
+            # Basis normalisasi piecewise khusus Primer agar titik perpotongan batas tetap terjaga:
+            # - hr=0.5 di 120C (intensitas sudah 100% merah)
+            # - hr=0.83 di 345C (batas panjang merah berhenti di separuh jalan untuk kondisi normal)
+            # - hr=1.0 di 380C (hanya saat LOFA merah akan menutupi seluruh pipa balikan)
             t_primary = getattr(state, 'temperature_coolant_primary', 25.0)
-            hr_primary_raw = (t_primary - temp_base_prim) / (120.0 - temp_base_prim)
+            if t_primary <= 50.0:
+                hr_primary_raw = 0.0
+            elif t_primary <= 120.0:
+                hr_primary_raw = 0.0 + (t_primary - 50.0) / (120.0 - 50.0) * 0.5
+            elif t_primary <= 345.0:
+                hr_primary_raw = 0.5 + (t_primary - 120.0) / (345.0 - 120.0) * 0.33
+            else:
+                hr_primary_raw = 0.83 + (t_primary - 345.0) / (380.0 - 345.0) * 0.17
             hr_primary = max(0.0, min(1.0, hr_primary_raw))
             
             # Sekunder patok T_MAX warna di 120C juga
