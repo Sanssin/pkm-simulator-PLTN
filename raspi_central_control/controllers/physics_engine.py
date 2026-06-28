@@ -12,6 +12,16 @@ from .interlock_validator import PUMP_ON
 
 logger = logging.getLogger(__name__)
 
+# TODO: verify against actual MG996R + gear ratio mechanism speed
+ROD_SPEED_DEG_PER_SEC = 8.0
+# TODO: tune so full 0->100 drop takes ~2 seconds; verify visually against servo_controller.py physical travel limits — do not exceed the physical servo's actual max speed capability.
+SCRAM_DROP_DEG_PER_SEC = 50.0
+
+# Tunable maximum pressure generation rate (bar/s)
+MAX_PRESSURE_RATE = 3.0
+
+TRIP_DELAY_SEC = 0.5
+
 class PhysicsEngine:
     """
     Simulates thermodynamics and mechanical physics for the reactor.
@@ -35,6 +45,13 @@ class PhysicsEngine:
         self.secondary_pump_was_on = False
         self.tertiary_pump_was_on = False
         
+        self.shim_rod_actual = None
+        self.regulating_rod_actual = None
+        
+        self.trip_timer_clad = 0.0
+        self.trip_timer_prim = 0.0
+        self.trip_timer_condenser = 0.0
+        
         self.last_update_time = time.time()
         
     def update(self, state: PanelState) -> None:
@@ -48,12 +65,35 @@ class PhysicsEngine:
         if dt <= 0:
             return
 
+        if self.shim_rod_actual is None:
+            self.shim_rod_actual = getattr(state, 'shim_rod', 0.0)
+        if self.regulating_rod_actual is None:
+            self.regulating_rod_actual = getattr(state, 'regulating_rod', 0.0)
+
+        # Rate-limit rod actual positions toward their setpoints (or 0 if SCRAM)
+        if getattr(state, 'emergency_active', False):
+            target_shim = 0.0
+            target_reg = 0.0
+            current_speed = SCRAM_DROP_DEG_PER_SEC
+        else:
+            target_shim = getattr(state, 'shim_rod', 0.0)
+            target_reg = getattr(state, 'regulating_rod', 0.0)
+            current_speed = ROD_SPEED_DEG_PER_SEC
+
+        shim_diff = target_shim - self.shim_rod_actual
+        shim_step = max(-current_speed * dt, min(shim_diff, current_speed * dt))
+        self.shim_rod_actual += shim_step
+
+        reg_diff = target_reg - self.regulating_rod_actual
+        reg_step = max(-current_speed * dt, min(reg_diff, current_speed * dt))
+        self.regulating_rod_actual += reg_step
+
         # =====================================================================
         # 1. PRIMARY PHYSICS (Thermal Capacity & Turbine)
         # =====================================================================
         # Bypass manual generation logic if running an automated scripted sequence
         if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
-            effective_rod = (state.shim_rod * 0.8) + (state.regulating_rod * 0.2)
+            effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
             
             if effective_rod > 10.0:
                 reactor_thermal_capacity = (effective_rod**2) * 90.0
@@ -126,7 +166,7 @@ class PhysicsEngine:
         # 4. THERMODYNAMICS (Heat Generation & Cooling)
         # =====================================================================
         # Use control rod directly to define heat target so it doesn't depend on turbine
-        effective_rod = (getattr(state, 'shim_rod', 0) * 0.8) + (getattr(state, 'regulating_rod', 0) * 0.2)
+        effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
         power_fraction = effective_rod / 100.0
         
         # Power input (q_in) to fuel, arbitrary units scaled for simulator
@@ -197,6 +237,7 @@ class PhysicsEngine:
         # 5. PRESSURE DYNAMICS
         # =====================================================================
         pressure_generation = (delta_temp * 0.1) if delta_temp > 0 else (delta_temp * 0.2)
+        pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
         if state.relief_valve_open:
             pressure_generation -= 1.5 * dt  # Relieve pressure more slowly
             
@@ -235,20 +276,39 @@ class PhysicsEngine:
                     setattr(state, lofa_flag_attr, False)
             return None
 
+        # Update Timers unconditionally
+        if state.temperature_fuel_cladding > 900.0:
+            self.trip_timer_clad += dt
+        else:
+            self.trip_timer_clad = 0.0
+
+        if state.temperature_coolant_primary > 380.0:
+            self.trip_timer_prim += dt
+        else:
+            self.trip_timer_prim = 0.0
+
+        if state.condenser_pressure > 0.5:
+            self.trip_timer_condenser += dt
+        else:
+            self.trip_timer_condenser = 0.0
+
         # Primary
         def check_prim():
-            if state.temperature_fuel_cladding > 900.0: return f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
-            if state.temperature_coolant_primary > 380.0: return f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+            if self.trip_timer_clad >= TRIP_DELAY_SEC: return f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
+            if self.trip_timer_prim >= TRIP_DELAY_SEC: return f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+            return None
         scram_reason = scram_reason or check_lofa(state.pump_primary_status, self.primary_pump_was_on, 'lofa_primary', 'Primary', check_prim)
         
         # Secondary
         def check_sec():
-            if state.temperature_fuel_cladding > 900.0 or state.temperature_coolant_primary > 380.0: return "Secondary LOFA: Induced Primary Overheat"
+            if self.trip_timer_clad >= TRIP_DELAY_SEC or self.trip_timer_prim >= TRIP_DELAY_SEC: return "Secondary LOFA: Induced Primary Overheat"
+            return None
         scram_reason = scram_reason or check_lofa(state.pump_secondary_status, self.secondary_pump_was_on, 'lofa_secondary', 'Secondary', check_sec)
 
         # Tertiary
         def check_tert():
-            if state.condenser_pressure > 0.5: return f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+            if self.trip_timer_condenser >= TRIP_DELAY_SEC: return f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+            return None
         scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
 
         # General Overheat & Saturation Check
