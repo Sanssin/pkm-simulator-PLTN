@@ -96,8 +96,8 @@ class StatusCardSpec:
 
 @dataclass(frozen=True)
 class TouchPanelLayoutSpec:
-    title: str = "ALAT PERAGA PLTN PWR"
-    subtitle: str = "Panel kontrol PLTN tipe PWR"
+    title: str = "ALAT PERAGA SIMULATOR PEMBANGKIT LISTRIK TENAGA NUKLIR (PLTN)"
+    subtitle: str = "Panel Kontrol Utama Reaktor Tipe Pressurized Water Reactor (PWR)"
     top_badges: List[str] = field(default_factory=lambda: ["Mode: Manual", "1280x800", "PyQt5"])
     control_groups: List[List[PanelButtonSpec]] = field(
         default_factory=lambda: [
@@ -664,7 +664,7 @@ class TouchPanelBaseWindow(QMainWindow):
         title_text.setObjectName("titleLabel")
         title_block.addWidget(title_text)
         
-        subtitle = QLabel("Panel kontrol PLTN tipe PWR")
+        subtitle = QLabel("Panel Kontrol Utama Reaktor Tipe Pressurized Water Reactor (PWR)")
         subtitle.setObjectName("subtitleLabel")
         title_block.addWidget(subtitle)
 
