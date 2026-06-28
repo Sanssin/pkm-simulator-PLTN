@@ -25,7 +25,7 @@ from controllers.raspi_relay_controller import RelayController
 logger = logging.getLogger(__name__)
 
 # TODO: tune if visual steam needs to appear earlier or later
-STEAM_ANIM_THRESHOLD_C = 150.0
+STEAM_ANIM_THRESHOLD_C = 100.0
 
 try:
     import RPi.GPIO as GPIO
@@ -227,23 +227,23 @@ class ActuatorManager:
             # (namun tidak bergerak jika speed 0)
             
             # Suhu batas bawah agar visual mulai berubah memerah
-            temp_base_prim = 80.0 
-            temp_base_sec = 80.0
-            temp_base_tert = 40.0
+            temp_base_prim = 50.0 
+            temp_base_sec = 50.0
+            temp_base_tert = 30.0
             
             # Basis normalisasi (T - temp_base) / (T_MAX - temp_base)
-            # Primer kita patok T_MAX warnanya di 200C agar sudah merah menyala sebelum uap muncul
+            # Primer kita patok T_MAX warnanya di 120C agar di suhu 100C sudah terlihat sangat memerah
             t_primary = getattr(state, 'temperature_coolant_primary', 25.0)
-            hr_primary_raw = (t_primary - temp_base_prim) / (200.0 - temp_base_prim)
+            hr_primary_raw = (t_primary - temp_base_prim) / (120.0 - temp_base_prim)
             hr_primary = max(0.0, min(1.0, hr_primary_raw))
             
-            # Sekunder patok T_MAX warna di 200C juga
+            # Sekunder patok T_MAX warna di 120C juga
             t_secondary = getattr(state, 'temperature_coolant_secondary', 25.0)
-            hr_secondary_raw = (t_secondary - temp_base_sec) / (200.0 - temp_base_sec)
+            hr_secondary_raw = (t_secondary - temp_base_sec) / (120.0 - temp_base_sec)
             hr_secondary = max(0.0, min(1.0, hr_secondary_raw))
             
             t_tertiary = getattr(state, 'temperature_coolant_tertiary', 25.0)
-            hr_tertiary_raw = (t_tertiary - temp_base_tert) / (100.0 - temp_base_tert)
+            hr_tertiary_raw = (t_tertiary - temp_base_tert) / (80.0 - temp_base_tert)
             hr_tertiary = max(0.0, min(1.0, hr_tertiary_raw))
             
             # Paksa ketaatan fisika secara visual: primer >= sekunder >= tersier
@@ -259,7 +259,14 @@ class ActuatorManager:
             
             self.led_strip.set_heat_ratio('primer', hr_primary)
             self.led_strip.set_heat_ratio('sekunder_in', hr_secondary_display)
-            self.led_strip.set_heat_ratio('sekunder_out', hr_secondary_display)
+            
+            # Khusus segmen uap (sekunder_out), jangan kirim heat_ratio (jangan ubah warna jadi Peach) 
+            # jika suhunya belum mencapai threshold uap. Kirim 0.0 agar tetap putih statis/mati.
+            if t_secondary > STEAM_ANIM_THRESHOLD_C:
+                self.led_strip.set_heat_ratio('sekunder_out', hr_secondary_display)
+            else:
+                self.led_strip.set_heat_ratio('sekunder_out', 0.0)
+                
             self.led_strip.set_heat_ratio('kondenser', hr_tertiary_display)
             self.led_strip.set_heat_ratio('tersier_out', hr_tertiary_display)
             
