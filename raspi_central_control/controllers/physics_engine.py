@@ -140,8 +140,8 @@ class PhysicsEngine:
         if state.pump_secondary_status == PUMP_ON: self.secondary_pump_was_on = True
         if state.pump_tertiary_status == PUMP_ON: self.tertiary_pump_was_on = True
         
-        # Reset flow tracking automatically if reactor is completely cold and off
-        if state.thermal_kw < 1.0:
+        # Reset flow tracking automatically if reactor is completely cold and off, OR if already SCRAMMED
+        if state.thermal_kw < 1.0 or state.emergency_active:
             if state.pump_primary_status == 0: self.primary_pump_was_on = False
             if state.pump_secondary_status == 0: self.secondary_pump_was_on = False
             if state.pump_tertiary_status == 0: self.tertiary_pump_was_on = False

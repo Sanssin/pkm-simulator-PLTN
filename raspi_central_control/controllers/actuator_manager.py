@@ -239,8 +239,8 @@ class ActuatorManager:
             if t_primary <= 50.0:
                 hr_primary_raw = 0.0
             elif t_primary <= 100.0:
-                # Beri lompatan kecil di awal (0.1) agar batas 0.05 di controller terlewati
-                hr_primary_raw = 0.1 + (t_primary - 50.0) / (100.0 - 50.0) * 0.4
+                # Transisi halus dari biru ke merah (0.0 ke 0.5) agar pendinginan di bawah 100C lebih cepat memudar
+                hr_primary_raw = (t_primary - 50.0) / (100.0 - 50.0) * 0.5
             elif t_primary <= 345.0:
                 hr_primary_raw = 0.5 + (t_primary - 100.0) / (345.0 - 100.0) * 0.33
             else:
