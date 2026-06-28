@@ -1105,9 +1105,11 @@ class VideoDisplayApp:
         status_text_color = (255, 255, 255)
         
         press_crit = current_pressure > 180
-        temp_crit = core_temp > 500
+        # Suhu operasi bahan bakar normal bisa mencapai 1200-1400C.
+        # Primer normal mentok di 345C.
+        temp_crit = core_temp > 1500 or prim_temp > 350
         press_warn = current_pressure > 160
-        temp_warn = core_temp > 400
+        temp_warn = core_temp > 1300 or prim_temp > 340
         
         if press_crit and temp_crit:
             status_color = self.COLOR_ERROR
