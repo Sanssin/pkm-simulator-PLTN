@@ -322,7 +322,8 @@ class TouchPanelBaseWindow(QMainWindow):
 
         root_layout.addWidget(self._build_header())
         root_layout.addLayout(self._build_body())
-        root_layout.addWidget(self._build_footer())
+        # Footer disembunyikan agar lebih bersih
+        # root_layout.addWidget(self._build_footer())
 
         self.stacked_widget.addWidget(hud_widget)
         self.stacked_widget.addWidget(root)
@@ -831,7 +832,7 @@ class TouchPanelBaseWindow(QMainWindow):
         column.setSpacing(12)
 
         # 1. Primary Pumps Control Group (Arranged vertically for each pump)
-        pumps_group = QGroupBox("Pompa Pendingin Primer")
+        pumps_group = QGroupBox("Kontrol Pompa Pendingin")
         pumps_layout = QHBoxLayout(pumps_group)
         pumps_layout.setContentsMargins(12, 2, 12, 8)
         pumps_layout.setSpacing(20)
@@ -1626,8 +1627,8 @@ class TouchPanelBaseWindow(QMainWindow):
             border-radius: 8px;
             padding: 10px;
             color: #2c3e50;
-            font-size: 20px;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 900;
         }
         QPushButton:hover {
             background-color: #e0e0e0;
