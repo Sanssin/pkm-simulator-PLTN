@@ -103,9 +103,9 @@ class PhysicsEngine:
                     
             if not state.emergency_active:
                 temp_sec = getattr(state, 'temperature_coolant_secondary', 25.0)
-                if temp_sec > 50.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
-                    # Turbine speed matches secondary temperature (from 50C to 200C)
-                    target_speed = ((temp_sec - 50.0) / 150.0) * 100.0
+                if temp_sec > 100.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+                    # Turbine speed matches secondary temperature (from 100C to 250C)
+                    target_speed = ((temp_sec - 100.0) / 150.0) * 100.0
                     target_speed = min(max(target_speed, 10.0), 100.0)
                     
                     if state.turbine_speed < target_speed:
