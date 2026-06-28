@@ -24,6 +24,9 @@ from controllers.raspi_relay_controller import RelayController
 
 logger = logging.getLogger(__name__)
 
+# TODO: tune if visual steam needs to appear earlier or later
+STEAM_ANIM_THRESHOLD_C = 100.0
+
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
@@ -166,13 +169,9 @@ class ActuatorManager:
             self.led_strip.set_flow_speed('sekunder_in', sec_speed / 100.0)
             self.led_strip.set_flow_speed('tersier_out', tert_speed / 100.0)
             
-            # Khusus sekunder_out (uap), baru bergerak jika reaktor menghasilkan daya (hr > 0.01)
-            hr_secondary_current = 0.0
+            # Khusus sekunder_out (uap), baru bergerak jika suhu sekunder melampaui titik didih simulasi
             t_secondary = getattr(state, 'temperature_coolant_secondary', 25.0)
-            if t_secondary > 25.0:
-                hr_secondary_current = (t_secondary - 25.0) / (250.0 - 25.0)
-            
-            if hr_secondary_current > 0.01:
+            if t_secondary > STEAM_ANIM_THRESHOLD_C:
                 self.led_strip.set_flow_speed('sekunder_out', sec_speed / 100.0)
             else:
                 self.led_strip.set_flow_speed('sekunder_out', 0.0)
@@ -230,21 +229,35 @@ class ActuatorManager:
             # Update heat ratio berdasarkan suhu air aktual di tiap siklus
             ambient = 25.0
             
-            # Suhu primer normal bisa mencapai 320C. Merah solid (1.0) hanya saat LOFA (suhu mendekati 380C)
+            # Basis normalisasi untuk semua loop (T - ambient) / (T_MAX - ambient)
             t_primary = getattr(state, 'temperature_coolant_primary', ambient)
-            hr_primary = (t_primary - ambient) / (380.0 - ambient)
-            hr_primary = max(0.0, min(1.0, hr_primary))
+            hr_primary_raw = (t_primary - ambient) / (380.0 - ambient)
+            hr_primary = max(0.0, min(1.0, hr_primary_raw))
             
-            # Suhu sekunder maksimal sekitar ~250C (0.7 * 380). Kita set merah solid (1.0) pada suhu 250C.
             t_secondary = getattr(state, 'temperature_coolant_secondary', ambient)
-            hr_secondary = (t_secondary - ambient) / (250.0 - ambient)
-            hr_secondary = max(0.0, min(1.0, hr_secondary))
+            hr_secondary_raw = (t_secondary - ambient) / (250.0 - ambient)
+            hr_secondary = max(0.0, min(1.0, hr_secondary_raw))
+            
+            t_tertiary = getattr(state, 'temperature_coolant_tertiary', ambient)
+            hr_tertiary_raw = (t_tertiary - ambient) / (150.0 - ambient)
+            hr_tertiary = max(0.0, min(1.0, hr_tertiary_raw))
+            
+            # Paksa ketaatan fisika secara visual: primer >= sekunder >= tersier
+            hr_secondary_display = min(hr_secondary, hr_primary)
+            hr_tertiary_display = min(hr_tertiary, hr_secondary_display)
+            
+            # Ekspos data terpadu untuk LED controller
+            state.heat_ratios = {
+                "primary": hr_primary,
+                "secondary": hr_secondary_display,
+                "tertiary": hr_tertiary_display
+            }
             
             self.led_strip.set_heat_ratio('primer', hr_primary)
-            self.led_strip.set_heat_ratio('sekunder_in', hr_secondary)
-            self.led_strip.set_heat_ratio('sekunder_out', hr_secondary)
-            self.led_strip.set_heat_ratio('kondenser', hr_secondary)
-            self.led_strip.set_heat_ratio('tersier_out', hr_secondary)
+            self.led_strip.set_heat_ratio('sekunder_in', hr_secondary_display)
+            self.led_strip.set_heat_ratio('sekunder_out', hr_secondary_display)
+            self.led_strip.set_heat_ratio('kondenser', hr_tertiary_display)
+            self.led_strip.set_heat_ratio('tersier_out', hr_tertiary_display)
             
             # Update Pump Indicators
             # Urutan fisik: LED 303=Tersier, LED 304=Sekunder, LED 305=Primer

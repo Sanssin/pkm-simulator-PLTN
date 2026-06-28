@@ -194,29 +194,42 @@ class PhysicsEngine:
             k_prim_sec = 0.1
             k_sec_env_base = 0.05
             
+        if not hasattr(state, 'temperature_coolant_tertiary'):
+            state.temperature_coolant_tertiary = self.ambient_temp
+            
         # Secondary Coolant (Steam Generator) to Environment/Tertiary
         if state.pump_tertiary_status == PUMP_ON:
-            k_sec_env = k_sec_env_base
+            k_sec_env = k_sec_env_base * 0.2
+            k_sec_tert = k_sec_env_base * 0.8
+            k_tert_env = 0.5
         else:
             k_sec_env = 0.05
+            k_sec_tert = 0.02
+            k_tert_env = 0.05
             
         # Calculate heat flows (Q = k * delta_T)
         q_fuel_to_clad = k_fuel_clad * (state.temperature_core - state.temperature_fuel_cladding)
         q_clad_to_prim = k_clad_prim * (state.temperature_fuel_cladding - state.temperature_coolant_primary)
         q_prim_to_sec = k_prim_sec * (state.temperature_coolant_primary - state.temperature_coolant_secondary)
         q_sec_to_env = k_sec_env * (state.temperature_coolant_secondary - self.ambient_temp)
+        q_sec_to_tert = k_sec_tert * (state.temperature_coolant_secondary - state.temperature_coolant_tertiary)
+        q_tert_to_env = k_tert_env * (state.temperature_coolant_tertiary - self.ambient_temp)
         
         # Thermal capacities (C) - higher means slower temperature change
         C_fuel = 2.0
         C_clad = 1.0
-        C_prim = 10.0
-        C_sec = 15.0
+        # TODO: tune berdasarkan testing visual
+        C_prim = 7.0
+        C_sec = 10.0
+        # TODO: tune
+        C_tert = 8.0
         
         # Differential equations (Lumped Capacitance Model)
         dT_fuel = (q_in - q_fuel_to_clad) / C_fuel * dt
         dT_clad = (q_fuel_to_clad - q_clad_to_prim) / C_clad * dt
         dT_prim = (q_clad_to_prim - q_prim_to_sec) / C_prim * dt
-        dT_sec = (q_prim_to_sec - q_sec_to_env) / C_sec * dt
+        dT_sec = (q_prim_to_sec - q_sec_to_env - q_sec_to_tert) / C_sec * dt
+        dT_tert = (q_sec_to_tert - q_tert_to_env) / C_tert * dt
         
         # Pressurizer Spray cooling effect on primary coolant
         if state.spray_active:
@@ -227,6 +240,7 @@ class PhysicsEngine:
         state.temperature_fuel_cladding = max(self.ambient_temp, state.temperature_fuel_cladding + dT_clad)
         state.temperature_coolant_primary = max(self.ambient_temp, state.temperature_coolant_primary + dT_prim)
         state.temperature_coolant_secondary = max(self.ambient_temp, state.temperature_coolant_secondary + dT_sec)
+        state.temperature_coolant_tertiary = max(self.ambient_temp, state.temperature_coolant_tertiary + dT_tert)
         
         state.temperature_coolant = state.temperature_coolant_primary
         
