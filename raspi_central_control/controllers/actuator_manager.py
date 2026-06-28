@@ -238,10 +238,11 @@ class ActuatorManager:
             t_primary = getattr(state, 'temperature_coolant_primary', 25.0)
             if t_primary <= 50.0:
                 hr_primary_raw = 0.0
-            elif t_primary <= 120.0:
-                hr_primary_raw = 0.0 + (t_primary - 50.0) / (120.0 - 50.0) * 0.5
+            elif t_primary <= 100.0:
+                # Beri lompatan kecil di awal (0.1) agar batas 0.05 di controller terlewati
+                hr_primary_raw = 0.1 + (t_primary - 50.0) / (100.0 - 50.0) * 0.4
             elif t_primary <= 345.0:
-                hr_primary_raw = 0.5 + (t_primary - 120.0) / (345.0 - 120.0) * 0.33
+                hr_primary_raw = 0.5 + (t_primary - 100.0) / (345.0 - 100.0) * 0.33
             else:
                 hr_primary_raw = 0.83 + (t_primary - 345.0) / (380.0 - 345.0) * 0.17
             hr_primary = max(0.0, min(1.0, hr_primary_raw))
@@ -256,8 +257,13 @@ class ActuatorManager:
             hr_tertiary = max(0.0, min(1.0, hr_tertiary_raw))
             
             # Paksa ketaatan fisika secara visual: primer >= sekunder >= tersier
-            hr_secondary_display = min(hr_secondary, hr_primary)
-            hr_tertiary_display = min(hr_tertiary, hr_secondary_display)
+            # TAHAN warna sekunder & tersier tetap biru (0.0) jika uap belum muncul (suhu < 100C)
+            if t_secondary <= STEAM_ANIM_THRESHOLD_C:
+                hr_secondary_display = 0.0
+                hr_tertiary_display = 0.0
+            else:
+                hr_secondary_display = min(hr_secondary, hr_primary)
+                hr_tertiary_display = min(hr_tertiary, hr_secondary_display)
             
             # Ekspos data terpadu untuk LED controller
             state.heat_ratios = {
