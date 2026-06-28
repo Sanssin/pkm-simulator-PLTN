@@ -1187,15 +1187,18 @@ class VideoDisplayApp:
         temp_h = int(260 * self.scale)
         self.draw_boxed_panel(right_col_x, temp_y, right_col_w, temp_h, "MONITORING SUHU")
         
-        # Read temperatures from state (fallback to calculated if not available)
-        ambient_temp = 25.0  # Disamakan dengan suhu ruangan di perhitungan fisika reaktor
-        # Jika belum beroperasi, suhu minimal adalah suhu ruangan
-        default_temp = state.get("temperature", max(ambient_temp, (state.get("pressure", 0) / 160.0) * 300.0))
+        # Suhu baseline saat kondisi reaktor mati (sisa decay heat)
+        base_core = 50.0
+        base_clad = 45.0
+        base_prim = 40.0
+        base_sec = 30.0
         
-        core_temp = max(ambient_temp, state.get("temperature_core", default_temp))
-        clad_temp = max(ambient_temp, state.get("temperature_fuel_cladding", ambient_temp + (core_temp - ambient_temp) * 0.27))
-        prim_temp = max(ambient_temp, state.get("temperature_coolant_primary", ambient_temp + (clad_temp - ambient_temp) * 0.90))
-        sec_temp = max(ambient_temp, state.get("temperature_coolant_secondary", ambient_temp + (prim_temp - ambient_temp) * 0.90))
+        default_temp = state.get("temperature", max(base_core, (state.get("pressure", 0) / 160.0) * 300.0))
+        
+        core_temp = max(base_core, state.get("temperature_core", default_temp))
+        clad_temp = max(base_clad, state.get("temperature_fuel_cladding", base_clad + (core_temp - base_core) * 0.27))
+        prim_temp = max(base_prim, state.get("temperature_coolant_primary", base_prim + (clad_temp - base_clad) * 0.90))
+        sec_temp = max(base_sec, state.get("temperature_coolant_secondary", base_sec + (prim_temp - base_prim) * 0.90))
         
         temps = [
             ("Bahan Bakar", core_temp, 2800.0),

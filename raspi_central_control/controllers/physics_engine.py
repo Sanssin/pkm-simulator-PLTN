@@ -235,12 +235,19 @@ class PhysicsEngine:
         if state.spray_active:
             dT_prim -= 10.0 * dt
             
+        # Base/ambient temperatures for a "Cold Shutdown" state (decay heat residual)
+        base_core = 50.0
+        base_clad = 45.0
+        base_prim = 40.0
+        base_sec = 30.0
+        base_tert = 25.0
+        
         # Update temperatures safely
-        state.temperature_core = max(self.ambient_temp, state.temperature_core + dT_fuel)
-        state.temperature_fuel_cladding = max(self.ambient_temp, state.temperature_fuel_cladding + dT_clad)
-        state.temperature_coolant_primary = max(self.ambient_temp, state.temperature_coolant_primary + dT_prim)
-        state.temperature_coolant_secondary = max(self.ambient_temp, state.temperature_coolant_secondary + dT_sec)
-        state.temperature_coolant_tertiary = max(self.ambient_temp, state.temperature_coolant_tertiary + dT_tert)
+        state.temperature_core = max(base_core, state.temperature_core + dT_fuel)
+        state.temperature_fuel_cladding = max(base_clad, state.temperature_fuel_cladding + dT_clad)
+        state.temperature_coolant_primary = max(base_prim, state.temperature_coolant_primary + dT_prim)
+        state.temperature_coolant_secondary = max(base_sec, state.temperature_coolant_secondary + dT_sec)
+        state.temperature_coolant_tertiary = max(base_tert, state.temperature_coolant_tertiary + dT_tert)
         
         state.temperature_coolant = state.temperature_coolant_primary
         
