@@ -39,8 +39,9 @@ def main():
     with open(CSV_FILENAME, mode='a', newline='') as csv_file:
         fieldnames = [
             'waktu_lokal', 'waktu_sistem_detik', 
-            'pompa_primer_status', 
-            'suhu_core_celcius', 'suhu_pendingin_primer_celcius', 
+            'pompa_primer_status', 'pompa_sekunder_status', 'pompa_tersier_status',
+            'suhu_core_celcius', 'suhu_clad_celcius', 'suhu_pendingin_primer_celcius', 
+            'suhu_pendingin_sekunder_celcius', 'suhu_pendingin_tersier_celcius',
             'daya_termal_kw', 'posisi_safety_rod', 
             'tekanan_pressurizer_bar',
             'status_scram'
@@ -83,8 +84,13 @@ def main():
                         'waktu_lokal': current_time_str,
                         'waktu_sistem_detik': elapsed_time,
                         'pompa_primer_status': state.get('pump_primary', 0),
+                        'pompa_sekunder_status': state.get('pump_secondary', 0),
+                        'pompa_tersier_status': state.get('pump_tertiary', 0),
                         'suhu_core_celcius': round(state.get('temperature_core', 0.0), 2),
+                        'suhu_clad_celcius': round(state.get('temperature_fuel_cladding', 0.0), 2),
                         'suhu_pendingin_primer_celcius': round(state.get('temperature_coolant', 0.0), 2),
+                        'suhu_pendingin_sekunder_celcius': round(state.get('temperature_coolant_secondary', 0.0), 2),
+                        'suhu_pendingin_tersier_celcius': round(state.get('temperature_coolant_tertiary', 0.0), 2),
                         'daya_termal_kw': round(state.get('thermal_kw', 0.0), 2),
                         'posisi_safety_rod': round(state.get('safety_rod', 0.0), 2),
                         'tekanan_pressurizer_bar': round(state.get('pressure', 0.0), 2),

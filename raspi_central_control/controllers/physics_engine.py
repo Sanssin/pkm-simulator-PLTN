@@ -267,7 +267,7 @@ class PhysicsEngine:
         pressure_generation = (delta_temp * 0.025) if delta_temp > 0 else (delta_temp * 0.05)
         pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
         if state.relief_valve_open:
-            pressure_generation -= 1.5 * dt  # Relieve pressure more slowly
+            pressure_generation -= 0.1 * dt  # Dikurangi dari 1.5 agar tekanan naik terus saat LOFA
             
         state.pressure = max(0.0, state.pressure + pressure_generation)
 
