@@ -25,11 +25,17 @@ def main():
     
     # 1. Buka socket UDP untuk mendengarkan broadcast dari physics engine
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    # Tambahkan opsi SO_REUSEPORT dan SO_REUSEADDR agar bisa berbagi port dengan video_display_app
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, 'SO_REUSEPORT'):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        
     try:
         sock.bind((UDP_IP, UDP_PORT))
-        print(f"[INFO] Mendengarkan data secara Real-Time pada UDP {UDP_IP}:{UDP_PORT}...")
+        print(f"[INFO] Mendengarkan data secara Real-Time pada UDP {UDP_IP}:{UDP_PORT} (Berbagi port dengan Video Display)...")
     except OSError as e:
-        print(f"[ERROR] Port {UDP_PORT} sedang digunakan. Pastikan tidak ada logger lain yang berjalan.")
+        print(f"[ERROR] Gagal bind ke Port {UDP_PORT}: {e}")
         sys.exit(1)
 
     # 2. Persiapkan file CSV
