@@ -265,6 +265,15 @@ class PhysicsEngine:
         # Kurangi sensitivitas (multiplier) drastis agar tidak mudah SCRAM saat batang kendali ditarik
         # (Pengurangan 4x lipat dari nilai asli 0.1)
         pressure_generation = (delta_temp * 0.025) if delta_temp > 0 else (delta_temp * 0.05)
+        
+        # --- PERBAIKAN FISIKA LOFA ---
+        # Di dunia nyata, matinya pompa primer memicu pendidihan lokal (film boiling) 
+        # di sekitar selongsong bahan bakar. Pemuaian uap ini akan meningkatkan tekanan sistem.
+        if state.pump_primary_status != PUMP_ON:
+            delta_clad = dT_clad / dt
+            if delta_clad > 0:
+                pressure_generation += (delta_clad * 0.2)
+                
         pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
         if state.relief_valve_open:
             pressure_generation -= 0.1 * dt  # Dikurangi dari 1.5 agar tekanan naik terus saat LOFA
