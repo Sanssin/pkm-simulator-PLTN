@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 # Konfigurasi Koneksi UDP
-UDP_IP = "127.0.0.1"
+UDP_IP = "0.0.0.0" # Dengarkan di semua interface
 UDP_PORT = 9996 # Port khusus untuk data logger (ditambahkan di main_panel)
 CSV_FILENAME = "data_riset_lofa.csv"
 
@@ -51,6 +51,7 @@ def main():
         # Tulis header jika file baru dibuat
         if not file_exists:
             writer.writeheader()
+            csv_file.flush() # Force write header ke disk langsung
             print(f"[INFO] Membuat file baru: {CSV_FILENAME}")
         else:
             print(f"[INFO] Melanjutkan penulisan ke file: {CSV_FILENAME}")
@@ -97,8 +98,8 @@ def main():
                     
                     data_count += 1
                     
-                    # Print ke terminal setiap ~1 detik (20hz log rate terlalu cepat untuk mata)
-                    if data_count % 20 == 0:
+                    # Print paket pertama untuk konfirmasi, lalu print setiap 20 paket (~1 detik)
+                    if data_count == 1 or data_count % 20 == 0:
                         scram_txt = "🚨 SCRAM!" if row['status_scram'] else "✅ Normal"
                         pump_txt = "🟢 ON" if row['pompa_primer_status'] else "🔴 OFF"
                         print(f"[{current_time_str}] t={elapsed_time}s | Pompa: {pump_txt} | Core: {row['suhu_core_celcius']}°C | Air Primer: {row['suhu_pendingin_primer_celcius']}°C | Tekanan: {row['tekanan_pressurizer_bar']} bar | SCRAM: {scram_txt}")
