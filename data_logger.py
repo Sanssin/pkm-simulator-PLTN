@@ -47,6 +47,7 @@ def main():
             'pompa_primer_status', 
             'suhu_core_celcius', 'suhu_pendingin_primer_celcius', 
             'daya_termal_kw', 'posisi_safety_rod', 
+            'tekanan_pressurizer_bar',
             'status_scram'
         ]
         
@@ -90,6 +91,7 @@ def main():
                         'suhu_pendingin_primer_celcius': round(state.get('temperature_coolant', 0.0), 2),
                         'daya_termal_kw': round(state.get('thermal_kw', 0.0), 2),
                         'posisi_safety_rod': round(state.get('safety_rod', 0.0), 2),
+                        'tekanan_pressurizer_bar': round(state.get('pressure', 0.0), 2),
                         'status_scram': 1 if state.get('emergency', False) else 0
                     }
                     
@@ -104,7 +106,7 @@ def main():
                     if data_count % 20 == 0:
                         scram_txt = "🚨 SCRAM!" if row['status_scram'] else "✅ Normal"
                         pump_txt = "🟢 ON" if row['pompa_primer_status'] else "🔴 OFF"
-                        print(f"[{current_time_str}] t={elapsed_time}s | Pompa: {pump_txt} | Core: {row['suhu_core_celcius']}°C | Air Primer: {row['suhu_pendingin_primer_celcius']}°C | SCRAM: {scram_txt}")
+                        print(f"[{current_time_str}] t={elapsed_time}s | Pompa: {pump_txt} | Core: {row['suhu_core_celcius']}°C | Air Primer: {row['suhu_pendingin_primer_celcius']}°C | Tekanan: {row['tekanan_pressurizer_bar']} bar | SCRAM: {scram_txt}")
                         
                 except json.JSONDecodeError:
                     pass # Abaikan jika ada paket rusak
