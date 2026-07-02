@@ -88,7 +88,7 @@ class PLTNPanelController:
         
         import socket
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_ports = (9998, 9997)
+        self.udp_ports = (9998, 9997, 9996) # 9998: touch, 9997: video, 9996: logger
         self.udp_ip = "127.0.0.1"
         
         # Initialize hardware components

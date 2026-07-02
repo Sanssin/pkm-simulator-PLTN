@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Konfigurasi Koneksi UDP
 UDP_IP = "127.0.0.1"
-UDP_PORT = 9997 # Port 9997 sudah tersedia dan tidak dipakai oleh touch_panel (9998)
+UDP_PORT = 9996 # Port khusus untuk data logger (ditambahkan di main_panel)
 CSV_FILENAME = "data_riset_lofa.csv"
 
 def signal_handler(sig, frame):
@@ -26,14 +26,9 @@ def main():
     # 1. Buka socket UDP untuk mendengarkan broadcast dari physics engine
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    # Tambahkan opsi SO_REUSEPORT dan SO_REUSEADDR agar bisa berbagi port dengan video_display_app
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if hasattr(socket, 'SO_REUSEPORT'):
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        
     try:
         sock.bind((UDP_IP, UDP_PORT))
-        print(f"[INFO] Mendengarkan data secara Real-Time pada UDP {UDP_IP}:{UDP_PORT} (Berbagi port dengan Video Display)...")
+        print(f"[INFO] Mendengarkan data secara Real-Time pada UDP {UDP_IP}:{UDP_PORT} (Port Khusus Logger)...")
     except OSError as e:
         print(f"[ERROR] Gagal bind ke Port {UDP_PORT}: {e}")
         sys.exit(1)
