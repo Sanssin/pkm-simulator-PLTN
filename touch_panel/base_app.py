@@ -1307,6 +1307,9 @@ class TouchPanelBaseWindow(QMainWindow):
                 # If we just started any auto simulation, clear pump states to prevent false failures
                 if is_any_auto and not self.last_auto_running:
                     self._reset_sim_state_for_auto()
+                elif not is_any_auto and self.last_auto_running:
+                    if hasattr(self, 'stacked_widget'):
+                        self.stacked_widget.setCurrentIndex(0)
                     
                 self.last_auto_running = is_any_auto
                 
