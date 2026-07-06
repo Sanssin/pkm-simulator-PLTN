@@ -585,7 +585,7 @@ class TouchPanelBaseWindow(QMainWindow):
         elif mode == "lofa":
             self._start_lofa_mode()
         elif mode == "exit_auto":
-            self._on_button_click("REACTOR_RESET")
+            self._execute_action("REACTOR_RESET")
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
