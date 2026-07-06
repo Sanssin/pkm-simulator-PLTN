@@ -122,8 +122,9 @@ class PhysicsEngine:
         target_core_temp = 25.0 + (effective_rod / 100.0) * 315.0
         
         # LOFA / Cooling adjustments
-        if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
-        if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
+        if effective_rod > 0:
+            if state.pump_primary_status != PUMP_ON: target_core_temp += 600.0
+            if state.pump_secondary_status != PUMP_ON: target_core_temp += 100.0
         if state.spray_active: target_core_temp -= 50.0
         
         # Pressurizer heating effect adds to target
