@@ -651,15 +651,7 @@ class TouchPanelBaseWindow(QMainWindow):
         title_block = QVBoxLayout()
         title_block.setSpacing(2)
         
-        if _PYQT_AVAILABLE:
-            title_text = ClickableLabel(self.layout_spec.title)
-            title_text.clicked.connect(self._on_hidden_reset_click)
-            self._hidden_reset_clicks = 0
-            self._hidden_reset_timer = QTimer(self)
-            self._hidden_reset_timer.setInterval(2000)
-            self._hidden_reset_timer.timeout.connect(self._reset_hidden_clicks)
-        else:
-            title_text = QLabel(self.layout_spec.title)
+        title_text = QLabel(self.layout_spec.title)
             
         title_text.setObjectName("titleLabel")
         title_block.addWidget(title_text)
@@ -776,6 +768,23 @@ class TouchPanelBaseWindow(QMainWindow):
         pump_layout.addWidget(self.lbl_dash_pump3)
         pump_layout.addStretch()
         layout.addWidget(pump_group, 0, 2)
+        
+        # Exit Auto Mode Button
+        self.btn_exit_auto = QPushButton("Batalkan Simulasi Otomatis (Kembali ke Utama)")
+        self.btn_exit_auto.setMinimumHeight(60)
+        self.btn_exit_auto.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                color: white;
+                font-weight: bold;
+                font-size: 20px;
+                border-radius: 8px;
+                margin-top: 20px;
+            }
+            QPushButton:pressed { background-color: #DC2626; }
+        """)
+        self.btn_exit_auto.clicked.connect(self._confirm_exit_auto)
+        layout.addWidget(self.btn_exit_auto, 1, 0, 1, 3)
         
         # Style (Light Theme ala Pygame Display)
         widget.setStyleSheet("""
@@ -1034,19 +1043,16 @@ class TouchPanelBaseWindow(QMainWindow):
     # Touch Input Event Processors
     # ============================================
 
-    def _on_hidden_reset_click(self) -> None:
-        self._hidden_reset_clicks += 1
-        self._hidden_reset_timer.start()
-        if self._hidden_reset_clicks >= 5:
-            self._hidden_reset_timer.stop()
-            self._hidden_reset_clicks = 0
-            if self._footer_label is not None:
-                self._footer_label.setText("KODE RAHASIA DITERIMA: Mengatur ulang panel...")
-            self._execute_action("REACTOR_RESET")
-
-    def _reset_hidden_clicks(self) -> None:
-        self._hidden_reset_clicks = 0
-        self._hidden_reset_timer.stop()
+    def _confirm_exit_auto(self) -> None:
+        if not _PYQT_AVAILABLE:
+            return
+        from PyQt5.QtWidgets import QMessageBox
+        reply = QMessageBox.question(self, 'Konfirmasi Keluar', 
+                                    'Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?',
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            self._on_button_click("REACTOR_RESET")
 
     def _is_auto_running(self) -> bool:
         return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"] or getattr(self, 'last_auto_running', False)
