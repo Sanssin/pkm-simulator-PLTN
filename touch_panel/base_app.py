@@ -1323,9 +1323,9 @@ class TouchPanelBaseWindow(QMainWindow):
                     self.sim_mode = "Manual"
                     
                 # Ext coolant variables
-                self.sim_coolant_temp_primary = state_data.get("coolant_temp_primary", self.sim_coolant_temp_primary)
-                self.sim_coolant_temp_secondary = state_data.get("coolant_temp_secondary", self.sim_coolant_temp_secondary)
-                self.sim_fuel_cladding_temp = state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp)
+                self.sim_coolant_temp_primary = state_data.get("temperature_coolant", state_data.get("coolant_temp_primary", self.sim_coolant_temp_primary))
+                self.sim_coolant_temp_secondary = state_data.get("temperature_coolant_secondary", state_data.get("coolant_temp_secondary", self.sim_coolant_temp_secondary))
+                self.sim_fuel_cladding_temp = state_data.get("temperature_fuel_cladding", state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp))
                 self.sim_condenser_pressure = state_data.get("condenser_pressure", self.sim_condenser_pressure)
 
                 # Auto-clear pump failures if the reactor is fully reset/cold
