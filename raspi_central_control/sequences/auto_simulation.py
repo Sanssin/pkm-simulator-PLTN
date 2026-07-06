@@ -177,6 +177,43 @@ class AutoSimulator:
         
         return True
     
+    def _async_ramp_temperatures(self, target_core: float, target_clad: float, 
+                                 target_prim: float, target_sec: float, duration: float) -> None:
+        """Smoothly ramp temperatures asynchronously in background to mimic heat inertia."""
+        def ramp_thread():
+            with self._state_manager as state:
+                start_core = getattr(state, 'temperature_core', 50.0)
+                start_clad = getattr(state, 'temperature_fuel_cladding', 45.0)
+                start_prim = getattr(state, 'temperature_coolant_primary', 40.0)
+                start_sec = getattr(state, 'temperature_coolant_secondary', 30.0)
+                
+            start_time = time.time()
+            while time.time() - start_time < duration:
+                if self._check_cancelled():
+                    return
+                
+                elapsed = time.time() - start_time
+                progress = elapsed / duration
+                
+                with self._state_manager as state:
+                    state.temperature_core = start_core + (target_core - start_core) * progress
+                    state.temperature_fuel_cladding = start_clad + (target_clad - start_clad) * progress
+                    state.temperature_coolant_primary = start_prim + (target_prim - start_prim) * progress
+                    state.temperature_coolant_secondary = start_sec + (target_sec - start_sec) * progress
+                    state.temperature_coolant = state.temperature_coolant_primary
+                
+                time.sleep(self.UPDATE_INTERVAL)
+                
+            # Set final values
+            with self._state_manager as state:
+                state.temperature_core = target_core
+                state.temperature_fuel_cladding = target_clad
+                state.temperature_coolant_primary = target_prim
+                state.temperature_coolant_secondary = target_sec
+                state.temperature_coolant = target_prim
+
+        threading.Thread(target=ramp_thread, daemon=True).start()
+
     def _simulation_thread(self) -> None:
         """Main simulation execution thread."""
         try:
@@ -196,6 +233,12 @@ class AutoSimulator:
                 state.shim_rod = 0
                 state.regulating_rod = 0
                 state.thermal_kw = 0.0
+                
+                # Base cold temperatures
+                state.temperature_core = 50.0
+                state.temperature_fuel_cladding = 45.0
+                state.temperature_coolant_primary = 40.0
+                state.temperature_coolant_secondary = 30.0
             
             logger.info("=" * 70)
             logger.info("AUTO SIMULATION MODE - Synchronized with Video")
@@ -248,6 +291,7 @@ class AutoSimulator:
             if not wait_until(228.0): return
             self._set_phase(SimPhase.SHIM_ROD_50, "Shim Rod")
             logger.info("3:48 - Shim Rod Withdrawal (5s)")
+            self._async_ramp_temperatures(650.0, 230.0, 170.0, 150.0, 38.0)
             start_time_ramp = time.time()
             while time.time() - start_time_ramp < 5.0:
                 if self._check_cancelled(): return
@@ -265,6 +309,7 @@ class AutoSimulator:
             if not wait_until(266.0): return
             self._set_phase(SimPhase.REG_ROD_50, "Reg Rod")
             logger.info("4:26 - Regulating Rod Withdrawal (5s)")
+            self._async_ramp_temperatures(1300.0, 450.0, 320.0, 280.0, 30.0)
             start_time_ramp = time.time()
             while time.time() - start_time_ramp < 5.0:
                 if self._check_cancelled(): return
@@ -283,6 +328,7 @@ class AutoSimulator:
             if not wait_until(396.0): return
             self._set_phase(SimPhase.STABLE, "Shutdown")
             logger.info("6:36 - Normal Shutdown (Mematikan reaktor)")
+            self._async_ramp_temperatures(50.0, 45.0, 40.0, 30.0, 17.0)
             # Lower rods slowly
             def lower_rods():
                 steps = 170
@@ -308,6 +354,7 @@ class AutoSimulator:
             if not wait_until(414.0): return
             self._set_phase(SimPhase.COMPLETE, "Scram")
             logger.info("6:54 - SCRAM! (Emergency shutdown)")
+            self._async_ramp_temperatures(50.0, 45.0, 40.0, 30.0, 5.0)
             with self._state_manager as state:
                 state.emergency_active = True
                 state.pump_primary_status = 3

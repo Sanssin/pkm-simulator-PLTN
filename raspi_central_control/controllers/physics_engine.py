@@ -88,6 +88,11 @@ class PhysicsEngine:
         reg_step = max(-current_speed * dt, min(reg_diff, current_speed * dt))
         self.regulating_rod_actual += reg_step
 
+        # --- BYPASS FISIKA UNTUK MODE AUTO ---
+        if getattr(state, 'simulation_mode', 'manual') == 'auto':
+            # Suhu, tekanan, dan SCRAM dikendalikan 100% oleh auto_simulation.py
+            return
+
         # =====================================================================
         # 1. PRIMARY PHYSICS (Thermal Capacity & Turbine)
         # =====================================================================
