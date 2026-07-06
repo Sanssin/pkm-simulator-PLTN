@@ -266,13 +266,18 @@ class PhysicsEngine:
         # (Pengurangan 4x lipat dari nilai asli 0.1)
         pressure_generation = (delta_temp * 0.025) if delta_temp > 0 else (delta_temp * 0.05)
         
+        # Mencegah tekanan naik saat reaktor mati akibat drift suhu base
+        if effective_rod <= 0 and pressure_generation > 0:
+            pressure_generation = 0.0
+        
         # --- PERBAIKAN FISIKA LOFA ---
         # Di dunia nyata, matinya pompa primer memicu pendidihan lokal (film boiling) 
         # di sekitar selongsong bahan bakar. Pemuaian uap ini akan meningkatkan tekanan sistem.
-        if state.pump_primary_status != PUMP_ON:
-            delta_clad = dT_clad / dt
-            if delta_clad > 0:
-                pressure_generation += (delta_clad * 0.2)
+        if effective_rod > 0:
+            if state.pump_primary_status != PUMP_ON:
+                delta_clad = dT_clad / dt
+                if delta_clad > 0:
+                    pressure_generation += (delta_clad * 0.2)
                 
         pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
         if state.relief_valve_open:
