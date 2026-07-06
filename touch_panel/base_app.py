@@ -472,11 +472,11 @@ class TouchPanelBaseWindow(QMainWindow):
         layout.addWidget(main_content)
         
         # OVERLAY KONFIRMASI
-        self._confirmation_overlay = QWidget(hud)
+        self._confirmation_overlay = QWidget(self)
         self._confirmation_overlay.setObjectName("confirmationOverlay")
         self._confirmation_overlay.setVisible(False)
         self._confirmation_overlay.setStyleSheet("background-color: rgba(2, 6, 23, 0.75);")
-        self._confirmation_overlay.setGeometry(0, 0, hud.width(), hud.height())
+        self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
 
         overlay_layout = QVBoxLayout(self._confirmation_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
@@ -563,9 +563,12 @@ class TouchPanelBaseWindow(QMainWindow):
         elif mode == "lofa":
             self._overlay_title.setText("Mode LOFA Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi kegagalan aliran utama (LOFA). Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
+        elif mode == "exit_auto":
+            self._overlay_title.setText("Batalkan Otomatis?")
+            self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
             
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
-            self._confirmation_overlay.setGeometry(0, 0, self._hud_widget.width(), self._hud_widget.height())
+            self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
             self._confirmation_overlay.setVisible(True)
             self._confirmation_overlay.raise_()
 
@@ -581,11 +584,13 @@ class TouchPanelBaseWindow(QMainWindow):
             self._start_auto_mode()
         elif mode == "lofa":
             self._start_lofa_mode()
+        elif mode == "exit_auto":
+            self._on_button_click("REACTOR_RESET")
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None and hasattr(self, '_hud_widget'):
-            self._confirmation_overlay.setGeometry(0, 0, self._hud_widget.width(), self._hud_widget.height())
+        if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
+            self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
 
     def _start_manual_mode(self) -> None:
         import sys
@@ -771,19 +776,19 @@ class TouchPanelBaseWindow(QMainWindow):
         
         # Exit Auto Mode Button
         self.btn_exit_auto = QPushButton("Batalkan Simulasi Otomatis (Kembali ke Utama)")
-        self.btn_exit_auto.setMinimumHeight(60)
+        self.btn_exit_auto.setMinimumHeight(100)
         self.btn_exit_auto.setStyleSheet("""
             QPushButton {
                 background-color: #EF4444;
                 color: white;
                 font-weight: bold;
-                font-size: 20px;
-                border-radius: 8px;
+                font-size: 28px;
+                border-radius: 12px;
                 margin-top: 20px;
             }
             QPushButton:pressed { background-color: #DC2626; }
         """)
-        self.btn_exit_auto.clicked.connect(self._confirm_exit_auto)
+        self.btn_exit_auto.clicked.connect(lambda: self._show_confirmation_overlay("exit_auto"))
         layout.addWidget(self.btn_exit_auto, 1, 0, 1, 3)
         
         # Style (Light Theme ala Pygame Display)
@@ -1043,16 +1048,7 @@ class TouchPanelBaseWindow(QMainWindow):
     # Touch Input Event Processors
     # ============================================
 
-    def _confirm_exit_auto(self) -> None:
-        if not _PYQT_AVAILABLE:
-            return
-        from PyQt5.QtWidgets import QMessageBox
-        reply = QMessageBox.question(self, 'Konfirmasi Keluar', 
-                                    'Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?',
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        
-        if reply == QMessageBox.Yes:
-            self._on_button_click("REACTOR_RESET")
+
 
     def _is_auto_running(self) -> bool:
         return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"] or getattr(self, 'last_auto_running', False)
