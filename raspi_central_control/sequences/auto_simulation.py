@@ -362,9 +362,9 @@ class AutoSimulator:
                 state.pump_tertiary_status = 3
             if not self._ramp_value('safety_rod', 100, 0, 3.0, is_int=True): return
                 
-            # Finish simulation at video end: 7.14 (434s)
-            if not wait_until(434.0): return
-            logger.info("7:14 - Video Complete. Returning to IDLE mode.")
+            # Finish simulation at video end: 7.21 (441s)
+            if not wait_until(441.0): return
+            logger.info("7:21 - Video Complete. Returning to IDLE mode.")
             
         except Exception as e:
             logger.error(f"Error in auto simulation: {e}")
@@ -376,6 +376,7 @@ class AutoSimulator:
             with self._state_manager as state:
                 if not self._cancelled:
                     state.reset()
+                    state.simulation_mode = 'idle'
                 else:
                     state.auto_sim_running = False
                     state.emergency_active = False

@@ -198,6 +198,7 @@ class LOFASequence:
             with self._state_manager as state:
                 if not self._check_cancelled():
                     state.reset()
+                    state.simulation_mode = 'idle'
                 else:
                     if state.auto_sim_running:
                         state.auto_sim_running = False
