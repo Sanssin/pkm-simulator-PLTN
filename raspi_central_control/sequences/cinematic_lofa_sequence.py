@@ -123,10 +123,18 @@ class CinematicLOFASequence:
                     state.shim_rod = 100.0 * shim_prog
                     state.regulating_rod = 100.0 * reg_prog
                     
-                    # Power follows the rod heights, temperature is naturally handled by physics engine
+                    # Power follows the rod heights
                     state.pressure = 45.0 + (150.0 - 45.0) * power_prog
                     state.thermal_kw = 300000.0 * power_prog
                     state.turbine_speed = 100.0 * power_prog
+                    
+                    # Artificially sync temperatures so pipe colors match turbine speed immediately
+                    # Physics engine will naturally take over after this
+                    state.temperature_core = max(state.temperature_core, 25.0 + (320.0 - 25.0) * power_prog)
+                    state.temperature_fuel_cladding = max(state.temperature_fuel_cladding, 25.0 + (310.0 - 25.0) * power_prog)
+                    state.temperature_coolant_primary = max(state.temperature_coolant_primary, 25.0 + (300.0 - 25.0) * power_prog)
+                    state.temperature_coolant_secondary = max(state.temperature_coolant_secondary, 25.0 + (280.0 - 25.0) * power_prog)
+                    state.temperature_coolant = state.temperature_coolant_primary
                 time.sleep(0.1)
 
             if not wait_until(29.0): return

@@ -139,8 +139,11 @@ class LOFASequence:
                     state.shim_rod = 0.0 + 50.0 * progress
                     state.regulating_rod = 0.0 + 50.0 * progress
                     state.thermal_kw = 0.0 + 250000.0 * progress
-                    state.temperature_core = 25.0 + (280.0 - 25.0) * progress
+                    state.temperature_core = 25.0 + (320.0 - 25.0) * progress
+                    state.temperature_fuel_cladding = 25.0 + (310.0 - 25.0) * progress
                     state.temperature_coolant_primary = 25.0 + (300.0 - 25.0) * progress
+                    state.temperature_coolant_secondary = 25.0 + (280.0 - 25.0) * progress
+                    state.temperature_coolant = state.temperature_coolant_primary
                     state.turbine_speed = 0.0 + 100.0 * progress
                     state.reactor_active = True
                 time.sleep(0.05)
@@ -152,8 +155,11 @@ class LOFASequence:
                 state.shim_rod = 50.0
                 state.regulating_rod = 50.0
                 state.thermal_kw = 250000.0
-                state.temperature_core = 280.0
+                state.temperature_core = 320.0
+                state.temperature_fuel_cladding = 310.0
                 state.temperature_coolant_primary = 300.0
+                state.temperature_coolant_secondary = 280.0
+                state.temperature_coolant = 300.0
                 state.turbine_speed = 100.0
                 
             self._set_phase(LofaPhase.NORMAL_OPS, "Operasi Normal Stabil")

@@ -89,8 +89,9 @@ class PhysicsEngine:
         self.regulating_rod_actual += reg_step
 
         # --- BYPASS FISIKA UNTUK MODE AUTO ---
-        if getattr(state, 'simulation_mode', 'manual') == 'auto':
-            # Suhu, tekanan, dan SCRAM dikendalikan 100% oleh auto_simulation.py
+        sim_mode = getattr(state, 'simulation_mode', 'manual')
+        if sim_mode == 'auto':
+            # Suhu, tekanan, dan SCRAM dikendalikan 100% oleh auto_simulation / lofa_sequence
             return
 
         # =====================================================================
