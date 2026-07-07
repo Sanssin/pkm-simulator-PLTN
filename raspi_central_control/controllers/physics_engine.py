@@ -220,7 +220,11 @@ class PhysicsEngine:
         # 1. Thermal Expansion Surge: 
         # Air pendingin primer yang memanas akan memuai dan menekan gas di pressurizer.
         # Laju perubahan suhu (delta_temp) menghasilkan lonjakan laju tekanan (bar/s).
-        pressure_rate = delta_temp * 1.5
+        # HANYA aktifkan efek ekspansi termal pada tekanan jika terdapat reaksi fisi aktif (batang kendali ditarik)
+        if effective_rod > 0.0:
+            pressure_rate = delta_temp * 1.5
+        else:
+            pressure_rate = 0.0
         
         # --- PERBAIKAN FISIKA LOFA ---
         # Matinya pompa primer memicu pendidihan lokal (film boiling) di selongsong.
