@@ -1206,8 +1206,10 @@ class TouchPanelBaseWindow(QMainWindow):
         if self.sim_auto_running:
             if self.sim_mode == "LOFA Auto":
                 # LOFA mode physics loop
-                rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 300.0
-                target_kw = 450000.0 * rod_sum
+                effective_rod = (self.sim_shim_rod * 0.8 + self.sim_regulating_rod * 0.2) / 100.0
+                if self.sim_safety_rod < 95.0:
+                    effective_rod = 0.0
+                target_kw = 450000.0 * effective_rod
                 # Temperature spikes rapidly due to primary coolant loss
                 self.sim_fuel_cladding_temp += 5.0
                 self.sim_coolant_temp_primary += 3.5
@@ -1223,8 +1225,11 @@ class TouchPanelBaseWindow(QMainWindow):
             else:
                 # Auto mode physics loop
                 # Thermal power stabilizes based on rod position sum
-                rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 3.0
-                target_kw = 450000.0 * (rod_sum / 78.3)
+                effective_rod = (self.sim_shim_rod * 0.8 + self.sim_regulating_rod * 0.2) / 100.0
+                if self.sim_safety_rod < 95.0:
+                    effective_rod = 0.0
+                # Di auto mode lama pakai 450000 * (rod_sum/78.3), kita ganti langsung ke efektif
+                target_kw = 450000.0 * effective_rod
                 self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.1
                 
                 # Turbines follow power output
@@ -1241,8 +1246,10 @@ class TouchPanelBaseWindow(QMainWindow):
             
         else:
             # Manual Mode: Slowly decay power if rods are low
-            rod_sum = (self.sim_safety_rod + self.sim_shim_rod + self.sim_regulating_rod) / 300.0
-            target_kw = 450000.0 * rod_sum
+            effective_rod = (self.sim_shim_rod * 0.8 + self.sim_regulating_rod * 0.2) / 100.0
+            if self.sim_safety_rod < 95.0:
+                effective_rod = 0.0
+            target_kw = 300000.0 * effective_rod
             
             # Pump multiplier adjusts thermal output dissipation
             pumps_count = self.sim_pump_primary + self.sim_pump_secondary + self.sim_pump_tertiary
@@ -1255,7 +1262,7 @@ class TouchPanelBaseWindow(QMainWindow):
                     self._update_local_simulation("EMERGENCY")
                     return
             else:
-                self.sim_fuel_cladding_temp += (420.0 * rod_sum - self.sim_fuel_cladding_temp) * 0.05
+                self.sim_fuel_cladding_temp += (420.0 * effective_rod - self.sim_fuel_cladding_temp) * 0.05
                 
             self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.05
             self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
