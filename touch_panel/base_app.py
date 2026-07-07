@@ -1277,7 +1277,8 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
                 
             # Daya termal dikaitkan dengan panas (simulasi keterlambatan termodinamika)
-            target_kw_from_heat = (self.sim_fuel_cladding_temp / 420.0) * 300000.0
+            # Karena suhu awal (ambient) adalah 35C, daya baru muncul jika suhu di atas 35C.
+            target_kw_from_heat = (max(0, self.sim_fuel_cladding_temp - 35.0) / 385.0) * 300000.0
             if target_kw_from_heat > self.sim_thermal_kw:
                 self.sim_thermal_kw += (target_kw_from_heat - self.sim_thermal_kw) * 0.05
             else:
