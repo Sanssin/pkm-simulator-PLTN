@@ -1085,6 +1085,18 @@ class TouchPanelBaseWindow(QMainWindow):
         return self.sim_mode in ["Otomatis", "Simulasi LOFA", "LOFA Otomatis"] or getattr(self, 'last_auto_running', False)
 
     def _on_button_click(self, action: str) -> None:
+        import time
+        now = time.time()
+        if not hasattr(self, '_last_click_times'):
+            self._last_click_times = {}
+            
+        # Hardware debounce for touch screens (0.5s per action)
+        # However, HoldButtons (ROD/PRESSURE) need faster repeats, so skip debounce for them
+        if not action.startswith("ROD_MOVE") and not action.startswith("PRESSURE"):
+            if action in self._last_click_times and now - self._last_click_times[action] < 0.6:
+                return
+            self._last_click_times[action] = now
+            
         if self._is_auto_running():
             if self._footer_label is not None:
                 self._footer_label.setText("Sistem terkunci. Input dinonaktifkan selama simulasi otomatis berjalan.")
