@@ -101,30 +101,19 @@ class PhysicsEngine:
             effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
             rod_fraction = effective_rod / 100.0
             
-            # --- PERHITUNGAN REAKTIVITAS & DAYA ---
-            # Daya termal reaktor kini bergantung langsung pada posisi batang kendali (reaktivitas)
-            target_thermal_kw = 300000.0 * rod_fraction
-            
-            # Mencegah daya turun/naik menjadi instan saat control rod digerakkan
-            if target_thermal_kw > state.thermal_kw:
-                # Daya naik secara gradual berdasarkan reaktivitas
-                state.thermal_kw = min(state.thermal_kw + (25000.0 * dt), target_thermal_kw)
-            else:
-                # Daya turun
-                decay_rate = 300000.0 / 2.5 # Normal rod drop
-                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
+            # --- KETERLAMBATAN TERMODINAMIKA (THERMODYNAMIC DELAY) ---
+            # Daya tidak langsung naik seketika saat batang ditarik. 
+            # Panas harus berpindah dulu dari teras -> primer -> sekunder.
                     
             temp_sec = getattr(state, 'temperature_coolant_secondary', 25.0)
-            if temp_sec > 80.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
-                # Turbine speed matches secondary temperature (from 80C to 230C)
-                target_speed = ((temp_sec - 80.0) / 150.0) * 100.0
-                
-                # Kecepatan turbin dibatasi oleh ketersediaan suplai uap (daya termal aktual)
-                max_turbine_speed = (state.thermal_kw / 300000.0) * 100.0
-                target_speed = min(max(target_speed, 10.0), max_turbine_speed)
+            if temp_sec > 25.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+                # Kecepatan turbin dipetakan linear terhadap suhu uap sekunder 
+                # (Pada T_sec = 250C, target_speed = 100%)
+                target_speed = ((temp_sec - 25.0) / 225.0) * 100.0
+                target_speed = min(max(target_speed, 0.0), 100.0)
                 
                 if state.emergency_active:
-                    # Saat SCRAM, turbin tetap berputar menggunakan uap sisa tapi melemah
+                    # Saat SCRAM, turbin melambat karena katup ditutup
                     target_speed *= 0.6
                 
                 if state.turbine_speed < target_speed:
@@ -135,6 +124,16 @@ class PhysicsEngine:
             else:
                 # Uap habis atau pompa sekunder mati, turbin berputar turun karena inersia
                 state.turbine_speed = max(state.turbine_speed - (5.0 * dt), 0.0)
+
+            # Daya elektrik/termal reaktor secara efektif mengikuti produksi turbin uap
+            target_thermal_kw = (state.turbine_speed / 100.0) * 300000.0
+            
+            # Mencegah lonjakan daya instan (mensimulasikan inersia generator)
+            if target_thermal_kw > state.thermal_kw:
+                state.thermal_kw = min(state.thermal_kw + (25000.0 * dt), target_thermal_kw)
+            else:
+                decay_rate = 300000.0 / 2.5
+                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
 
 
         # =====================================================================
@@ -195,10 +194,10 @@ class PhysicsEngine:
             # No circulation to Steam Generator
             k_prim_sec_base = 0.1 
             
-        # Primary Coolant to Secondary Coolant (Steam Generator)
+        # Secondary Coolant (Steam Generator) to Environment/Tertiary
         if state.pump_secondary_status == PUMP_ON:
             k_prim_sec = k_prim_sec_base
-            k_sec_env_base = 0.392
+            k_sec_env_base = 0.81
         else:
             k_prim_sec = 0.1
             k_sec_env_base = 0.05
@@ -272,8 +271,8 @@ class PhysicsEngine:
         pressure_rate = delta_temp * 2.0 
         
         # 2. Pressurizer Auto-Control (Heater & Spray): 
-        # Sistem selalu berusaha menstabilkan dan mengembalikan tekanan ke setpoint nominal (155 bar)
-        NOMINAL_PRESSURE = 155.0
+        # Sistem selalu berusaha menstabilkan dan mengembalikan tekanan ke setpoint nominal (140 bar)
+        NOMINAL_PRESSURE = 140.0
         pressure_error = NOMINAL_PRESSURE - state.pressure
         
         if state.pump_primary_status == PUMP_ON:

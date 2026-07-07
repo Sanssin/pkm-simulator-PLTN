@@ -1236,7 +1236,7 @@ class TouchPanelBaseWindow(QMainWindow):
                 self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
                 
                 # Stabilize pressure
-                self.sim_pressure += (155.5 - self.sim_pressure) * 0.08
+                self.sim_pressure += (140.0 - self.sim_pressure) * 0.08
                 
                 # Simple temperature sinusoidal oscillations
                 t = time.time()
@@ -1266,12 +1266,18 @@ class TouchPanelBaseWindow(QMainWindow):
                 self.sim_fuel_cladding_temp += (420.0 * effective_rod - self.sim_fuel_cladding_temp) * 0.05
                 delta_temp = self.sim_fuel_cladding_temp - old_temp
                 
-                # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 155 bar
+                # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 140 bar
                 self.sim_pressure += (delta_temp * 1.5)
-                self.sim_pressure += (155.0 - self.sim_pressure) * 0.02
+                self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
                 
-            self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.05
-            self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
+            # Daya termal dikaitkan dengan panas (simulasi keterlambatan termodinamika)
+            target_kw_from_heat = (self.sim_fuel_cladding_temp / 420.0) * 300000.0
+            if target_kw_from_heat > self.sim_thermal_kw:
+                self.sim_thermal_kw += (target_kw_from_heat - self.sim_thermal_kw) * 0.05
+            else:
+                self.sim_thermal_kw += (target_kw_from_heat - self.sim_thermal_kw) * 0.15
+            
+            self.sim_turbine_speed += ((self.sim_thermal_kw / 3000.0) - self.sim_turbine_speed) * 0.05
 
     # ============================================
     # IPC State Binder and UI Updating
