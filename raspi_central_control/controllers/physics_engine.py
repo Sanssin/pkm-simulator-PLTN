@@ -244,14 +244,14 @@ class PhysicsEngine:
         pressure_generation = pressure_rate * dt
         
         # Super-heating / Boiling surge:
-        # Jika suhu primer melampaui batas bahaya (340C+), air mendidih secara masif.
-        # Uap ini menghasilkan tekanan yang jauh melampaui kapasitas pembuangan Relief Valve.
-        if state.temperature_coolant_primary > 340.0:
-            excess_temp = state.temperature_coolant_primary - 340.0
-            # Semakin panas, ledakan tekanannya semakin eksponensial tak terbendung
-            pressure_generation += (excess_temp * 0.2) * dt
+        # T_sat pada 155 bar sekitar 345C. Jika suhu melewati T_sat nyata, air berubah wujud.
+        # Ekspansi uap ini sangat masif (ribuan kali volume air), langsung mengalahkan kapasitas buang valve.
+        if state.temperature_coolant_primary > 345.0:
+            excess_temp = state.temperature_coolant_primary - 345.0
+            # Pengali 1.5 berarti di 355C saja (+10C), tekanan +15 bar/s, setara max relief valve
+            # Di atas 355C, relief valve tidak ada artinya lagi (tekanan akan terus meroket ke 200 bar)
+            pressure_generation += (excess_temp * 1.5) * dt
             
-        
         if getattr(state, 'relief_valve_open', False):
             # Relief valve membuang tekanan secara sangat cepat jika bahaya
             pressure_generation -= 15.0 * dt
@@ -327,7 +327,8 @@ class PhysicsEngine:
         scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
 
         # General Overheat & Saturation Check
-        t_sat = 110.0 * (max(1.0, state.pressure) ** 0.25)
+        # Realistic T_sat approximation: 100 * (P^0.245) yields ~343C at 155 bar, matching real PWR physics
+        t_sat = 100.0 * (max(1.0, state.pressure) ** 0.245)
         
         if state.temperature_coolant_primary >= t_sat and not scram_reason:
             scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
