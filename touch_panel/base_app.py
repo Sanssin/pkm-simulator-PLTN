@@ -562,11 +562,13 @@ class TouchPanelBaseWindow(QMainWindow):
             self._overlay_title.setText("Petunjuk Operasi Manual")
             self._overlay_text.setText(
                 "Langkah simulasi:\n"
-                "1. Naikkan tekanan Pressurizer hingga ~140 bar.\n"
-                "2. Nyalakan Pompa Tersier, lalu Sekunder, kemudian Primer.\n"
-                "3. Tarik Batang Pengaman hingga 100%.\n"
-                "4. Tarik Batang Kompensasi perlahan untuk memulai reaksi fisi.\n"
-                "5. Gunakan Batang Pengatur untuk menstabilkan daya termal.\n\n"
+                "1. Nyalakan Pompa Tersier, lalu Pompa Sekunder.\n"
+                "2. Naikkan tekanan Pressurizer hingga ~40 bar.\n"
+                "3. Nyalakan Pompa Primer.\n"
+                "4. Naikkan kembali tekanan Pressurizer hingga ~140 bar.\n"
+                "5. Tarik Batang Pengaman hingga 100%.\n"
+                "6. Tarik Batang Kompensasi perlahan untuk memulai reaksi fisi.\n"
+                "7. Gunakan Batang Pengatur untuk menstabilkan suhu dan daya.\n\n"
                 "Tekan Lanjutkan untuk mulai."
             )
             # Override text styling for manual instructions to be slightly smaller and left aligned for readability
@@ -940,7 +942,6 @@ class TouchPanelBaseWindow(QMainWindow):
         pumps_layout.addLayout(p1_layout, 1)
         pumps_layout.addLayout(p2_layout, 1)
         pumps_layout.addLayout(p3_layout, 1)
-        column.addWidget(pumps_group)
 
         # 2. Control Rods & Pressure Group (Holdable buttons in stacked layout)
         rods_group = QGroupBox("Penyesuaian Reaktor (Tekan dan Tahan)")
@@ -1023,7 +1024,6 @@ class TouchPanelBaseWindow(QMainWindow):
         press_buttons_layout.addWidget(btn_press_down)
         press_layout.addLayout(press_buttons_layout)
         rods_layout.addLayout(press_layout, 1)
-        column.addWidget(rods_group)
 
         # 3. System Operations Group
         sys_group = QGroupBox("Operasi Simulasi Sistem")
@@ -1034,25 +1034,31 @@ class TouchPanelBaseWindow(QMainWindow):
         self.btn_lofa_sim = QPushButton("Simulasi LOFA")
         self.btn_lofa_sim.setProperty("emphasis", "primary")
         self.btn_lofa_sim.setProperty("sys_op", "true")
-        self.btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.btn_lofa_sim.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.btn_lofa_sim.setFixedHeight(70)
         self.btn_lofa_sim.clicked.connect(lambda: self._on_button_click("LOFA_SIMULATE_PRIMARY"))
         
         btn_reset = QPushButton("ATUR ULANG PANEL")
         btn_reset.setProperty("emphasis", "secondary")
         btn_reset.setProperty("sys_op", "true")
-        btn_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        btn_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        btn_reset.setFixedHeight(70)
         btn_reset.clicked.connect(lambda: self._on_button_click("REACTOR_RESET"))
 
         self.btn_emergency = QPushButton("[!] SCRAM DARURAT")
         self.btn_emergency.setProperty("emphasis", "danger")
         self.btn_emergency.setProperty("sys_op", "true")
-        self.btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.btn_emergency.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.btn_emergency.setFixedHeight(70)
         self.btn_emergency.clicked.connect(lambda: self._on_button_click("EMERGENCY"))
 
         sys_layout.addWidget(self.btn_lofa_sim)
         sys_layout.addWidget(btn_reset)
         sys_layout.addWidget(self.btn_emergency)
-        column.addWidget(sys_group)
+        
+        column.addWidget(pumps_group, stretch=1)
+        column.addWidget(rods_group, stretch=2)
+        column.addWidget(sys_group, stretch=0)
 
         return column
 
