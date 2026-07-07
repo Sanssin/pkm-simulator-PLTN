@@ -133,7 +133,11 @@ class EventProcessor:
         with self._state_manager as state:
             # Pressure events
             if event == ButtonEvent.PRESSURE_UP:
+                old_pressure = state.pressure
                 state.pressure = min(state.pressure + 1.0, 200.0)
+                # Compressional heating / Heater effect: menaikkan tekanan juga menyuntikkan panas ke pendingin primer
+                if state.pressure > old_pressure:
+                    state.temperature_coolant_primary = min(state.temperature_coolant_primary + 0.1, 350.0)
             
             elif event == ButtonEvent.PRESSURE_DOWN:
                 state.pressure = max(state.pressure - 1.0, 0.0)

@@ -1149,7 +1149,9 @@ class TouchPanelBaseWindow(QMainWindow):
                 QTimer.singleShot(16000, lambda: setattr(self, 'sim_show_credits', False))
             
         elif action == "PRESSURE_UP":
-            self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
+            if self.sim_pressure < 200.0:
+                self.sim_pressure += 0.05
+                self.sim_fuel_cladding_temp = min(self.sim_fuel_cladding_temp + 0.05, 350.0)
         elif action == "PRESSURE_DOWN":
             self.sim_pressure = max(0.0, self.sim_pressure - 0.05)
         elif action == "SAFETY_ROD_UP":
