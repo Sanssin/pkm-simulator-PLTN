@@ -1057,7 +1057,7 @@ class TouchPanelBaseWindow(QMainWindow):
         sys_layout.addWidget(self.btn_emergency)
         
         column.addWidget(pumps_group, stretch=1)
-        column.addWidget(rods_group, stretch=2)
+        column.addWidget(rods_group, stretch=1)
         column.addWidget(sys_group, stretch=0)
 
         return column
@@ -1734,7 +1734,7 @@ class TouchPanelBaseWindow(QMainWindow):
             border-radius: 8px;
             padding: 10px;
             color: #2c3e50;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 900;
         }
         QPushButton:hover {
