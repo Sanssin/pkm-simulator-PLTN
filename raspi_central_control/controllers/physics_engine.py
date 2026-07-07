@@ -97,43 +97,7 @@ class PhysicsEngine:
         # 1. PRIMARY PHYSICS (Thermal Capacity & Turbine)
         # =====================================================================
         # Bypass manual generation logic if running an automated scripted sequence
-        if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
-            effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
-            rod_fraction = effective_rod / 100.0
-            
-            # --- KETERLAMBATAN TERMODINAMIKA (THERMODYNAMIC DELAY) ---
-            # Daya tidak langsung naik seketika saat batang ditarik. 
-            # Panas harus berpindah dulu dari teras -> primer -> sekunder.
-                    
-            temp_sec = getattr(state, 'temperature_coolant_secondary', 30.0)
-            if temp_sec > 30.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
-                # Kecepatan turbin dipetakan linear terhadap suhu uap sekunder di atas suhu ruang (30C)
-                # (Pada T_sec = 250C, target_speed = 100%)
-                target_speed = ((temp_sec - 30.0) / 220.0) * 100.0
-                target_speed = min(max(target_speed, 0.0), 100.0)
-                
-                if state.emergency_active:
-                    # Saat SCRAM, turbin melambat karena katup ditutup
-                    target_speed *= 0.6
-                
-                if state.turbine_speed < target_speed:
-                    state.turbine_speed = min(state.turbine_speed + (4.0 * dt), target_speed)
-                else:
-                    # Melambat natural mengikuti turunnya suhu uap
-                    state.turbine_speed = max(state.turbine_speed - (5.0 * dt), target_speed)
-            else:
-                # Uap habis atau pompa sekunder mati, turbin berputar turun karena inersia
-                state.turbine_speed = max(state.turbine_speed - (5.0 * dt), 0.0)
-
-            # Daya elektrik/termal reaktor secara efektif mengikuti produksi turbin uap
-            target_thermal_kw = (state.turbine_speed / 100.0) * 300000.0
-            
-            # Mencegah lonjakan daya instan (mensimulasikan inersia generator)
-            if target_thermal_kw > state.thermal_kw:
-                state.thermal_kw = min(state.thermal_kw + (25000.0 * dt), target_thermal_kw)
-            else:
-                decay_rate = 300000.0 / 2.5
-                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
+        # (Dihapus: Logika kontrol Kecepatan Turbin dan Daya sekarang dipindahkan ke layer Logika Simulasi)
 
 
         # =====================================================================
@@ -150,25 +114,10 @@ class PhysicsEngine:
             if state.pump_tertiary_status == 0: self.tertiary_pump_was_on = False
             
         # =====================================================================
-        # 3. MITIGATION (Pressurizer Relief & Spray)
+        # 3. MITIGATION (Pressurizer Relief & Spray) 
         # =====================================================================
-        if state.pressure > 165.0:
-            if not state.relief_valve_open:
-                state.relief_valve_open = True
-                logger.warning("🔺 Pressurizer Relief Valve OPENED (Pressure > 165 bar)")
-        elif state.pressure < 155.0:
-            if state.relief_valve_open:
-                state.relief_valve_open = False
-                logger.info("✅ Pressurizer Relief Valve CLOSED (Pressure < 155 bar)")
-
-        if state.temperature_coolant_primary > 340.0:
-            if not state.spray_active:
-                state.spray_active = True
-                logger.warning("💦 Pressurizer Spray ACTIVATED (Coolant > 340°C)")
-        elif state.temperature_coolant_primary < 320.0:
-            if state.spray_active:
-                state.spray_active = False
-                logger.info("✅ Pressurizer Spray DEACTIVATED (Coolant < 320°C)")
+        # (Dihapus: Logika kontrol perlindungan otomatis (Relief Valve & Spray)
+        # dipindahkan ke layer Logika Simulasi / Control)
 
         # =====================================================================
         # 4. THERMODYNAMICS (Heat Generation & Cooling)

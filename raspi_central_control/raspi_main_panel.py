@@ -346,6 +346,10 @@ class PLTNPanelController:
                     # Update Unified Physics (Thermodynamics, Capacities, Turbine, LOFA)
                     if hasattr(self, 'physics_engine'):
                         self.physics_engine.update(state)
+                        
+                    # Terapkan Logika Simulasi (Turbin, Daya, dan Proteksi Otomatis)
+                    # Ini memisahkan Fisika Aktual dengan Logika Kontrol Simulator
+                    self._apply_simulation_logic(state, 0.05)
 
                     # Manage Video Player
                     # PENTING: cek cinematic_lofa DULU sebelum auto_sim_running
@@ -445,6 +449,63 @@ class PLTNPanelController:
                 time.sleep(0.1)
         
         logger.info("Control logic thread stopped")
+        
+    def _apply_simulation_logic(self, state, dt: float) -> None:
+        """
+        Logika Simulasi (Sim Logic) memisahkan kendali aktuator dari perhitungan Termodinamika murni.
+        Mengatur kecepatan turbin, keluaran daya termal, serta perlindungan otomatis katup/spray.
+        """
+        from controllers.actuator_manager import STEAM_ANIM_THRESHOLD_C
+        from controllers.interlock_validator import PUMP_ON
+        
+        # 1. Logika Kecepatan Turbin & Daya (Kecuali sedang simulasi script otomatis)
+        if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
+            # Uap baru terbentuk dan memutar turbin jika suhu sekunder melampaui ambang batas animasi uap (80C)
+            temp_sec = getattr(state, 'temperature_coolant_secondary', 30.0)
+            
+            if temp_sec > STEAM_ANIM_THRESHOLD_C and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+                # Turbin berputar proporsional dengan panas uap di atas threshold
+                target_speed = ((temp_sec - STEAM_ANIM_THRESHOLD_C) / (250.0 - STEAM_ANIM_THRESHOLD_C)) * 100.0
+                target_speed = min(max(target_speed, 0.0), 100.0)
+                
+                if state.emergency_active:
+                    target_speed *= 0.6  # SCRAM: Katup ditutup, putaran tertahan
+                
+                if state.turbine_speed < target_speed:
+                    state.turbine_speed = min(state.turbine_speed + (4.0 * dt), target_speed)
+                else:
+                    state.turbine_speed = max(state.turbine_speed - (5.0 * dt), target_speed)
+            else:
+                # Suhu belum mendidih atau pompa mati, turbin kehilangan daya dorong
+                state.turbine_speed = max(state.turbine_speed - (5.0 * dt), 0.0)
+
+            # Daya elektrik/termal reaktor 100% diproduksi oleh turbin uap
+            target_thermal_kw = (state.turbine_speed / 100.0) * 300000.0
+            
+            if target_thermal_kw > state.thermal_kw:
+                state.thermal_kw = min(state.thermal_kw + (25000.0 * dt), target_thermal_kw)
+            else:
+                decay_rate = 300000.0 / 2.5
+                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
+                
+        # 2. Logika Proteksi Otomatis (Relief Valve & Spray)
+        if state.pressure > 165.0:
+            if not getattr(state, 'relief_valve_open', False):
+                state.relief_valve_open = True
+                logger.warning("🔺 Pressurizer Relief Valve OPENED (Pressure > 165 bar)")
+        elif state.pressure < 155.0:
+            if getattr(state, 'relief_valve_open', False):
+                state.relief_valve_open = False
+                logger.info("✅ Pressurizer Relief Valve CLOSED (Pressure < 155 bar)")
+
+        if state.temperature_coolant_primary > 340.0:
+            if not getattr(state, 'spray_active', False):
+                state.spray_active = True
+                logger.warning("💦 Pressurizer Spray ACTIVATED (Coolant > 340°C)")
+        elif state.temperature_coolant_primary < 320.0:
+            if getattr(state, 'spray_active', False):
+                state.spray_active = False
+                logger.info("✅ Pressurizer Spray DEACTIVATED (Coolant < 320°C)")
     
     # ============================================
     # Background Threads (Moved to modules)
