@@ -375,11 +375,11 @@ class TouchPanelBaseWindow(QMainWindow):
         title = QLabel("Simulator PLTN Tipe PWR")
         title.setObjectName("hudTitle")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 72px; font-weight: bold; color: #0F172A; margin-bottom: 20px;")
+        title.setStyleSheet("font-size: 80px; font-weight: bold; color: #0F172A; margin-bottom: 20px;")
         
         subtitle = QLabel("Panel Kontrol Utama Reaktor Pressurized Water Reactor")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 28px; font-weight: normal; color: #475569; margin-bottom: 60px;")
+        subtitle.setStyleSheet("font-size: 32px; font-weight: bold; color: #475569; margin-bottom: 60px;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -507,15 +507,15 @@ class TouchPanelBaseWindow(QMainWindow):
         self._overlay_text.setObjectName("overlayText")
         self._overlay_text.setAlignment(Qt.AlignCenter)
         self._overlay_text.setWordWrap(True)
-        self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #0F172A; line-height: 1.5;")
-
+        self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
+    
         button_row = QHBoxLayout()
         button_row.setSpacing(20)
         button_row.setAlignment(Qt.AlignCenter)
 
-        continue_btn = QPushButton("Lanjutkan")
-        continue_btn.setFixedSize(260, 80)
-        continue_btn.setStyleSheet("""
+        self._btn_continue = QPushButton("Lanjutkan")
+        self._btn_continue.setFixedSize(260, 80)
+        self._btn_continue.setStyleSheet("""
             QPushButton {
                 background-color: #10B981;
                 color: white;
@@ -526,11 +526,11 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #059669; }
             QPushButton:pressed { background-color: #047857; }
         """)
-        continue_btn.clicked.connect(self._confirm_mode)
+        self._btn_continue.clicked.connect(self._confirm_mode)
 
-        cancel_btn = QPushButton("Batal")
-        cancel_btn.setFixedSize(260, 80)
-        cancel_btn.setStyleSheet("""
+        self._btn_cancel = QPushButton("Batal")
+        self._btn_cancel.setFixedSize(260, 80)
+        self._btn_cancel.setStyleSheet("""
             QPushButton {
                 background-color: #94A3B8;
                 color: white;
@@ -541,10 +541,10 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #CBD5E1; }
             QPushButton:pressed { background-color: #64748B; }
         """)
-        cancel_btn.clicked.connect(self._cancel_confirmation)
+        self._btn_cancel.clicked.connect(self._cancel_confirmation)
 
-        button_row.addWidget(cancel_btn)
-        button_row.addWidget(continue_btn)
+        button_row.addWidget(self._btn_cancel)
+        button_row.addWidget(self._btn_continue)
 
         card_layout.addStretch()
         card_layout.addWidget(self._overlay_title)
@@ -573,22 +573,37 @@ class TouchPanelBaseWindow(QMainWindow):
             )
             # Override text styling for manual instructions to be slightly smaller and left aligned for readability
             self._overlay_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #0F172A; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
         elif mode == "auto":
             self._overlay_title.setText("Mode Otomatis Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi otomatis. Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
         elif mode == "lofa":
             self._overlay_title.setText("Mode LOFA Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi kegagalan aliran utama (LOFA). Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
         elif mode == "exit_auto":
             self._overlay_title.setText("Batalkan Otomatis?")
             self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
+        elif mode == "credits":
+            self._overlay_title.setText("Daftar Pengembang")
+            self._overlay_text.setText(
+                "Dikembangkan oleh Tim PKM-KC Politeknik Teknologi Nuklir Indonesia (2025/2026):\n\n"
+                "- M. Yusuf\n"
+                "- Hasna\n"
+                "- Daffa\n"
+                "- Riko\n"
+                "- Ilham\n\n"
+                "Terima kasih atas dukungannya!"
+            )
+            self._overlay_text.setAlignment(Qt.AlignCenter)
+            self._overlay_text.setStyleSheet("font-size: 24px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
+            self._btn_continue.setVisible(False)
+            self._btn_cancel.setText("Tutup")
             
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
@@ -597,6 +612,9 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _cancel_confirmation(self) -> None:
         self._pending_mode = None
+        if hasattr(self, '_btn_continue'):
+            self._btn_continue.setVisible(True)
+            self._btn_cancel.setText("Batal")
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setVisible(False)
 
