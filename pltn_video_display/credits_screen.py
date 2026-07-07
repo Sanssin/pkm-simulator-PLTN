@@ -142,6 +142,7 @@ class CreditsScreen:
             self.active = True
             self.current_page = 0
             self.last_advance_time = time.time()
+            self._last_tap_time = time.time() + 1.0  # Ignore taps for 1s after showing
         
     def hide(self):
         self.active = False
@@ -150,8 +151,14 @@ class CreditsScreen:
         if not self.active:
             return False
             
+        now = time.time()
+        # Debounce taps to prevent rapid double/triple firing from touch drivers
+        if now - getattr(self, '_last_tap_time', 0) < 0.5:
+            return True
+            
+        self._last_tap_time = now
         self.current_page += 1
-        self.last_advance_time = time.time()
+        self.last_advance_time = now
         if self.current_page >= len(self.pages):
             self.hide()
         return True
