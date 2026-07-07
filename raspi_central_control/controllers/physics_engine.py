@@ -99,18 +99,29 @@ class PhysicsEngine:
         # Bypass manual generation logic if running an automated scripted sequence
         if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
             effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
+            rod_fraction = effective_rod / 100.0
             
-            if effective_rod > 10.0:
-                reactor_thermal_capacity = (effective_rod**2) * 90.0
-                reactor_thermal_capacity = min(reactor_thermal_capacity, 900000.0)
+            # --- PERHITUNGAN REAKTIVITAS & DAYA ---
+            # Daya termal reaktor kini bergantung langsung pada posisi batang kendali (reaktivitas)
+            target_thermal_kw = 300000.0 * rod_fraction
+            
+            # Mencegah daya turun/naik menjadi instan saat control rod digerakkan
+            if target_thermal_kw > state.thermal_kw:
+                # Daya naik secara gradual berdasarkan reaktivitas
+                state.thermal_kw = min(state.thermal_kw + (25000.0 * dt), target_thermal_kw)
             else:
-                reactor_thermal_capacity = 0.0
+                # Daya turun
+                decay_rate = 300000.0 / 2.5 # Normal rod drop
+                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
                     
             temp_sec = getattr(state, 'temperature_coolant_secondary', 25.0)
             if temp_sec > 80.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
                 # Turbine speed matches secondary temperature (from 80C to 230C)
                 target_speed = ((temp_sec - 80.0) / 150.0) * 100.0
-                target_speed = min(max(target_speed, 10.0), 100.0)
+                
+                # Kecepatan turbin dibatasi oleh ketersediaan suplai uap (daya termal aktual)
+                max_turbine_speed = (state.thermal_kw / 300000.0) * 100.0
+                target_speed = min(max(target_speed, 10.0), max_turbine_speed)
                 
                 if state.emergency_active:
                     # Saat SCRAM, turbin tetap berputar menggunakan uap sisa tapi melemah
@@ -124,18 +135,6 @@ class PhysicsEngine:
             else:
                 # Uap habis atau pompa sekunder mati, turbin berputar turun karena inersia
                 state.turbine_speed = max(state.turbine_speed - (5.0 * dt), 0.0)
-                    
-            # Listrik murni dihasilkan dari putaran turbin (yang diputar oleh uap)
-            # Sehingga meski SCRAM (kapasitas panas reaktor 0), sisa uap yang memutar turbin tetap menghasilkan listrik
-            target_thermal_kw = (state.turbine_speed / 100.0) * 300000.0
-            
-            # Mencegah daya turun menjadi 0 seketika saat control rod diturunkan paksa.
-            # Turbin masih memiliki gaya inersia/potensial yang perlahan melambat.
-            if target_thermal_kw < state.thermal_kw:
-                decay_rate = 300000.0 / 2.5 # Normal rod drop
-                state.thermal_kw = max(state.thermal_kw - (decay_rate * dt), target_thermal_kw)
-            else:
-                state.thermal_kw = target_thermal_kw
 
 
         # =====================================================================
