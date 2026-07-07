@@ -377,17 +377,9 @@ class TouchPanelBaseWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
         
-        subtitle = QLabel(
-            "Petunjuk Operasi Manual:\n\n"
-            "1. Naikkan tekanan Pressurizer hingga ~140 bar.\n"
-            "2. Nyalakan Pompa Tersier, lalu Sekunder, kemudian Primer.\n"
-            "3. Tarik Batang Pengaman hingga 100%.\n"
-            "4. Tarik Batang Kompensasi perlahan untuk memulai reaksi fisi.\n"
-            "5. Gunakan Batang Pengatur untuk menstabilkan daya termal.\n\n"
-            "Silakan pilih mode simulasi di bawah ini:"
-        )
+        subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 22px; color: #94A3B8; margin-bottom: 40px; line-height: 1.5;")
+        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -407,7 +399,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #2563EB; }
             QPushButton:pressed { background-color: #1D4ED8; }
         """)
-        start_btn.clicked.connect(self._start_manual_mode)
+        start_btn.clicked.connect(lambda: self._show_confirmation_overlay("manual"))
         
         auto_btn = QPushButton("Mulai Mode\nOtomatis")
         auto_btn.setObjectName("hudAutoBtn")
@@ -500,7 +492,7 @@ class TouchPanelBaseWindow(QMainWindow):
                 border-radius: 30px;
             }
         """)
-        overlay_card.setFixedSize(850, 420)
+        overlay_card.setFixedSize(1000, 550)
 
         card_layout = QVBoxLayout(overlay_card)
         card_layout.setContentsMargins(40, 40, 40, 40)
@@ -566,15 +558,35 @@ class TouchPanelBaseWindow(QMainWindow):
 
     def _show_confirmation_overlay(self, mode: str) -> None:
         self._pending_mode = mode
-        if mode == "auto":
+        if mode == "manual":
+            self._overlay_title.setText("Petunjuk Operasi Manual")
+            self._overlay_text.setText(
+                "Langkah simulasi:\n"
+                "1. Naikkan tekanan Pressurizer hingga ~140 bar.\n"
+                "2. Nyalakan Pompa Tersier, lalu Sekunder, kemudian Primer.\n"
+                "3. Tarik Batang Pengaman hingga 100%.\n"
+                "4. Tarik Batang Kompensasi perlahan untuk memulai reaksi fisi.\n"
+                "5. Gunakan Batang Pengatur untuk menstabilkan daya termal.\n\n"
+                "Tekan Lanjutkan untuk mulai."
+            )
+            # Override text styling for manual instructions to be slightly smaller and left aligned for readability
+            self._overlay_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self._overlay_text.setStyleSheet("font-size: 24px; color: #E2E8F0; line-height: 1.5;")
+        elif mode == "auto":
             self._overlay_title.setText("Mode Otomatis Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi otomatis. Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
+            self._overlay_text.setAlignment(Qt.AlignCenter)
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
         elif mode == "lofa":
             self._overlay_title.setText("Mode LOFA Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi kegagalan aliran utama (LOFA). Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
+            self._overlay_text.setAlignment(Qt.AlignCenter)
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
         elif mode == "exit_auto":
             self._overlay_title.setText("Batalkan Otomatis?")
             self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
+            self._overlay_text.setAlignment(Qt.AlignCenter)
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
             
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
@@ -589,7 +601,9 @@ class TouchPanelBaseWindow(QMainWindow):
     def _confirm_mode(self) -> None:
         mode = getattr(self, '_pending_mode', None)
         self._cancel_confirmation()
-        if mode == "auto":
+        if mode == "manual":
+            self._start_manual_mode()
+        elif mode == "auto":
             self._start_auto_mode()
         elif mode == "lofa":
             self._start_lofa_mode()
