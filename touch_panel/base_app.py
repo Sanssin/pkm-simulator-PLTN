@@ -372,29 +372,29 @@ class TouchPanelBaseWindow(QMainWindow):
         layout.setAlignment(Qt.AlignCenter)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        title = QLabel("PLTN Simulator")
+        title = QLabel("Simulator PLTN Tipe PWR")
         title.setObjectName("hudTitle")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #0F172A; margin-bottom: 20px;")
+        title.setStyleSheet("font-size: 72px; font-weight: bold; color: #0F172A; margin-bottom: 20px;")
         
-        subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
+        subtitle = QLabel("Panel Kontrol Utama Reaktor Pressurized Water Reactor")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 24px; color: #475569; margin-bottom: 50px;")
+        subtitle.setStyleSheet("font-size: 28px; font-weight: normal; color: #475569; margin-bottom: 60px;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
-        btn_layout.setSpacing(30)
+        btn_layout.setSpacing(40)
         
         start_btn = QPushButton("Mulai Mode\nManual")
         start_btn.setObjectName("hudStartBtn")
-        start_btn.setFixedSize(360, 140)
+        start_btn.setFixedSize(420, 240)
         start_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3B82F6;
                 color: white;
-                font-size: 32px;
+                font-size: 40px;
                 font-weight: bold;
-                border-radius: 16px;
+                border-radius: 20px;
             }
             QPushButton:hover { background-color: #2563EB; }
             QPushButton:pressed { background-color: #1D4ED8; }
@@ -403,14 +403,14 @@ class TouchPanelBaseWindow(QMainWindow):
         
         auto_btn = QPushButton("Mulai Mode\nOtomatis")
         auto_btn.setObjectName("hudAutoBtn")
-        auto_btn.setFixedSize(360, 140)
+        auto_btn.setFixedSize(420, 240)
         auto_btn.setStyleSheet("""
             QPushButton {
                 background-color: #10B981;
                 color: white;
-                font-size: 32px;
+                font-size: 40px;
                 font-weight: bold;
-                border-radius: 16px;
+                border-radius: 20px;
             }
             QPushButton:hover { background-color: #059669; }
             QPushButton:pressed { background-color: #047857; }
@@ -419,14 +419,14 @@ class TouchPanelBaseWindow(QMainWindow):
         
         lofa_btn = QPushButton("Simulasi\nLOFA")
         lofa_btn.setObjectName("hudLofaBtn")
-        lofa_btn.setFixedSize(360, 140)
+        lofa_btn.setFixedSize(420, 240)
         lofa_btn.setStyleSheet("""
             QPushButton {
                 background-color: #EF4444;
                 color: white;
-                font-size: 32px;
+                font-size: 40px;
                 font-weight: bold;
-                border-radius: 16px;
+                border-radius: 20px;
             }
             QPushButton:hover { background-color: #DC2626; }
             QPushButton:pressed { background-color: #B91C1C; }
@@ -507,7 +507,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._overlay_text.setObjectName("overlayText")
         self._overlay_text.setAlignment(Qt.AlignCenter)
         self._overlay_text.setWordWrap(True)
-        self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
+        self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #0F172A; line-height: 1.5;")
 
         button_row = QHBoxLayout()
         button_row.setSpacing(20)
@@ -573,22 +573,22 @@ class TouchPanelBaseWindow(QMainWindow):
             )
             # Override text styling for manual instructions to be slightly smaller and left aligned for readability
             self._overlay_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            self._overlay_text.setStyleSheet("font-size: 24px; color: #334155; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 26px; font-weight: normal; color: #0F172A; line-height: 1.5;")
         elif mode == "auto":
             self._overlay_title.setText("Mode Otomatis Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi otomatis. Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
         elif mode == "lofa":
             self._overlay_title.setText("Mode LOFA Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi kegagalan aliran utama (LOFA). Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
         elif mode == "exit_auto":
             self._overlay_title.setText("Batalkan Otomatis?")
             self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #0F172A; line-height: 1.5;")
             
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
