@@ -399,7 +399,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #2563EB; }
             QPushButton:pressed { background-color: #1D4ED8; }
         """)
-        start_btn.clicked.connect(lambda: self._show_confirmation_overlay("manual"))
+        start_btn.clicked.connect(lambda _, m="manual": self._show_confirmation_overlay(m))
         
         auto_btn = QPushButton("Mulai Mode\nOtomatis")
         auto_btn.setObjectName("hudAutoBtn")
@@ -415,7 +415,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #059669; }
             QPushButton:pressed { background-color: #047857; }
         """)
-        auto_btn.clicked.connect(lambda: self._show_confirmation_overlay("auto"))
+        auto_btn.clicked.connect(lambda _, m="auto": self._show_confirmation_overlay(m))
         
         lofa_btn = QPushButton("Simulasi\nLOFA")
         lofa_btn.setObjectName("hudLofaBtn")
@@ -431,7 +431,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #DC2626; }
             QPushButton:pressed { background-color: #B91C1C; }
         """)
-        lofa_btn.clicked.connect(lambda: self._show_confirmation_overlay("lofa"))
+        lofa_btn.clicked.connect(lambda _, m="lofa": self._show_confirmation_overlay(m))
         
         btn_layout.addWidget(start_btn)
         btn_layout.addWidget(auto_btn)
@@ -452,16 +452,16 @@ class TouchPanelBaseWindow(QMainWindow):
         credits_btn.setFixedSize(400, 80)
         credits_btn.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
+                background-color: #F8FAFC;
                 color: #64748B;
                 font-size: 26px;
                 border: 2px solid #CBD5E1;
                 border-radius: 16px;
             }
-            QPushButton:hover { background-color: rgba(203, 213, 225, 0.4); }
-            QPushButton:pressed { background-color: rgba(203, 213, 225, 0.8); }
+            QPushButton:hover { background-color: #F1F5F9; }
+            QPushButton:pressed { background-color: #E2E8F0; }
         """)
-        credits_btn.clicked.connect(lambda: self._show_confirmation_overlay("credits"))
+        credits_btn.clicked.connect(lambda _, m="credits": self._show_confirmation_overlay(m))
         
         credits_layout = QHBoxLayout()
         credits_layout.setAlignment(Qt.AlignCenter)
