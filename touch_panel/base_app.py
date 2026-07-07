@@ -1276,15 +1276,18 @@ class TouchPanelBaseWindow(QMainWindow):
             self.sim_pressure += (delta_temp * 1.5)
             self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
                 
-            # Daya termal dikaitkan dengan panas (simulasi keterlambatan termodinamika)
-            # Karena suhu awal (ambient) adalah 35C, daya baru muncul jika suhu di atas 35C.
-            target_kw_from_heat = (max(0, self.sim_fuel_cladding_temp - 35.0) / 385.0) * 300000.0
-            if target_kw_from_heat > self.sim_thermal_kw:
-                self.sim_thermal_kw += (target_kw_from_heat - self.sim_thermal_kw) * 0.05
+            # Turbin uap baru bisa berputar jika panas bahan bakar sudah cukup mendidihkan air (>100C)
+            if self.sim_fuel_cladding_temp > 100.0:
+                target_turbine = ((self.sim_fuel_cladding_temp - 100.0) / 320.0) * 100.0
+                target_turbine = min(max(target_turbine, 0.0), 100.0)
             else:
-                self.sim_thermal_kw += (target_kw_from_heat - self.sim_thermal_kw) * 0.15
+                target_turbine = 0.0
+                
+            self.sim_turbine_speed += (target_turbine - self.sim_turbine_speed) * 0.05
             
-            self.sim_turbine_speed += ((self.sim_thermal_kw / 3000.0) - self.sim_turbine_speed) * 0.05
+            # Daya reaktor mutlak dihasilkan oleh putaran turbin
+            target_kw = (self.sim_turbine_speed / 100.0) * 300000.0
+            self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.1
 
     # ============================================
     # IPC State Binder and UI Updating

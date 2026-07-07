@@ -106,10 +106,10 @@ class PhysicsEngine:
             # Panas harus berpindah dulu dari teras -> primer -> sekunder.
                     
             temp_sec = getattr(state, 'temperature_coolant_secondary', 30.0)
-            if temp_sec > 30.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
-                # Kecepatan turbin dipetakan linear terhadap suhu uap sekunder di atas suhu ruang (30C)
-                # (Pada T_sec = 250C, target_speed = 100%)
-                target_speed = ((temp_sec - 30.0) / 220.0) * 100.0
+            if temp_sec > 100.0 and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+                # Turbin baru berputar jika air sekunder sudah mendidih menjadi uap (T_sec > 100C)
+                # (Pada T_sec = 250C, turbin mencapai 100% kecepatan maksimum)
+                target_speed = ((temp_sec - 100.0) / 150.0) * 100.0
                 target_speed = min(max(target_speed, 0.0), 100.0)
                 
                 if state.emergency_active:
