@@ -217,20 +217,7 @@ class PhysicsEngine:
         # 1. Thermal Expansion Surge: 
         # Air pendingin primer yang memanas akan memuai dan menekan gas di pressurizer.
         # Laju perubahan suhu (delta_temp) menghasilkan lonjakan laju tekanan (bar/s).
-        pressure_rate = delta_temp * 2.0 
-        
-        # 2. Pressurizer Auto-Control (Heater & Spray): 
-        # Sistem selalu berusaha menstabilkan dan mengembalikan tekanan ke setpoint nominal (140 bar)
-        NOMINAL_PRESSURE = 140.0
-        pressure_error = NOMINAL_PRESSURE - state.pressure
-        
-        if state.pump_primary_status == PUMP_ON:
-            # Heater/Spray mengkompensasi error tekanan secara gradual
-            pressure_rate += pressure_error * 0.15
-            
-        # Mencegah fluktuasi saat reaktor mati total dan suhu stabil
-        if effective_rod <= 0 and abs(delta_temp) < 0.05 and abs(pressure_error) < 1.0:
-            pressure_rate = 0.0
+        pressure_rate = delta_temp * 1.5
         
         # --- PERBAIKAN FISIKA LOFA ---
         # Matinya pompa primer memicu pendidihan lokal (film boiling) di selongsong.
@@ -249,11 +236,11 @@ class PhysicsEngine:
         # Kalkulasi akumulasi perubahan tekanan pada frame ini
         pressure_generation = pressure_rate * dt
         
-        if state.relief_valve_open:
+        if getattr(state, 'relief_valve_open', False):
             # Relief valve membuang tekanan secara sangat cepat jika bahaya
-            pressure_generation -= 1.5 * dt  
+            pressure_generation -= 15.0 * dt
             
-        state.pressure = max(0.0, state.pressure + pressure_generation)
+        state.pressure = max(1.0, state.pressure + pressure_generation)
 
         # Condenser pressure logic
         if state.pump_tertiary_status != PUMP_ON and state.thermal_kw > 10.0:

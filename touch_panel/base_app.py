@@ -1272,9 +1272,9 @@ class TouchPanelBaseWindow(QMainWindow):
                 
             delta_temp = self.sim_fuel_cladding_temp - old_temp
             
-            # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 140 bar
+            # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian)
             self.sim_pressure += (delta_temp * 1.5)
-            self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
+            # Dihapus: auto-stabilisasi ke 140 bar agar tekanan murni manual / pemuaian termodinamika
                 
             # Turbin dan Daya baru dihasilkan jika panas melewati batas uap (80C)
             if self.sim_fuel_cladding_temp > 80.0:
