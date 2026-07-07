@@ -377,9 +377,17 @@ class TouchPanelBaseWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
         
-        subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
+        subtitle = QLabel(
+            "Petunjuk Operasi Manual:\n\n"
+            "1. Naikkan tekanan Pressurizer hingga ~140 bar.\n"
+            "2. Nyalakan Pompa Tersier, lalu Sekunder, kemudian Primer.\n"
+            "3. Tarik Batang Pengaman hingga 100%.\n"
+            "4. Tarik Batang Kompensasi perlahan untuk memulai reaksi fisi.\n"
+            "5. Gunakan Batang Pengatur untuk menstabilkan daya termal.\n\n"
+            "Silakan pilih mode simulasi di bawah ini:"
+        )
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
+        subtitle.setStyleSheet("font-size: 22px; color: #94A3B8; margin-bottom: 40px; line-height: 1.5;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -748,11 +756,11 @@ class TouchPanelBaseWindow(QMainWindow):
         rod_group = QGroupBox("Posisi Batang Kendali")
         rod_layout = QVBoxLayout(rod_group)
         rod_layout.setSpacing(15)
-        rod_layout.addWidget(QLabel("Pengaman (Safety)"))
+        rod_layout.addWidget(QLabel("Pengaman"))
         rod_layout.addWidget(self.bar_safety)
-        rod_layout.addWidget(QLabel("Kasar (Shim)"))
+        rod_layout.addWidget(QLabel("Kompensasi"))
         rod_layout.addWidget(self.bar_shim)
-        rod_layout.addWidget(QLabel("Halus (Regulating)"))
+        rod_layout.addWidget(QLabel("Pengatur"))
         rod_layout.addWidget(self.bar_reg)
         rod_layout.addStretch()
         layout.addWidget(rod_group, 0, 1)
@@ -948,7 +956,7 @@ class TouchPanelBaseWindow(QMainWindow):
         # Shim Rod
         shim_layout = QVBoxLayout()
         shim_layout.setSpacing(12)
-        lbl_shim = QLabel("Batang Shim:")
+        lbl_shim = QLabel("Batang Kompensasi:")
         lbl_shim.setWordWrap(True)
         lbl_shim.setFixedHeight(36)
         shim_layout.addWidget(lbl_shim)
