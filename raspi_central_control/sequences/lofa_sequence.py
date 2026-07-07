@@ -196,7 +196,10 @@ class LOFASequence:
         finally:
             self._running = False
             with self._state_manager as state:
-                if state.auto_sim_running:
-                    state.auto_sim_running = False
-                    state.simulation_mode = 'idle'
+                if not self._check_cancelled():
+                    state.reset()
+                else:
+                    if state.auto_sim_running:
+                        state.auto_sim_running = False
+                        state.simulation_mode = 'idle'
             logger.info("--- LOFA SIMULATION SEQUENCE ENDED ---")
