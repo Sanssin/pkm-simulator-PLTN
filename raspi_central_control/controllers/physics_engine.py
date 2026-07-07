@@ -266,26 +266,44 @@ class PhysicsEngine:
         # =====================================================================
         # 5. PRESSURE DYNAMICS
         # =====================================================================
-        # Kurangi sensitivitas (multiplier) drastis agar tidak mudah SCRAM saat batang kendali ditarik
-        # (Pengurangan 4x lipat dari nilai asli 0.1)
-        pressure_generation = (delta_temp * 0.025) if delta_temp > 0 else (delta_temp * 0.05)
+        # 1. Thermal Expansion Surge: 
+        # Air pendingin primer yang memanas akan memuai dan menekan gas di pressurizer.
+        # Laju perubahan suhu (delta_temp) menghasilkan lonjakan laju tekanan (bar/s).
+        pressure_rate = delta_temp * 2.0 
         
-        # Mencegah tekanan naik saat reaktor mati akibat drift suhu base
-        if effective_rod <= 0 and pressure_generation > 0:
-            pressure_generation = 0.0
+        # 2. Pressurizer Auto-Control (Heater & Spray): 
+        # Sistem selalu berusaha menstabilkan dan mengembalikan tekanan ke setpoint nominal (155 bar)
+        NOMINAL_PRESSURE = 155.0
+        pressure_error = NOMINAL_PRESSURE - state.pressure
+        
+        if state.pump_primary_status == PUMP_ON:
+            # Heater/Spray mengkompensasi error tekanan secara gradual
+            pressure_rate += pressure_error * 0.15
+            
+        # Mencegah fluktuasi saat reaktor mati total dan suhu stabil
+        if effective_rod <= 0 and abs(delta_temp) < 0.05 and abs(pressure_error) < 1.0:
+            pressure_rate = 0.0
         
         # --- PERBAIKAN FISIKA LOFA ---
-        # Di dunia nyata, matinya pompa primer memicu pendidihan lokal (film boiling) 
-        # di sekitar selongsong bahan bakar. Pemuaian uap ini akan meningkatkan tekanan sistem.
+        # Matinya pompa primer memicu pendidihan lokal (film boiling) di selongsong.
+        # Pemuaian uap mendadak ini akan meningkatkan tekanan sistem secara drastis.
         if effective_rod > 0:
             if state.pump_primary_status != PUMP_ON:
-                delta_clad = dT_clad / dt
-                if delta_clad > 0:
-                    pressure_generation += (delta_clad * 0.2)
+                rate_clad = dT_clad / dt
+                if rate_clad > 0:
+                    pressure_rate += (rate_clad * 1.5)
+                # Akumulasi uap mendongkrak tekanan jika pompa mati
+                pressure_rate += 1.0 
                 
-        pressure_generation = max(-MAX_PRESSURE_RATE * dt, min(pressure_generation, MAX_PRESSURE_RATE * dt))
+        # Batasi laju perubahan tekanan maksimal (bar/s)
+        pressure_rate = max(-MAX_PRESSURE_RATE, min(pressure_rate, MAX_PRESSURE_RATE))
+        
+        # Kalkulasi akumulasi perubahan tekanan pada frame ini
+        pressure_generation = pressure_rate * dt
+        
         if state.relief_valve_open:
-            pressure_generation -= 0.1 * dt  # Dikurangi dari 1.5 agar tekanan naik terus saat LOFA
+            # Relief valve membuang tekanan secara sangat cepat jika bahaya
+            pressure_generation -= 1.5 * dt  
             
         state.pressure = max(0.0, state.pressure + pressure_generation)
 

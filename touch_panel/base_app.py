@@ -1262,7 +1262,13 @@ class TouchPanelBaseWindow(QMainWindow):
                     self._update_local_simulation("EMERGENCY")
                     return
             else:
+                old_temp = self.sim_fuel_cladding_temp
                 self.sim_fuel_cladding_temp += (420.0 * effective_rod - self.sim_fuel_cladding_temp) * 0.05
+                delta_temp = self.sim_fuel_cladding_temp - old_temp
+                
+                # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 155 bar
+                self.sim_pressure += (delta_temp * 1.5)
+                self.sim_pressure += (155.0 - self.sim_pressure) * 0.02
                 
             self.sim_thermal_kw += (target_kw - self.sim_thermal_kw) * 0.05
             self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
