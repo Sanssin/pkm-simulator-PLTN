@@ -375,11 +375,11 @@ class TouchPanelBaseWindow(QMainWindow):
         title = QLabel("PLTN Simulator")
         title.setObjectName("hudTitle")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #E2E8F0; margin-bottom: 20px;")
+        title.setStyleSheet("font-size: 56px; font-weight: bold; color: #0F172A; margin-bottom: 20px;")
         
         subtitle = QLabel("Tekan tombol di bawah untuk memulai.")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 24px; color: #94A3B8; margin-bottom: 50px;")
+        subtitle.setStyleSheet("font-size: 24px; color: #475569; margin-bottom: 50px;")
         
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -453,13 +453,13 @@ class TouchPanelBaseWindow(QMainWindow):
         credits_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
-                color: #94A3B8;
+                color: #64748B;
                 font-size: 20px;
-                border: 2px solid #94A3B8;
+                border: 2px solid #CBD5E1;
                 border-radius: 10px;
             }
-            QPushButton:hover { background-color: rgba(148, 163, 184, 0.2); }
-            QPushButton:pressed { background-color: rgba(148, 163, 184, 0.4); }
+            QPushButton:hover { background-color: rgba(203, 213, 225, 0.4); }
+            QPushButton:pressed { background-color: rgba(203, 213, 225, 0.8); }
         """)
         credits_btn.clicked.connect(lambda: self._on_button_click("TOGGLE_CREDITS"))
         
@@ -476,7 +476,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._confirmation_overlay = QWidget(self)
         self._confirmation_overlay.setObjectName("confirmationOverlay")
         self._confirmation_overlay.setVisible(False)
-        self._confirmation_overlay.setStyleSheet("background-color: rgba(2, 6, 23, 0.75);")
+        self._confirmation_overlay.setStyleSheet("background-color: rgba(15, 23, 42, 0.4);")
         self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
 
         overlay_layout = QVBoxLayout(self._confirmation_overlay)
@@ -487,8 +487,8 @@ class TouchPanelBaseWindow(QMainWindow):
         overlay_card.setObjectName("confirmationCard")
         overlay_card.setStyleSheet("""
             QWidget#confirmationCard {
-                background-color: rgba(15, 23, 42, 0.96);
-                border: 2px solid rgba(148, 163, 184, 0.5);
+                background-color: rgba(255, 255, 255, 0.98);
+                border: 2px solid #CBD5E1;
                 border-radius: 30px;
             }
         """)
@@ -501,13 +501,13 @@ class TouchPanelBaseWindow(QMainWindow):
         self._overlay_title = QLabel("Konfirmasi")
         self._overlay_title.setObjectName("overlayTitle")
         self._overlay_title.setAlignment(Qt.AlignCenter)
-        self._overlay_title.setStyleSheet("font-size: 42px; font-weight: bold; color: #F8FAFC;")
+        self._overlay_title.setStyleSheet("font-size: 42px; font-weight: bold; color: #0369A1;")
 
         self._overlay_text = QLabel("...")
         self._overlay_text.setObjectName("overlayText")
         self._overlay_text.setAlignment(Qt.AlignCenter)
         self._overlay_text.setWordWrap(True)
-        self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
+        self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
 
         button_row = QHBoxLayout()
         button_row.setSpacing(20)
@@ -532,14 +532,14 @@ class TouchPanelBaseWindow(QMainWindow):
         cancel_btn.setFixedSize(260, 80)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                background-color: #475569;
+                background-color: #94A3B8;
                 color: white;
                 font-size: 26px;
                 font-weight: bold;
                 border-radius: 16px;
             }
-            QPushButton:hover { background-color: #334155; }
-            QPushButton:pressed { background-color: #1E293B; }
+            QPushButton:hover { background-color: #CBD5E1; }
+            QPushButton:pressed { background-color: #64748B; }
         """)
         cancel_btn.clicked.connect(self._cancel_confirmation)
 
@@ -553,7 +553,7 @@ class TouchPanelBaseWindow(QMainWindow):
         card_layout.addStretch()
         overlay_layout.addWidget(overlay_card, 0, Qt.AlignCenter)
         
-        hud.setStyleSheet("background-color: #0F172A;")
+        hud.setStyleSheet("background-color: #F5F7FA;")
         return hud
 
     def _show_confirmation_overlay(self, mode: str) -> None:
@@ -573,22 +573,22 @@ class TouchPanelBaseWindow(QMainWindow):
             )
             # Override text styling for manual instructions to be slightly smaller and left aligned for readability
             self._overlay_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            self._overlay_text.setStyleSheet("font-size: 24px; color: #E2E8F0; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 24px; color: #334155; line-height: 1.5;")
         elif mode == "auto":
             self._overlay_title.setText("Mode Otomatis Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi otomatis. Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
         elif mode == "lofa":
             self._overlay_title.setText("Mode LOFA Dipilih")
             self._overlay_text.setText("Layar akan berpindah ke simulasi kegagalan aliran utama (LOFA). Tekan Lanjutkan untuk masuk, atau Batal untuk tetap di menu awal.")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
         elif mode == "exit_auto":
             self._overlay_title.setText("Batalkan Otomatis?")
             self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
             self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 26px; color: #E2E8F0; line-height: 1.5;")
+            self._overlay_text.setStyleSheet("font-size: 26px; color: #334155; line-height: 1.5;")
             
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
