@@ -243,6 +243,15 @@ class PhysicsEngine:
         # Kalkulasi akumulasi perubahan tekanan pada frame ini
         pressure_generation = pressure_rate * dt
         
+        # Super-heating / Boiling surge:
+        # Jika suhu primer melampaui batas bahaya (340C+), air mendidih secara masif.
+        # Uap ini menghasilkan tekanan yang jauh melampaui kapasitas pembuangan Relief Valve.
+        if state.temperature_coolant_primary > 340.0:
+            excess_temp = state.temperature_coolant_primary - 340.0
+            # Semakin panas, ledakan tekanannya semakin eksponensial tak terbendung
+            pressure_generation += (excess_temp * 0.2) * dt
+            
+        
         if getattr(state, 'relief_valve_open', False):
             # Relief valve membuang tekanan secara sangat cepat jika bahaya
             pressure_generation -= 15.0 * dt

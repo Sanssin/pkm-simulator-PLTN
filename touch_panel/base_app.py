@@ -1278,6 +1278,10 @@ class TouchPanelBaseWindow(QMainWindow):
             # Dihapus: auto-stabilisasi ke 140 bar agar tekanan murni manual / pemuaian termodinamika
             if effective_rod > 0.0:
                 self.sim_pressure += (delta_temp * 1.5)
+                # LOFA Surge: Pendidihan masif saat suhu ekstrem melampaui kemampuan relief valve
+                if self.sim_fuel_cladding_temp > 340.0:
+                    excess_temp = self.sim_fuel_cladding_temp - 340.0
+                    self.sim_pressure += (excess_temp * 0.05)
                 
             # Turbin dan Daya baru dihasilkan jika panas melewati batas uap (80C)
             if self.sim_fuel_cladding_temp > 80.0:
