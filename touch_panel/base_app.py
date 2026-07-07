@@ -449,19 +449,19 @@ class TouchPanelBaseWindow(QMainWindow):
         
         credits_btn = QPushButton("Daftar Pengembang")
         credits_btn.setObjectName("hudCreditsBtn")
-        credits_btn.setFixedSize(300, 60)
+        credits_btn.setFixedSize(400, 80)
         credits_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 color: #64748B;
-                font-size: 20px;
+                font-size: 26px;
                 border: 2px solid #CBD5E1;
-                border-radius: 10px;
+                border-radius: 16px;
             }
             QPushButton:hover { background-color: rgba(203, 213, 225, 0.4); }
             QPushButton:pressed { background-color: rgba(203, 213, 225, 0.8); }
         """)
-        credits_btn.clicked.connect(lambda: self._on_button_click("TOGGLE_CREDITS"))
+        credits_btn.clicked.connect(lambda: self._show_confirmation_overlay("credits"))
         
         credits_layout = QHBoxLayout()
         credits_layout.setAlignment(Qt.AlignCenter)
@@ -501,7 +501,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self._overlay_title = QLabel("Konfirmasi")
         self._overlay_title.setObjectName("overlayTitle")
         self._overlay_title.setAlignment(Qt.AlignCenter)
-        self._overlay_title.setStyleSheet("font-size: 42px; font-weight: bold; color: #0369A1;")
+        self._overlay_title.setStyleSheet("font-size: 42px; font-weight: bold; color: #0369A1; background: transparent; border: none;")
 
         self._overlay_text = QLabel("...")
         self._overlay_text.setObjectName("overlayText")
