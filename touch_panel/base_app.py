@@ -260,6 +260,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self.sim_auto_running = False
         self.sim_emergency = False
         self.sim_alarm = "Tidak Ada"
+        self.sim_show_credits = False
         
         # Extended coolant & temperatures
         self.sim_coolant_temp_primary = 295.5
@@ -1141,6 +1142,12 @@ class TouchPanelBaseWindow(QMainWindow):
             self.target_pump_secondary = 0.0
             self.target_pump_tertiary = 0.0
             
+        elif action == "TOGGLE_CREDITS":
+            self.sim_show_credits = not getattr(self, 'sim_show_credits', False)
+            if self.sim_show_credits and _PYQT_AVAILABLE:
+                from PyQt5.QtCore import QTimer
+                QTimer.singleShot(16000, lambda: setattr(self, 'sim_show_credits', False))
+            
         elif action == "PRESSURE_UP":
             self.sim_pressure = min(200.0, self.sim_pressure + 0.05)
         elif action == "PRESSURE_DOWN":
@@ -1329,6 +1336,7 @@ class TouchPanelBaseWindow(QMainWindow):
                 self.sim_coolant_temp_secondary = state_data.get("temperature_coolant_secondary", state_data.get("coolant_temp_secondary", self.sim_coolant_temp_secondary))
                 self.sim_fuel_cladding_temp = state_data.get("temperature_fuel_cladding", state_data.get("fuel_cladding_temp", self.sim_fuel_cladding_temp))
                 self.sim_condenser_pressure = state_data.get("condenser_pressure", self.sim_condenser_pressure)
+                self.sim_show_credits = state_data.get("show_credits", False)
 
                 # Auto-clear pump failures if the reactor is fully reset/cold
                 if self.sim_thermal_kw < 1.0 and self.sim_pressure < 10.0:
@@ -1385,6 +1393,7 @@ class TouchPanelBaseWindow(QMainWindow):
             for action in list(self._active_holds.keys()):
                 self._on_button_hold(action)
             self._run_local_simulation_step()
+            self._broadcast_local_state()
         else:
             self.tick_counter += 1
             if self.tick_counter % 5 == 0:
@@ -1392,6 +1401,33 @@ class TouchPanelBaseWindow(QMainWindow):
 
         # Refresh UI indicators
         self._update_ui_displays()
+
+    def _broadcast_local_state(self) -> None:
+        if not hasattr(self, 'local_broadcast_sock'):
+            import socket
+            self.local_broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+        state = {
+            "timestamp": time.time(),
+            "mode": self.sim_mode,
+            "auto_running": self.sim_auto_running,
+            "pressure": self.sim_pressure,
+            "safety_rod": self.sim_safety_rod,
+            "shim_rod": self.sim_shim_rod,
+            "regulating_rod": self.sim_regulating_rod,
+            "pump_primary": self.sim_pump_primary,
+            "pump_secondary": self.sim_pump_secondary,
+            "pump_tertiary": self.sim_pump_tertiary,
+            "thermal_kw": self.sim_thermal_kw,
+            "turbine_speed": self.sim_turbine_speed,
+            "emergency": self.sim_emergency,
+            "show_credits": getattr(self, 'sim_show_credits', False)
+        }
+        import json
+        try:
+            self.local_broadcast_sock.sendto(json.dumps(state).encode('utf-8'), ("127.0.0.1", 9997))
+        except Exception:
+            pass
 
     def _update_ui_displays(self) -> None:
         if hasattr(self, 'body_stack'):
