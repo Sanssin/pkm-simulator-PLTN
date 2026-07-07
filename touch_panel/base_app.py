@@ -1253,22 +1253,28 @@ class TouchPanelBaseWindow(QMainWindow):
             
             # Pump multiplier adjusts thermal output dissipation
             pumps_count = self.sim_pump_primary + self.sim_pump_secondary + self.sim_pump_tertiary
+            
+            old_temp = self.sim_fuel_cladding_temp
             if pumps_count == 0:
-                # No coolant flow! Temperature spike warning!
-                self.sim_fuel_cladding_temp += 3.5
-                self.sim_alarm = "GANGGUAN KEHILANGAN PENDINGIN!"
-                if self.sim_fuel_cladding_temp > 650.0:
-                    # Automatic Scram!
-                    self._update_local_simulation("EMERGENCY")
-                    return
+                if effective_rod > 0.05:
+                    # No coolant flow while active! Temperature spike warning!
+                    self.sim_fuel_cladding_temp += 3.5
+                    self.sim_alarm = "GANGGUAN KEHILANGAN PENDINGIN!"
+                    if self.sim_fuel_cladding_temp > 650.0:
+                        # Automatic Scram!
+                        self._update_local_simulation("EMERGENCY")
+                        return
+                else:
+                    # Cools down slowly to ambient
+                    self.sim_fuel_cladding_temp += (35.0 - self.sim_fuel_cladding_temp) * 0.02
             else:
-                old_temp = self.sim_fuel_cladding_temp
                 self.sim_fuel_cladding_temp += (420.0 * effective_rod - self.sim_fuel_cladding_temp) * 0.05
-                delta_temp = self.sim_fuel_cladding_temp - old_temp
                 
-                # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 140 bar
-                self.sim_pressure += (delta_temp * 1.5)
-                self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
+            delta_temp = self.sim_fuel_cladding_temp - old_temp
+            
+            # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian), dan distabilkan ke 140 bar
+            self.sim_pressure += (delta_temp * 1.5)
+            self.sim_pressure += (140.0 - self.sim_pressure) * 0.02
                 
             # Daya termal dikaitkan dengan panas (simulasi keterlambatan termodinamika)
             target_kw_from_heat = (self.sim_fuel_cladding_temp / 420.0) * 300000.0
