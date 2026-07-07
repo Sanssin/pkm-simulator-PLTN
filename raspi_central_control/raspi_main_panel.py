@@ -344,12 +344,14 @@ class PLTNPanelController:
                     self.pump_controller.update(state)
                                 
                     # Update Unified Physics (Thermodynamics, Capacities, Turbine, LOFA)
-                    if hasattr(self, 'physics_engine'):
-                        self.physics_engine.update(state)
-                        
-                    # Terapkan Logika Simulasi (Turbin, Daya, dan Proteksi Otomatis)
-                    # Ini memisahkan Fisika Aktual dengan Logika Kontrol Simulator
-                    self._apply_simulation_logic(state, 0.05)
+                    # Hanya jalankan fisika jika sistem tidak dalam keadaan idle (sedang manual/auto)
+                    if getattr(state, 'simulation_mode', 'idle') != 'idle':
+                        if hasattr(self, 'physics_engine'):
+                            self.physics_engine.update(state)
+                            
+                        # Terapkan Logika Simulasi (Turbin, Daya, dan Proteksi Otomatis)
+                        # Ini memisahkan Fisika Aktual dengan Logika Kontrol Simulator
+                        self._apply_simulation_logic(state, 0.05)
 
                     # Manage Video Player
                     # PENTING: cek cinematic_lofa DULU sebelum auto_sim_running

@@ -210,7 +210,10 @@ class PhysicsEngine:
         
         # To affect pressure generation below
         delta_temp = dT_prim / dt
-        
+        # Abaikan fluktuasi mikroskopis akibat rambatan sisa panas saat reaktor mati (mencegah tekanan naik perlahan)
+        if abs(delta_temp) < 0.01:
+            delta_temp = 0.0
+            
         # =====================================================================
         # 5. PRESSURE DYNAMICS
         # =====================================================================
