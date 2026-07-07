@@ -461,7 +461,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #F1F5F9; }
             QPushButton:pressed { background-color: #E2E8F0; }
         """)
-        credits_btn.clicked.connect(lambda _, m="credits": self._show_confirmation_overlay(m))
+        credits_btn.clicked.connect(lambda: self._on_button_click("TOGGLE_CREDITS"))
         
         credits_layout = QHBoxLayout()
         credits_layout.setAlignment(Qt.AlignCenter)
@@ -589,22 +589,6 @@ class TouchPanelBaseWindow(QMainWindow):
             self._overlay_text.setText("Yakin ingin membatalkan simulasi otomatis dan kembali ke menu utama?")
             self._overlay_text.setAlignment(Qt.AlignCenter)
             self._overlay_text.setStyleSheet("font-size: 28px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
-        elif mode == "credits":
-            self._overlay_title.setText("Daftar Pengembang")
-            self._overlay_text.setText(
-                "Dikembangkan oleh Tim PKM-KC Politeknik Teknologi Nuklir Indonesia (2025/2026):\n\n"
-                "- M. Yusuf\n"
-                "- Hasna\n"
-                "- Daffa\n"
-                "- Riko\n"
-                "- Ilham\n\n"
-                "Terima kasih atas dukungannya!"
-            )
-            self._overlay_text.setAlignment(Qt.AlignCenter)
-            self._overlay_text.setStyleSheet("font-size: 24px; font-weight: normal; color: #000000; background: transparent; border: none; line-height: 1.5;")
-            self._btn_continue.setVisible(False)
-            self._btn_cancel.setText("Tutup")
-            
         if hasattr(self, '_confirmation_overlay') and self._confirmation_overlay is not None:
             self._confirmation_overlay.setGeometry(0, 0, self.width(), self.height())
             self._confirmation_overlay.setVisible(True)
