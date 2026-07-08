@@ -139,7 +139,7 @@ class ActuatorManager:
                 return 100.0
             
             # For STARTING (1) and SHUTTING_DOWN (3)
-            current_time = time.time()
+            current_time = time.monotonic()
             if transition_start == 0:
                 return 0.0 if status == 1 else 100.0
                 
