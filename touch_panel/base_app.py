@@ -1092,7 +1092,7 @@ class TouchPanelBaseWindow(QMainWindow):
             
         # Hardware debounce for touch screens (0.5s per action)
         # However, HoldButtons (ROD/PRESSURE) need faster repeats, so skip debounce for them
-        if not action.startswith("ROD_MOVE") and not action.startswith("PRESSURE"):
+        if "ROD" not in action and not action.startswith("PRESSURE"):
             if action in self._last_click_times and now - self._last_click_times[action] < 0.6:
                 return
             self._last_click_times[action] = now
