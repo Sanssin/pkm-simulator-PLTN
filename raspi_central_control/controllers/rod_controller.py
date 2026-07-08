@@ -25,12 +25,12 @@ class RodController:
                              f"Tertiary={state.pump_tertiary_status} (need all = 2)")
                 if warning_callback: warning_callback()
                 return False
-            state.safety_rod = min(state.safety_rod + 1.0, 100.0)
+            state.safety_rod = min(state.safety_rod + 2.0, 100.0)
             return True
             
         elif event == ButtonEvent.SAFETY_ROD_DOWN:
             # Safety rod must be >= shim and >= regulating
-            new_pos = state.safety_rod - 1.0
+            new_pos = state.safety_rod - 2.0
             if new_pos < state.shim_rod or new_pos < state.regulating_rod:
                 logger.warning("Cannot lower Safety Rod below Shim/Regulating rod position!")
                 logger.warning(f"   Safety={state.safety_rod:.1f}%, Shim={state.shim_rod:.1f}%, Reg={state.regulating_rod:.1f}%")
@@ -58,14 +58,14 @@ class RodController:
                 if warning_callback: warning_callback()
                 return False
                 
-            state.shim_rod = min(state.shim_rod + 1.0, 100.0)
+            state.shim_rod = min(state.shim_rod + 2.0, 100.0)
             return True
             
         elif event == ButtonEvent.SHIM_ROD_DOWN:
             # Regulating rod must be 0% before shim rod can be lowered
             # Wait, there's a rule that Regulating Rod must be 0? 
             # In the original code, let's just do what was there. I'll just decrement it.
-            state.shim_rod = max(state.shim_rod - 1.0, 0.0)
+            state.shim_rod = max(state.shim_rod - 2.0, 0.0)
             return True
             
         elif event == ButtonEvent.REGULATING_ROD_UP:
@@ -86,11 +86,11 @@ class RodController:
                 if warning_callback: warning_callback()
                 return False
                 
-            state.regulating_rod = min(state.regulating_rod + 1.0, 100.0)
+            state.regulating_rod = min(state.regulating_rod + 2.0, 100.0)
             return True
             
         elif event == ButtonEvent.REGULATING_ROD_DOWN:
-            state.regulating_rod = max(state.regulating_rod - 1.0, 0.0)
+            state.regulating_rod = max(state.regulating_rod - 2.0, 0.0)
             return True
             
         return False
