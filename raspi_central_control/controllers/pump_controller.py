@@ -17,7 +17,7 @@ class PumpController:
         """
         Updates pump transition states. Should be called periodically.
         """
-        current_time = time.time()
+        current_time = time.monotonic()
         
         for pump_name in ['primary', 'secondary', 'tertiary']:
             status_attr = f'pump_{pump_name}_status'

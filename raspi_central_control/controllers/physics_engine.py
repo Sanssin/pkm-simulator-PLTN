@@ -52,13 +52,13 @@ class PhysicsEngine:
         self.trip_timer_prim = 0.0
         self.trip_timer_condenser = 0.0
         
-        self.last_update_time = time.time()
+        self.last_update_time = time.monotonic()
         
     def update(self, state: PanelState) -> None:
         """
         Calculate new physics based on elapsed time, rod positions, and pump status.
         """
-        current_time = time.time()
+        current_time = time.monotonic()
         dt = current_time - self.last_update_time
         self.last_update_time = current_time
         
