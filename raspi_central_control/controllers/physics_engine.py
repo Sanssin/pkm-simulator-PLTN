@@ -357,4 +357,8 @@ class PhysicsEngine:
                        state.pressure < 170.0)
             if is_safe:
                 state.emergency_active = False
+                # Matikan juga flag LOFA agar alarm berhenti meskipun pompa belum dihidupkan ulang
+                state.lofa_primary = False
+                state.lofa_secondary = False
+                state.lofa_tertiary = False
 

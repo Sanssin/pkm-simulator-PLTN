@@ -1206,7 +1206,7 @@ class VideoDisplayApp:
         temps = [
             ("Bahan Bakar", core_temp, 2800.0),
             ("Cladding", clad_temp, 1200.0),
-            ("Aliran Primer", prim_temp, 345.0),
+            ("Aliran Primer", prim_temp, 1000.0),
             ("Uap Sekunder", sec_temp, 280.0)
         ]
         
