@@ -54,6 +54,8 @@ class VideoPlayer:
                 "--ontop",
                 "--vo=dmabuf-wayland",   # Penting untuk Wayland agar tidak blackscreen
                 "--hwdec=v4l2m2m",       # Hardware decode murni (copy mode gagal di Wayland DMABUF)
+                "--ao=alsa",
+                f"--audio-device={AUDIO_DEVICE}",
                 "--no-pause",
                 "--video-sync=display-resample", # Sinkronisasi audio dengan refresh rate layar
                 f"--log-file={log_path}"
