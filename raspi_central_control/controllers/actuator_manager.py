@@ -188,7 +188,7 @@ class ActuatorManager:
             if prev_sim_mode != sim_mode:
                 self._prev_sim_mode = sim_mode
                 # User berpindah ke mode aktif
-                if sim_mode in ('manual', 'auto', 'cinematic_lofa') and is_reset:
+                if sim_mode in ('auto', 'cinematic_lofa') and is_reset:
                     state.just_reset = False
                     is_reset = False
 
@@ -208,13 +208,16 @@ class ActuatorManager:
                 self.led_strip.set_active('tersier_out', False)
                 self.led_strip.set_active('pressurizer', False)
             else:
-                self.led_strip.set_active('primer', prim_speed > 0.0)
-                self.led_strip.set_active('pressurizer', prim_speed > 0.0)
-                self.led_strip.set_active('sekunder_in', sec_speed > 0.0)
-                self.led_strip.set_active('sekunder_out', sec_speed > 0.0)
-                self.led_strip.set_active('tersier_in', tert_speed > 0.0)
-                self.led_strip.set_active('kondenser', tert_speed > 0.0)
-                self.led_strip.set_active('tersier_out', tert_speed > 0.0)
+                if prim_speed > 0.0:
+                    self.led_strip.set_active('primer', True)
+                    self.led_strip.set_active('pressurizer', True)
+                if sec_speed > 0.0:
+                    self.led_strip.set_active('sekunder_in', True)
+                    self.led_strip.set_active('sekunder_out', True)
+                if tert_speed > 0.0:
+                    self.led_strip.set_active('tersier_in', True)
+                    self.led_strip.set_active('kondenser', True)
+                    self.led_strip.set_active('tersier_out', True)
             
             # Selain kondisi idle/reset, is_active diset True sehingga lampu tetap menyala 
             # (namun tidak bergerak jika speed 0)
