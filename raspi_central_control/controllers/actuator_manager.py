@@ -208,16 +208,13 @@ class ActuatorManager:
                 self.led_strip.set_active('tersier_out', False)
                 self.led_strip.set_active('pressurizer', False)
             else:
-                if prim_speed > 0.0:
-                    self.led_strip.set_active('primer', True)
-                    self.led_strip.set_active('pressurizer', True)
-                if sec_speed > 0.0:
-                    self.led_strip.set_active('sekunder_in', True)
-                    self.led_strip.set_active('sekunder_out', True)
-                if tert_speed > 0.0:
-                    self.led_strip.set_active('tersier_in', True)
-                    self.led_strip.set_active('kondenser', True)
-                    self.led_strip.set_active('tersier_out', True)
+                self.led_strip.set_active('primer', prim_speed > 0.0)
+                self.led_strip.set_active('pressurizer', prim_speed > 0.0)
+                self.led_strip.set_active('sekunder_in', sec_speed > 0.0)
+                self.led_strip.set_active('sekunder_out', sec_speed > 0.0)
+                self.led_strip.set_active('tersier_in', tert_speed > 0.0)
+                self.led_strip.set_active('kondenser', tert_speed > 0.0)
+                self.led_strip.set_active('tersier_out', tert_speed > 0.0)
             
             # Selain kondisi idle/reset, is_active diset True sehingga lampu tetap menyala 
             # (namun tidak bergerak jika speed 0)
