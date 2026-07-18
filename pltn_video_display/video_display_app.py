@@ -1828,7 +1828,7 @@ class VideoDisplayApp:
                     import json, time, socket
                     event_data = {
                         "timestamp": time.time(),
-                        "events": [{"type": "TOGGLE_CREDITS", "target": None, "rod": None, "direction": None, "timestamp": time.time()}]
+                        "events": [{"type": "HIDE_CREDITS", "target": None, "rod": None, "direction": None, "timestamp": time.time()}]
                     }
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sock.sendto(json.dumps(event_data).encode("utf-8"), ("127.0.0.1", 9999))

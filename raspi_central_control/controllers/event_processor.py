@@ -37,7 +37,8 @@ class ButtonEvent(Enum):
     LOFA_SIMULATE_PRIMARY = "LOFA_SIMULATE_PRIMARY"
     LOFA_SIMULATE_SECONDARY = "LOFA_SIMULATE_SECONDARY"
     LOFA_SIMULATE_TERTIARY = "LOFA_SIMULATE_TERTIARY"
-    TOGGLE_CREDITS = "TOGGLE_CREDITS"
+    SHOW_CREDITS = "SHOW_CREDITS"
+    HIDE_CREDITS = "HIDE_CREDITS"
 from typing import Callable, Optional, TYPE_CHECKING, Any
 
 from .interlock_validator import InterlockValidator, PUMP_ON, PUMP_OFF, PUMP_STARTING, PUMP_SHUTTING_DOWN
@@ -248,12 +249,13 @@ class EventProcessor:
                     logger.info("Simulasi akan berjalan otomatis dengan kecepatan lambat")
                     logger.info("untuk memudahkan pemahaman cara kerja PLTN")
                     logger.info("=" * 60)
-            
             # Toggle credits
-            elif event == ButtonEvent.TOGGLE_CREDITS:
-                current = getattr(state, "show_credits", False)
-                setattr(state, "show_credits", not current)
-                logger.info(f"Toggled credits display to: {not current}")
+            elif event == ButtonEvent.SHOW_CREDITS:
+                setattr(state, "show_credits", True)
+                logger.info("Show credits activated")
+            elif event == ButtonEvent.HIDE_CREDITS:
+                setattr(state, "show_credits", False)
+                logger.info("Hide credits activated")
             
             else:
                 logger.warning(f"Unknown event: {event}")

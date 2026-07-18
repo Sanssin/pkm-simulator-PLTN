@@ -268,7 +268,8 @@ class PLTNPanelController:
             ("LOFA_SIMULATE", "SECONDARY", None, None): ButtonEvent.LOFA_SIMULATE_SECONDARY,
             ("LOFA_SIMULATE", "TERTIARY", None, None): ButtonEvent.LOFA_SIMULATE_TERTIARY,
             ("LOFA_CANCEL", None, None, None): ButtonEvent.REACTOR_RESET,
-            ("TOGGLE_CREDITS", None, None, None): ButtonEvent.TOGGLE_CREDITS,
+            ("SHOW_CREDITS", None, None, None): ButtonEvent.SHOW_CREDITS,
+            ("HIDE_CREDITS", None, None, None): ButtonEvent.HIDE_CREDITS,
         }
         
         while self.state_manager.running:
