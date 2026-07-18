@@ -1098,9 +1098,10 @@ class TouchPanelBaseWindow(QMainWindow):
             self._last_click_times[action] = now
             
         if self._is_auto_running():
-            if self._footer_label is not None:
-                self._footer_label.setText("Sistem terkunci. Input dinonaktifkan selama simulasi otomatis berjalan.")
-            return
+            if action not in ["TOGGLE_CREDITS", "LOFA_CANCEL", "REACTOR_RESET", "EMERGENCY"]:
+                if self._footer_label is not None:
+                    self._footer_label.setText("Sistem terkunci. Input dinonaktifkan selama simulasi otomatis berjalan.")
+                return
         self._execute_action(action)
 
     def _execute_action(self, action: str) -> None:
