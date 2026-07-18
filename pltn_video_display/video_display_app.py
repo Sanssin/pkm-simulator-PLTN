@@ -1821,9 +1821,21 @@ class VideoDisplayApp:
                 self.credits_screen.show()
                 # DO NOT clear the flag; the Touchscreen controls the state.
             
-            # Do NOT check for local mouse tap closing here. Let the backend dictate the state.
-            # If the backend sends show_credits=True, we show it.
-            # When the backend sends show_credits=False, the 'else' block will hide it.
+            # Check if it closed itself locally (timed out)
+            elif not self.credits_screen.active:
+                # Tell backend to sync state to False by sending TOGGLE_CREDITS
+                try:
+                    import json, time, socket
+                    event_data = {
+                        "timestamp": time.time(),
+                        "events": [{"type": "TOGGLE_CREDITS", "target": None, "rod": None, "direction": None, "timestamp": time.time()}]
+                    }
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.sendto(json.dumps(event_data).encode("utf-8"), ("127.0.0.1", 9999))
+                except Exception:
+                    pass
+                self.credits_screen_active = False
+                self.resume_video()
         else:
             if getattr(self, 'credits_screen_active', False):
                 self.credits_screen_active = False
@@ -2039,7 +2051,11 @@ class VideoDisplayApp:
                 
                 # Handle touch/mouse click
                 elif event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.FINGERDOWN:
-                    pass # Ignore touch on video display, rely on backend state
+                    if getattr(self, 'credits_screen', None) and self.credits_screen.active:
+                        if self.credits_screen.handle_tap():
+                            pass
+                        # Don't trigger other interactions when tapping credits overlay
+                        continue
 
                     if not self.user_has_interacted:
                         print("👉 Layar disentuh - beralih ke mode MANUAL")
