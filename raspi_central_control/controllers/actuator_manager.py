@@ -207,29 +207,35 @@ class ActuatorManager:
                 self.led_strip.set_active('kondenser', False)
                 self.led_strip.set_active('tersier_out', False)
                 self.led_strip.set_active('pressurizer', False)
+                # Reset tracking: saat idle/reset, lupakan semua LED yang pernah aktif
+                self._led_ever_activated = {'prim': False, 'sec': False, 'tert': False}
             else:
+                # Inisialisasi tracking jika belum ada
+                if not hasattr(self, '_led_ever_activated'):
+                    self._led_ever_activated = {'prim': False, 'sec': False, 'tert': False}
+                
+                # Tandai LED group yang pernah aktif (pompa pernah menyala)
                 if prim_speed > 0.0:
-                    self.led_strip.set_active('primer', True)
-                    self.led_strip.set_active('pressurizer', True)
-                else:
-                    self.led_strip.set_active('primer', False)
-                    self.led_strip.set_active('pressurizer', False)
-                    
+                    self._led_ever_activated['prim'] = True
                 if sec_speed > 0.0:
-                    self.led_strip.set_active('sekunder_in', True)
-                    self.led_strip.set_active('sekunder_out', True)
-                else:
-                    self.led_strip.set_active('sekunder_in', False)
-                    self.led_strip.set_active('sekunder_out', False)
-                    
+                    self._led_ever_activated['sec'] = True
                 if tert_speed > 0.0:
-                    self.led_strip.set_active('tersier_in', True)
-                    self.led_strip.set_active('kondenser', True)
-                    self.led_strip.set_active('tersier_out', True)
-                else:
-                    self.led_strip.set_active('tersier_in', False)
-                    self.led_strip.set_active('kondenser', False)
-                    self.led_strip.set_active('tersier_out', False)
+                    self._led_ever_activated['tert'] = True
+                
+                # LED tetap menyala (active=True) selama pernah diaktifkan di sesi ini.
+                # Animasi aliran otomatis berhenti karena set_flow_speed sudah diset 0
+                # di atas saat pompa mati — lampu menyala statis tanpa gerakan.
+                led_prim_on = self._led_ever_activated['prim'] or prim_speed > 0.0
+                led_sec_on = self._led_ever_activated['sec'] or sec_speed > 0.0
+                led_tert_on = self._led_ever_activated['tert'] or tert_speed > 0.0
+                
+                self.led_strip.set_active('primer', led_prim_on)
+                self.led_strip.set_active('pressurizer', led_prim_on)
+                self.led_strip.set_active('sekunder_in', led_sec_on)
+                self.led_strip.set_active('sekunder_out', led_sec_on)
+                self.led_strip.set_active('tersier_in', led_tert_on)
+                self.led_strip.set_active('kondenser', led_tert_on)
+                self.led_strip.set_active('tersier_out', led_tert_on)
             
             # Selain kondisi idle/reset, is_active diset True sehingga lampu tetap menyala 
             # (namun tidak bergerak jika speed 0)
