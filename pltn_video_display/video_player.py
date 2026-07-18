@@ -57,10 +57,14 @@ class VideoPlayer:
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--no-pause",
-                "--cache=yes",                     # Aktifkan cache untuk mencegah stuttering I/O
-                "--demuxer-max-bytes=50M",         # Perbesar buffer demuxer (50 MB)
-                "--demuxer-readahead-secs=5",      # Baca ke depan 5 detik untuk streaming lancar
-                "--framedrop=vo",                  # Drop frame video jika telat, jangan delay audio
+                "--cache=yes",
+                "--demuxer-max-bytes=128M",        # Besarkan buffer untuk mencegah tersendat
+                "--demuxer-readahead-secs=10",
+                "--profile=fast",                  # Optimasi untuk device low-end
+                "--audio-pitch-correction=no",     # Kurangi beban CPU untuk audio sinkronisasi
+                "--video-sync=audio",              # Paksa sinkronisasi ke audio (default, tapi ditegaskan)
+                "--hr-seek=no",                    # Pencarian frame lebih cepat, walau kurang akurat
+                "--framedrop=no",                  # Jangan buang frame agar video tidak loncat-loncat
                 f"--log-file={log_path}",
                 f"--input-ipc-server={IPC_SOCKET}",
                 "--msg-level=all=v"
