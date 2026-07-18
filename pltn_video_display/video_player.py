@@ -57,8 +57,13 @@ class VideoPlayer:
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--no-pause",
-                "--video-sync=display-resample", # Sinkronisasi audio dengan refresh rate layar
-                f"--log-file={log_path}"
+                "--cache=yes",                     # Aktifkan cache untuk mencegah stuttering I/O
+                "--demuxer-max-bytes=50M",         # Perbesar buffer demuxer (50 MB)
+                "--demuxer-readahead-secs=5",      # Baca ke depan 5 detik untuk streaming lancar
+                "--framedrop=vo",                  # Drop frame video jika telat, jangan delay audio
+                f"--log-file={log_path}",
+                f"--input-ipc-server={IPC_SOCKET}",
+                "--msg-level=all=v"
             ]
             
             # Override flags jika disediakan (misal untuk HEVC 10-bit yang butuh software decode)

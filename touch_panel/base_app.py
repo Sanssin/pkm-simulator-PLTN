@@ -461,7 +461,7 @@ class TouchPanelBaseWindow(QMainWindow):
             QPushButton:hover { background-color: #F1F5F9; }
             QPushButton:pressed { background-color: #E2E8F0; }
         """)
-        credits_btn.clicked.connect(lambda: self._on_button_click("SHOW_CREDITS"))
+        credits_btn.clicked.connect(lambda: self._on_button_click("TOGGLE_CREDITS"))
         
         credits_layout = QHBoxLayout()
         credits_layout.setAlignment(Qt.AlignCenter)
@@ -1098,7 +1098,7 @@ class TouchPanelBaseWindow(QMainWindow):
             self._last_click_times[action] = now
             
         if self._is_auto_running():
-            if action not in ["SHOW_CREDITS", "LOFA_CANCEL", "REACTOR_RESET", "EMERGENCY"]:
+            if action not in ["TOGGLE_CREDITS", "LOFA_CANCEL", "REACTOR_RESET", "EMERGENCY"]:
                 if self._footer_label is not None:
                     self._footer_label.setText("Sistem terkunci. Input dinonaktifkan selama simulasi otomatis berjalan.")
                 return
@@ -1185,7 +1185,7 @@ class TouchPanelBaseWindow(QMainWindow):
             self.target_pump_secondary = 0.0
             self.target_pump_tertiary = 0.0
             
-        elif action == "SHOW_CREDITS":
+        elif action == "TOGGLE_CREDITS":
             # State is strictly managed by backend, we just send the command.
             pass
             

@@ -137,8 +137,7 @@ CONTROL_EVENT_MAP: Dict[str, Tuple[str, Dict[str, Optional[str]]]] = {
     "LOFA_SIMULATE_SECONDARY": ("LOFA_SIMULATE", {"target": "SECONDARY"}),
     "LOFA_SIMULATE_TERTIARY": ("LOFA_SIMULATE", {"target": "TERTIARY"}),
     "LOFA_CANCEL": ("LOFA_CANCEL", {}),
-    "SHOW_CREDITS": ("SHOW_CREDITS", {}),
-    "HIDE_CREDITS": ("HIDE_CREDITS", {}),
+    "TOGGLE_CREDITS": ("TOGGLE_CREDITS", {}),
 }
 
 
