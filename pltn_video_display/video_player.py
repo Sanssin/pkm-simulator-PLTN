@@ -57,17 +57,8 @@ class VideoPlayer:
                 "--ao=alsa",
                 f"--audio-device={AUDIO_DEVICE}",
                 "--no-pause",
-                "--cache=yes",
-                "--demuxer-max-bytes=128M",        # Besarkan buffer untuk mencegah tersendat
-                "--demuxer-readahead-secs=10",
-                "--profile=fast",                  # Optimasi untuk device low-end
-                "--audio-pitch-correction=no",     # Kurangi beban CPU untuk audio sinkronisasi
-                "--video-sync=audio",              # Paksa sinkronisasi ke audio (default, tapi ditegaskan)
-                "--hr-seek=no",                    # Pencarian frame lebih cepat, walau kurang akurat
-                "--framedrop=no",                  # Jangan buang frame agar video tidak loncat-loncat
-                f"--log-file={log_path}",
-                f"--input-ipc-server={IPC_SOCKET}",
-                "--msg-level=all=v"
+                "--video-sync=display-resample", # Sinkronisasi audio dengan refresh rate layar
+                f"--log-file={log_path}"
             ]
             
             # Override flags jika disediakan (misal untuk HEVC 10-bit yang butuh software decode)
