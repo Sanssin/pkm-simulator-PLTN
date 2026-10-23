@@ -113,4 +113,4 @@ cd pltn_video_display
 python video_display_app.py
 ```
 
-> **Catatan Teknis Perangkat Keras:** Untuk meninjau letak pasti pin-pin kabel yang wajib dicolokkan antara Raspberry Pi dan motor/relay, Anda dapat membacanya secara detail pada berkas `GPIO_PIN_MAPPING.md`.
+> **Catatan Teknis Perangkat Keras:** Untuk meninjau letak pasti pin-pin kabel yang wajib dicolokkan antara Raspberry Pi dan motor/relay, Anda dapat membacanya secara detail pada berkas `GPIO_PIN_MAPPING.md` serta arsitektur catu daya & kelistrikan pada berkas `POWER_SUPPLY_ARCHITECTURE.md`.
