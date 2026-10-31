@@ -384,7 +384,7 @@ class LedStripController:
                                 # Khusus Uap Turbin: gelembung aliran (Biru Muda)
                                 bubble_pos = (i + int_offset) % self.pattern_total
                                 if bubble_pos < self.pattern_on:
-                                    self.strip.setPixelColor(idx, Color(60, 190, 255))
+                                    self.strip.setPixelColor(idx, Color(255, 255, 255))
                                 else:
                                     self.strip.setPixelColor(idx, self.color_black)
                             elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
