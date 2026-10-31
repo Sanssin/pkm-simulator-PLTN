@@ -51,7 +51,7 @@ LED_SEGMENT_TERSIER_IN   = (0, 95)     # Pipa tersier masuk (Biru)
 LED_SEGMENT_KONDENSER    = (95, 46)    # Kondenser
 LED_SEGMENT_TERSIER_OUT  = (141, 21)   # Keluaran kondenser ke cooling tower (Merah/Hot)
 LED_SEGMENT_SEKUNDER_IN  = (162, 69)   # Gabungan aliran sekunder dari kondenser
-LED_SEGMENT_SEKUNDER_OUT = (231, 72)   # Aliran uap sekunder ke turbin (Peach)
+LED_SEGMENT_SEKUNDER_OUT = (231, 72)   # Aliran uap sekunder ke turbin (Putih Murni)
 LED_SEGMENT_PUMP_INDS    = (303, 3)    # Indikator Pompa: [0]=Tersier [1]=Sekunder [2]=Primer
 LED_SEGMENT_PRIMER       = (306, 117)  # Pipa Primer
 LED_SEGMENT_PRESSURIZER  = (423, 21)   # Pipa Pressurizer

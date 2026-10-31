@@ -85,7 +85,7 @@ Warna LED berubah secara dinamis berdasarkan parameter temperatur dan tekanan da
 │ Dingin          │ (0, 0, 255)          │ Biru Murni                              │
 │ Hangat (Cair)   │ (150, 0, 150)        │ Ungu Tua / Deep Violet                  │
 │ Panas Reaktor   │ (255, 0, 0)          │ Merah Terang                            │
-│ Uap Turbin      │ (200, 80, 100)       │ Peach / Soft Pink                       │
+│ Uap Turbin      │ (255, 255, 255)      │ Putih Murni                             │
 │ Uap Dingin/Mati │ (255, 255, 255)      │ Putih Statis                            │
 │ Tekanan Normal  │ (255, 255, 255)      │ Putih (Menembus filamen biru maket)     │
 │ Tekanan Kritis  │ (0, 255, 255)        │ Biru Terang / Cyan                      │
@@ -116,8 +116,8 @@ Warna LED berubah secara dinamis berdasarkan parameter temperatur dan tekanan da
 ### 5. Pipa Uap Sekunder (`sekunder_out` | LED 231 – 302)
 * **Warna:**
   * Suhu $T_{\text{sec}} \le 80^\circ\text{C}$ (*Cold/No Steam*): **Putih Solid** `RGB(255, 255, 255)` tanpa pola gerak.
-  * Suhu $T_{\text{sec}} > 80^\circ\text{C}$ (*Steam Generation Active*): Seketika berubah penuh menjadi **Peach / Soft Pink** `RGB(200, 80, 100)` dan mulai bergerak mengalir mengikuti putaran turbin.
-* **Tujuan Edukasi:** Memberikan pembeda kontras yang jelas antara fase uap sekunder (Peach) dan fase air cair primer (Merah).
+  * Suhu $T_{\text{sec}} > 80^\circ\text{C}$ (*Steam Generation Active*): Mengalir aktif menuju turbin dengan pola gelembung (*chasing bubbles*) berwarna **Putih Murni** `RGB(255, 255, 255)`.
+* **Tujuan Edukasi:** Memberikan visualisasi fase uap utama (*Main Steam Line*) berwarna putih murni dari Steam Generator menuju Turbin.
 
 ### 6. Pipa Sirkulasi Utama Primer (`primer` | LED 306 – 422)
 * Terdiri dari 117 LED dengan pembagian zona:
@@ -204,7 +204,7 @@ Dikendalikan melalui jalur GPIO independen di Raspberry Pi:
 |                      | Fluida 100% cair jenuh (tidak didih) | Menunjukkan fluida tetap cair hangat |
 +----------------------+--------------------------------------+--------------------------------------+
 | Sirkulasi Sekunder   | Air masuk SG ~220°C (cair)           | Sekunder In: Ungu Violet cair hangat |
-| (Warna & Fase)       | Keluar SG uap jenuh kering ~280°C    | Sekunder Out: Peach Soft Pink uap    |
+| (Warna & Fase)       | Keluar SG uap jenuh kering ~280°C    | Sekunder Out: Putih Murni uap        |
 |                      | Menggerakkan turbin & kondensasi     | Uap terbentuk saat T > 80°C          |
 +----------------------+--------------------------------------+--------------------------------------+
 | Sirkulasi Tersier    | Air laut/sungai masuk ~25°C          | Tersier In: Biru solid dingin        |
@@ -225,7 +225,7 @@ Dikendalikan melalui jalur GPIO independen di Raspberry Pi:
 ### Analisis Evaluasi:
 1. **Representasi Warna (Sangat Sesuai & Edukatif)**:
    * Penggunaan warna Ungu/Violet untuk balikan primer dan sekunder adalah keputusan desain yang sangat tepat. Hal ini mendidik audiens bahwa air yang kembali ke reaktor bukanlah air dingin suhu kamar, melainkan air bersuhu $\approx 290^\circ\text{C}$ yang dipertahankan berfase cair oleh tekanan 155 bar.
-   * Warna Peach untuk uap membedakan secara tegas antara uap sekunder dan air cair primer.
+   * Warna Putih Murni untuk uap membedakan secara tegas antara uap sekunder dan air cair primer.
 2. **Representasi Kecepatan (Optimal untuk Maket Visual)**:
    * Secara fisis nyata, kecepatan uap di pipa sekunder ($\approx 40\text{ m/s}$) jauh lebih cepat daripada air primer ($\approx 12\text{ m/s}$).
    * Namun, pada strip LED WS2812B, jika kecepatan dinaikkan melebihi 20–30 LED/detik, mata manusia akan mengalami fenomena *motion blur / persistence of vision* sehingga pipa hanya tampak menyala statis tanpa terlihat arah alirannya. Kecepatan 20 LED/detik adalah titik optimum agar pergerakan gelembung dapat diamati dengan nyaman dan jelas oleh mata.
@@ -249,7 +249,7 @@ sudo python3 raspi_central_control/test_pump_leds.py
 ### 2. Uji Aliran Pipa Sekunder & Uap
 1. Masuk ke mode manual melalui touchscreen.
 2. Hidupkan Pompa Tersier $\to$ Sekunder. Pipa sekunder masuk (`sekunder_in`) akan mengalir warna biru/violet.
-3. Naikkan batang kendali hingga suhu melampaui $80^\circ\text{C}$. Pipa uap (`sekunder_out`) harus seketika berubah warna menjadi **Peach/Pink** dan mulai mengalir menuju turbin.
+3. Naikkan batang kendali hingga suhu melampaui $80^\circ\text{C}$. Pipa uap (`sekunder_out`) harus seketika mengalirkan uap berwarna **Putih Murni** menuju turbin.
 
 ### 3. Uji Skenario LOFA (Overheating Pipa Primer)
 1. Jalankan mode simulasi otomatis (*Cinematic LOFA* atau *LOFA Sequence*).

@@ -107,14 +107,14 @@ class LEDSegment:
                 gradient_colors[i] = Color(warm_r, warm_g, warm_b)
             return gradient_colors
 
-        # Aliran uap sekunder (sekunder_out) menuju turbin: Warna Peach
+        # Aliran uap sekunder (sekunder_out) menuju turbin: Warna Putih Murni
         if self.name == 'sekunder_out':
             # Sesuai instruksi: seketika uap dihasilkan (heat_ratio > 0), aliran sekunder_out
             # LANGSUNG FULL berubah menjadi warna Peach (menandakan fase uap penuh).
             for i in range(self.length):
                 if self.heat_ratio > 0.0:
-                    # Terisi uap panas penuh (Peach / Soft Pink)
-                    gradient_colors[i] = Color(200, 80, 100)
+                    # Terisi uap panas penuh (Putih Murni)
+                    gradient_colors[i] = Color(255, 255, 255)
                 else:
                     # Belum mencapai tahap uap (Putih Statis)
                     gradient_colors[i] = Color(255, 255, 255)
@@ -381,7 +381,7 @@ class LedStripController:
                             if name == 'sekunder_out' and seg.speed <= 0.0:
                                 self.strip.setPixelColor(idx, seg.gradient[i])
                             elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
-                                # Khusus Uap Turbin: gelembung aliran (Biru Muda)
+                                # Khusus Uap Turbin: gelembung aliran (Putih Murni)
                                 bubble_pos = (i + int_offset) % self.pattern_total
                                 if bubble_pos < self.pattern_on:
                                     self.strip.setPixelColor(idx, Color(255, 255, 255))
