@@ -378,11 +378,18 @@ class LedStripController:
                             # Pola aliran 5 nyala, 5 mati
                             # Jika speed 0, posisi stuck (diam)
                             # Khusus sekunder_out saat diam (belum ada uap), render solid (putih penuh) tanpa putus-putus
-                            elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
-                                # Khusus Uap Turbin: gelembung aliran
-                                bubble_pos = (i + int_offset) % self.pattern_total
-                                if bubble_pos < self.pattern_on:
-                                    self.strip.setPixelColor(idx, Color(60, 190, 255))
+                             if name == 'sekunder_out' and seg.speed <= 0.0:
+                                    self.strip.setPixelColor(idx, seg.gradient[i])
+                                elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
+                                    # Khusus Uap Turbin: gelembung aliran (Biru Muda)
+                                    bubble_pos = (i + int_offset) % self.pattern_total
+                                    if bubble_pos < self.pattern_on:
+                                        self.strip.setPixelColor(idx, Color(60, 190, 255))
+                                    else:
+                                        self.strip.setPixelColor(idx, self.color_black)
+                                elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                    # Seluruh pipa lainnya (primer, sekunder_in, tersier, kondenser)
+                                    self.strip.setPixelColor(idx, seg.gradient[i])
                                 else:
                                     self.strip.setPixelColor(idx, self.color_black)
 
