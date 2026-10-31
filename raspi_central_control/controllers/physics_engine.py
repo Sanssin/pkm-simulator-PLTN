@@ -257,7 +257,7 @@ class PhysicsEngine:
             # Relief valve membuang tekanan secara sangat cepat jika bahaya
             pressure_generation -= 15.0 * dt
             
-        state.pressure = max(1.0, state.pressure + pressure_generation)
+        state.pressure = max(0.0, min(200.0, state.pressure + pressure_generation))
 
         # Condenser pressure logic
         if state.pump_tertiary_status != PUMP_ON and state.thermal_kw > 10.0:

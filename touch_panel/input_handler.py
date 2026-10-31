@@ -50,10 +50,18 @@ class TouchEvent:
 class TouchInputWriter:
     """UDP writer for the shared PLTN touch input IPC."""
 
-    def __init__(self, port: int = 9999) -> None:
+    def __init__(self, port_or_path: Any = 9999) -> None:
         import socket
-        self.address = ("127.0.0.1", port)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        from pathlib import Path
+        if isinstance(port_or_path, (str, Path)) and not str(port_or_path).isdigit():
+            self.file_path = Path(port_or_path)
+            self.address = None
+            self.sock = None
+        else:
+            self.file_path = None
+            target_port = int(port_or_path) if isinstance(port_or_path, (int, str)) and str(port_or_path).isdigit() else 9999
+            self.address = ("127.0.0.1", target_port)
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def write_events(self, events: Sequence[TouchEvent]) -> str:
         if not events:
@@ -64,8 +72,15 @@ class TouchInputWriter:
             "events": [event.to_dict() for event in events],
         }
 
-        self.sock.sendto(json.dumps(payload).encode("utf-8"), self.address)
-        return f"udp://{self.address[0]}:{self.address[1]}"
+        if self.file_path:
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
+            self.file_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            return str(self.file_path)
+
+        if self.sock and self.address:
+            self.sock.sendto(json.dumps(payload).encode("utf-8"), self.address)
+            return f"udp://{self.address[0]}:{self.address[1]}"
+        return ""
 
     def append_events(self, events: Sequence[TouchEvent]) -> str:
         # In UDP stream mode, append is just sending another datagram

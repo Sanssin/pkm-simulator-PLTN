@@ -34,7 +34,7 @@ class LEDSegment:
         self.flow_direction = flow_direction # 1 for forward, -1 for backward
         self.offset = 0.0
         self.speed = 0.0 # 0.0 = stopped, >0 = moving
-        self.is_active = False # Tambahkan is_active (default False sampai pompa dihidupkan)
+        self.is_active = True # Default True agar LED menyala saat booting
         self.fill_level = -1.0 # -1.0 means flow mode, 0.0-1.0 means fill mode
         self.fill_color = Color(255, 100, 0)
         self.heat_ratio = 0.0  # 0.0 = cold (full blue), 1.0 = hot (red end)
@@ -378,20 +378,20 @@ class LedStripController:
                             # Pola aliran 5 nyala, 5 mati
                             # Jika speed 0, posisi stuck (diam)
                             # Khusus sekunder_out saat diam (belum ada uap), render solid (putih penuh) tanpa putus-putus
-                             if name == 'sekunder_out' and seg.speed <= 0.0:
-                                    self.strip.setPixelColor(idx, seg.gradient[i])
-                                elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
-                                    # Khusus Uap Turbin: gelembung aliran (Biru Muda)
-                                    bubble_pos = (i + int_offset) % self.pattern_total
-                                    if bubble_pos < self.pattern_on:
-                                        self.strip.setPixelColor(idx, Color(60, 190, 255))
-                                    else:
-                                        self.strip.setPixelColor(idx, self.color_black)
-                                elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                                    # Seluruh pipa lainnya (primer, sekunder_in, tersier, kondenser)
-                                    self.strip.setPixelColor(idx, seg.gradient[i])
+                            if name == 'sekunder_out' and seg.speed <= 0.0:
+                                self.strip.setPixelColor(idx, seg.gradient[i])
+                            elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
+                                # Khusus Uap Turbin: gelembung aliran (Biru Muda)
+                                bubble_pos = (i + int_offset) % self.pattern_total
+                                if bubble_pos < self.pattern_on:
+                                    self.strip.setPixelColor(idx, Color(60, 190, 255))
                                 else:
                                     self.strip.setPixelColor(idx, self.color_black)
+                            elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
+                                # Seluruh pipa lainnya (primer, sekunder_in, tersier, kondenser)
+                                self.strip.setPixelColor(idx, seg.gradient[i])
+                            else:
+                                self.strip.setPixelColor(idx, self.color_black)
 
             # Render pump indicators (AKTIF)
             blink_state = int(current_time * 4) % 2 == 0  # 4 Hz blink

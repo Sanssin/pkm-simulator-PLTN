@@ -128,7 +128,7 @@ class TouchPanelLayoutSpec:
     )
     status_cards: List[StatusCardSpec] = field(
         default_factory=lambda: [
-            StatusCardSpec("Pressurizer", "155.5 bar"),
+            StatusCardSpec("Pressurizer", "0.0 bar"),
             StatusCardSpec("Status Pompa", "P1/P2/P3 NYALA"),
             StatusCardSpec("Posisi Batang", "100 / 75 / 60"),
             StatusCardSpec("Daya Termal", "450000 kW"),
@@ -243,19 +243,19 @@ class TouchPanelBaseWindow(QMainWindow):
         if hasattr(self, 'Tersier_failed'): self.Tersier_failed = False
         
     def _init_simulation_state(self) -> None:
-        # Default state
-        self.sim_pressure = 155.5
-        self.sim_safety_rod = 100
-        self.sim_shim_rod = 75
-        self.sim_regulating_rod = 60
+        # Default state (Cold Shutdown / Standby)
+        self.sim_pressure = 0.0
+        self.sim_safety_rod = 0.0
+        self.sim_shim_rod = 0.0
+        self.sim_regulating_rod = 0.0
         self.sim_pump_primary = 0.0
         self.target_pump_primary = 0.0
         self.sim_pump_secondary = 0.0
         self.target_pump_secondary = 0.0
         self.sim_pump_tertiary = 0.0
         self.target_pump_tertiary = 0.0
-        self.sim_thermal_kw = 450000.0
-        self.sim_turbine_speed = 85.0
+        self.sim_thermal_kw = 0.0
+        self.sim_turbine_speed = 0.0
         self.sim_mode = "Manual"
         self.sim_auto_running = False
         self.sim_emergency = False
@@ -263,9 +263,9 @@ class TouchPanelBaseWindow(QMainWindow):
         self.sim_show_credits = False
         
         # Extended coolant & temperatures
-        self.sim_coolant_temp_primary = 295.5
-        self.sim_coolant_temp_secondary = 252.0
-        self.sim_fuel_cladding_temp = 420.0
+        self.sim_coolant_temp_primary = 25.0
+        self.sim_coolant_temp_secondary = 25.0
+        self.sim_fuel_cladding_temp = 25.0
         self.sim_condenser_pressure = 0.05
         
         # Active holds and timers
@@ -1279,7 +1279,7 @@ class TouchPanelBaseWindow(QMainWindow):
                 self.sim_turbine_speed += ((self.sim_thermal_kw / 5000.0) - self.sim_turbine_speed) * 0.05
                 
                 # Stabilize pressure
-                self.sim_pressure += (140.0 - self.sim_pressure) * 0.08
+                self.sim_pressure = max(0.0, min(200.0, self.sim_pressure + (140.0 - self.sim_pressure) * 0.08))
                 
                 # Simple temperature sinusoidal oscillations
                 t = time.time()
@@ -1316,13 +1316,13 @@ class TouchPanelBaseWindow(QMainWindow):
             delta_temp = self.sim_fuel_cladding_temp - old_temp
             
             # Simulasi Pressurizer: Tekanan melonjak saat suhu naik (pemuaian)
-            # Dihapus: auto-stabilisasi ke 140 bar agar tekanan murni manual / pemuaian termodinamika
             if effective_rod > 0.0:
-                self.sim_pressure += (delta_temp * 1.5)
+                self.sim_pressure += (delta_temp * 1.5) * 0.1
                 # LOFA Surge: Pendidihan masif saat suhu ekstrem melampaui kemampuan relief valve
                 if self.sim_fuel_cladding_temp > 345.0:
                     excess_temp = self.sim_fuel_cladding_temp - 345.0
-                    self.sim_pressure += (excess_temp * 1.5)
+                    self.sim_pressure += (excess_temp * 1.5) * 0.1
+            self.sim_pressure = max(0.0, min(200.0, self.sim_pressure))
                 
             # Turbin dan Daya baru dihasilkan jika panas melewati batas uap (80C)
             if self.sim_fuel_cladding_temp > 80.0:
@@ -1367,6 +1367,7 @@ class TouchPanelBaseWindow(QMainWindow):
                     return
                     
                 self.local_mode = False
+                self._last_state_rx_time = time.time()
                 
                 # Parse state keys
                 self.sim_pressure = state_data.get("pressure", self.sim_pressure)
@@ -1440,7 +1441,8 @@ class TouchPanelBaseWindow(QMainWindow):
                 logger.error(f"Error parsing UDP state JSON: {e}")
                 pass
         else:
-            self.local_mode = True
+            if time.time() - getattr(self, '_last_state_rx_time', 0) > 4.0:
+                self.local_mode = True
     def _on_timer_tick(self) -> None:
         # Check if our target monitor was disconnected
         if _PYQT_AVAILABLE:

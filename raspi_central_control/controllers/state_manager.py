@@ -116,7 +116,7 @@ class PanelState:
         self.just_reset = True
         self.auto_sim_step = 0
         self.auto_sim_phase = ""
-        self.pressure = 1.0
+        self.pressure = 0.0
         self.pump_primary_status = 0
         self.pump_secondary_status = 0
         self.pump_tertiary_status = 0
@@ -210,6 +210,23 @@ class StateManager:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit context manager, releasing lock."""
         self._lock.release()
+    def get(self, field: str) -> Any:
+        with self._lock:
+            return getattr(self._state, field)
+
+    def set(self, field: str, value: Any) -> None:
+        with self._lock:
+            setattr(self._state, field, value)
+
+    def update(self, **kwargs) -> None:
+        with self._lock:
+            for field, value in kwargs.items():
+                setattr(self._state, field, value)
+
+    def snapshot(self) -> Dict[str, Any]:
+        with self._lock:
+            return self._state.to_dict()
+
     
     def reset(self) -> None:
         """Thread-safe reset of state to initial values."""
