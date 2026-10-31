@@ -378,26 +378,13 @@ class LedStripController:
                             # Pola aliran 5 nyala, 5 mati
                             # Jika speed 0, posisi stuck (diam)
                             # Khusus sekunder_out saat diam (belum ada uap), render solid (putih penuh) tanpa putus-putus
-                            if name == 'sekunder_out' and seg.speed <= 0.0:
-                                self.strip.setPixelColor(idx, seg.gradient[i])
                             elif name == 'sekunder_out' and seg.heat_ratio > 0.0:
-                                # Khusus Uap Turbin: Gradasi pendar Pink-Putih-Biru per gelembung aliran
+                                # Khusus Uap Turbin: gelembung aliran
                                 bubble_pos = (i + int_offset) % self.pattern_total
                                 if bubble_pos < self.pattern_on:
-                                    steam_palette = [
-                                        Color(255, 255, 255),  # 0: Kepala gelembung (Putih Pendar Terang)
-                                        Color(255, 140, 200),  # 1: Pink Pastel Uap
-                                        Color(255, 50, 150),   # 2: Magenta Inti Panas
-                                        Color(180, 100, 240),  # 3: Lavender Pendar
-                                        Color(60, 180, 255),   # 4: Ekor Uap (Biru Es Cyan)
-                                    ]
-                                    self.strip.setPixelColor(idx, steam_palette[bubble_pos])
+                                    self.strip.setPixelColor(idx, Color(130, 220, 255))
                                 else:
                                     self.strip.setPixelColor(idx, self.color_black)
-                            elif ((i + int_offset) % self.pattern_total) < self.pattern_on:
-                                self.strip.setPixelColor(idx, seg.gradient[i])
-                            else:
-                                self.strip.setPixelColor(idx, self.color_black)
 
             # Render pump indicators (AKTIF)
             blink_state = int(current_time * 4) % 2 == 0  # 4 Hz blink
