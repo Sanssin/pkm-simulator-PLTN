@@ -127,16 +127,16 @@ def format_results(results: Sequence[CheckResult]) -> str:
 
 
 def main(argv: Sequence[str] = None) -> int:
-    parser = argparse.ArgumentParser(description="PLTN touch panel setup checker")
+    parser = argparse.ArgumentParser(description="PLTN touch panel setup checker and HMI entrypoint")
     parser.add_argument("--test", action="store_true", help="Run setup evaluation checks")
     parser.add_argument("--check-hardware", action="store_true", help="Alias for --test")
     parser.add_argument("--screen", type=int, default=0, help="Screen index to display the app on (0, 1, etc.)")
+    parser.add_argument("--screen-name", type=str, default=None, help="Target screen name (e.g. HDMI-A-2)")
     parser.add_argument("--windowed", action="store_true", help="Accepted for future GUI compatibility")
     parser.add_argument("--demo-input", action="store_true", help="Run the TS-003 touch input prototype demo")
-    parser.add_argument("--launch", action="store_true", help="Launch the TS-010 touchscreen base app")
+    parser.add_argument("--launch", action="store_true", help="Launch the TS-010 touchscreen base app (default)")
     parser.add_argument("--describe-layout", action="store_true", help="Print the TS-010 baseline layout summary")
     args = parser.parse_args(argv)
-    _ = args.test, args.check_hardware
 
     if args.demo_input:
         return run_input_demo()
@@ -151,29 +151,34 @@ def main(argv: Sequence[str] = None) -> int:
         print(f"Kartu Status: {len(spec.status_cards)}")
         return 0
 
-    if args.launch:
-        # [CPU-033] Fine-tune priorities: Pin UI to Core 2 & 3
-        try:
-            import psutil
-            p = psutil.Process()
-            if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
-            if hasattr(p, 'nice'):
-                p.nice(getattr(psutil, 'NORMAL_PRIORITY_CLASS', 32) if platform.system() == 'Windows' else 0)
-        except Exception:
-            pass
-        return launch_touch_panel(windowed=args.windowed, screen_idx=args.screen)
+    if args.test or args.check_hardware:
+        checker = TouchPanelSetupChecker()
+        results = checker.run()
+        print("Pemeriksaan Persiapan Panel Sentuh PLTN")
+        print(format_results(results))
+        print("")
+        all_ok = all(result.is_ok for result in results)
+        if all_ok:
+            print("Pemeriksaan persiapan panel sentuh selesai tanpa kesalahan.")
+            return 0
+        print("Pemeriksaan persiapan panel sentuh menemukan kesalahan kritis.")
+        return 1
 
-    checker = TouchPanelSetupChecker()
-    results = checker.run()
-    print("Pemeriksaan Persiapan Panel Sentuh PLTN")
-    print(format_results(results))
-    print("")
-    all_ok = all(result.is_ok for result in results)
-    if all_ok:
-        print("Pemeriksaan persiapan panel sentuh selesai tanpa kesalahan.")
-        return 0
-    print("Pemeriksaan persiapan panel sentuh menemukan kesalahan kritis.")
-    return 1
+    # Default action (when no test/demo/describe flag is passed, or with --launch):
+    # Launch the Touch Panel GUI on the 10.01" touchscreen!
+    try:
+        import psutil
+        p = psutil.Process()
+        if hasattr(p, 'cpu_affinity'): p.cpu_affinity([2, 3])
+        if hasattr(p, 'nice'):
+            p.nice(getattr(psutil, 'NORMAL_PRIORITY_CLASS', 32) if platform.system() == 'Windows' else 0)
+    except Exception:
+        pass
+    return launch_touch_panel(
+        windowed=args.windowed, 
+        screen_idx=args.screen, 
+        target_screen_name=args.screen_name
+    )
 
 
 if __name__ == "__main__":

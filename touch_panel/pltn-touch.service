@@ -1,0 +1,24 @@
+[Unit]
+Description=PLTN Touchscreen HMI Panel (10.01 inch Display)
+Documentation=https://github.com/Sanssin/pkm-simulator-PLTN
+After=graphical.target network.target pltn-controller.service
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=pkm
+Group=pkm
+WorkingDirectory=/home/pkm/pkm-simulator-PLTN
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/pkm/.Xauthority"
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="TOUCH_SCREEN_NAME=HDMI-A-2"
+
+ExecStart=/usr/bin/python3 /home/pkm/pkm-simulator-PLTN/smart_launcher.py touch_panel/touch_panel_app.py --launch
+Restart=always
+RestartSec=3
+CPUAffinity=2,3
+
+[Install]
+WantedBy=graphical.target

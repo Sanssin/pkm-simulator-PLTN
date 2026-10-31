@@ -50,16 +50,17 @@ class TouchEvent:
 class TouchInputWriter:
     """UDP writer for the shared PLTN touch input IPC."""
 
-    def __init__(self, port_or_path: Any = 9999) -> None:
+    def __init__(self, port_or_path: Any = 9999, port: Optional[int] = None) -> None:
         import socket
         from pathlib import Path
-        if isinstance(port_or_path, (str, Path)) and not str(port_or_path).isdigit():
-            self.file_path = Path(port_or_path)
+        actual = port if port is not None else port_or_path
+        if isinstance(actual, (str, Path)) and not str(actual).isdigit():
+            self.file_path = Path(actual)
             self.address = None
             self.sock = None
         else:
             self.file_path = None
-            target_port = int(port_or_path) if isinstance(port_or_path, (int, str)) and str(port_or_path).isdigit() else 9999
+            target_port = int(actual) if isinstance(actual, (int, str)) and str(actual).isdigit() else 9999
             self.address = ("127.0.0.1", target_port)
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

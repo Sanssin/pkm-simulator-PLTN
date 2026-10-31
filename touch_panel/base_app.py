@@ -175,11 +175,21 @@ else:
 class TouchPanelBaseWindow(QMainWindow):
     """Fullscreen base window for the touchscreen panel."""
 
-    def __init__(self, layout_spec: Optional[TouchPanelLayoutSpec] = None, windowed: bool = False, screen_idx: int = 0) -> None:
+    def __init__(
+        self, 
+        layout_spec: Optional[TouchPanelLayoutSpec] = None, 
+        windowed: bool = False, 
+        screen_idx: int = 0,
+        target_screen_name: Optional[str] = None
+    ) -> None:
         super().__init__()
         self.layout_spec = layout_spec or get_layout_spec()
         self.windowed = windowed
         self.screen_idx = screen_idx
+        self.target_screen_name = target_screen_name
+        self._target_screen_name = None
+        self._startup_time = time.time()
+        self._disconnect_counter = 0
         self._footer_label = None
         self._mode_label = None
         
@@ -336,33 +346,100 @@ class TouchPanelBaseWindow(QMainWindow):
             self.show()
             self._center_window()
         else:
+            target_screen = None
             if _PYQT_AVAILABLE:
-                screens = QApplication.screens()
-                target_screen = None
-                
-                # Deterministically detect HDMI-A-2 for touchscreen panel (Wayland name or XWayland resolution)
-                for screen in screens:
-                    if "HDMI-A-2" in screen.name() or (screen.size().width() == 1024 and screen.size().height() == 600):
-                        target_screen = screen
-                        logger.info(f"Detected target touchscreen: {screen.name()} with size {screen.size().width()}x{screen.size().height()}")
-                        break
-                
-                if not target_screen and 0 <= self.screen_idx < len(screens):
-                    target_screen = screens[self.screen_idx]
-                    logger.info(f"Fallback to screen index {self.screen_idx}: {target_screen.name()}")
-                
+                target_screen = self._detect_target_screen()
                 if target_screen:
                     self._target_screen_name = target_screen.name()
-                    # For Wayland deterministic output assignment, we must create native window handle
+                    geom = target_screen.geometry()
+                    logger.info(f"Targeting touchscreen: {target_screen.name()} ({geom.width()}x{geom.height()} at {geom.x()},{geom.y()})")
+                    
                     self.setAttribute(Qt.WA_NativeWindow, True)
-                    self.winId()  # Force creation of the platform window handle
+                    self.winId()  # Force creation of platform window handle
                     window_handle = self.windowHandle()
                     if window_handle:
                         window_handle.setScreen(target_screen)
-                    # For XWayland/X11 compatibility
-                    self.move(target_screen.geometry().topLeft())
+                    
+                    self.setGeometry(geom)
+                    self.move(geom.topLeft())
+                    self.resize(geom.size())
                     
             self.showFullScreen()
+            
+            if _PYQT_AVAILABLE and target_screen:
+                window_handle = self.windowHandle()
+                if window_handle and window_handle.screen() != target_screen:
+                    window_handle.setScreen(target_screen)
+
+    def _detect_target_screen(self) -> Optional[Any]:
+        """Detect the target screen for the 10.01 inch touchscreen panel.
+        
+        Evaluates candidate screens based on:
+        1. Explicit override (self.target_screen_name or TOUCH_SCREEN_NAME env var)
+        2. Native 10.01\" panel resolution (1280x800)
+        3. Screen name containing HDMI-A-2 / HDMI-2 / DSI / touch / lcd
+        4. Alternative 10.1\" / 7\" resolutions (1024x600, 1280x720, 1366x768)
+        5. Relative screen size: In dual display where one is large (TV >= 1920x1080),
+           the smaller screen is always the 10.01\" touchscreen panel.
+        6. Fallback to screen_idx or primary screen.
+        """
+        if not _PYQT_AVAILABLE:
+            return None
+        screens = QApplication.screens()
+        if not screens:
+            return None
+
+        logger.info(f"Available screens ({len(screens)}): " + ", ".join(
+            [f"'{s.name()}' ({s.geometry().width()}x{s.geometry().height()})" for s in screens]
+        ))
+
+        # 1. Explicit override
+        target_name = self.target_screen_name or os.environ.get("TOUCH_SCREEN_NAME")
+        if target_name:
+            for s in screens:
+                if target_name.lower() in s.name().lower():
+                    logger.info(f"Matched target screen via name override '{target_name}': {s.name()}")
+                    return s
+
+        # 2. Priority: 10.01\" native resolution 1280x800
+        for s in screens:
+            geom = s.geometry()
+            if (geom.width(), geom.height()) == (1280, 800) or (geom.height(), geom.width()) == (1280, 800):
+                logger.info(f"Detected 10.01\" touchscreen by native 1280x800 resolution: {s.name()}")
+                return s
+
+        # 3. Priority: Screen name containing HDMI-A-2 / HDMI-2 / DSI / touch / lcd
+        for s in screens:
+            name_lower = s.name().lower()
+            if any(k in name_lower for k in ("hdmi-a-2", "hdmi-2", "dsi", "touch", "lcd")):
+                logger.info(f"Detected touchscreen by port/device name: {s.name()}")
+                return s
+
+        # 4. Priority: Alternative touch resolutions (1024x600, 1280x720, 1366x768)
+        common_touch_res = [(1024, 600), (1280, 720), (1366, 768)]
+        for s in screens:
+            geom = s.geometry()
+            for w, h in common_touch_res:
+                if (geom.width(), geom.height()) == (w, h) or (geom.height(), geom.width()) == (w, h):
+                    logger.info(f"Detected touchscreen by alternative resolution {w}x{h}: {s.name()}")
+                    return s
+
+        # 5. Priority: Relative resolution in multi-monitor setup
+        # When one display is large (TV/video >= 1920) and another is smaller (< 1920),
+        # the smaller display is the 10.01\" touchscreen.
+        if len(screens) >= 2:
+            smaller_screens = [s for s in screens if s.geometry().width() < 1920 and s.geometry().height() <= 1080]
+            if smaller_screens:
+                chosen = min(smaller_screens, key=lambda s: s.geometry().width() * s.geometry().height())
+                logger.info(f"Detected 10.01\" touchscreen as smaller display: {chosen.name()} ({chosen.geometry().width()}x{chosen.geometry().height()})")
+                return chosen
+
+        # 6. Fallback to screen_idx
+        if 0 <= self.screen_idx < len(screens):
+            logger.info(f"Using screen_idx {self.screen_idx}: {screens[self.screen_idx].name()}")
+            return screens[self.screen_idx]
+
+        return screens[0]
 
     def _build_hud(self) -> QWidget:
         hud = QWidget()
@@ -1448,19 +1525,35 @@ class TouchPanelBaseWindow(QMainWindow):
         if _PYQT_AVAILABLE:
             from PyQt5.QtWidgets import QApplication
             
-            # Check if the screen we bound to initially is still in the screens list
-            if hasattr(self, '_target_screen_name') and self._target_screen_name:
-                screen_still_exists = any(s.name() == self._target_screen_name for s in QApplication.screens())
-                if not screen_still_exists:
-                    logger.error(f"Target screen {self._target_screen_name} disconnected! Exiting for watchdog restart.")
-                    import sys
-                    sys.exit(1)
-            else:
-                # Fallback to len check if we somehow don't have a specific name
-                if len(QApplication.screens()) <= self.screen_idx:
-                    logger.error(f"Screen {self.screen_idx} disconnected! Exiting for watchdog restart.")
-                    import sys
-                    sys.exit(1)
+            # Allow a grace period of 15 seconds after app startup for displays to stabilize during boot
+            now = time.time()
+            if not hasattr(self, '_startup_time'):
+                self._startup_time = now
+            if not hasattr(self, '_disconnect_counter'):
+                self._disconnect_counter = 0
+
+            if now - self._startup_time > 15.0:
+                screens = QApplication.screens()
+                is_missing = False
+                
+                if hasattr(self, '_target_screen_name') and self._target_screen_name:
+                    screen_still_exists = any(s.name() == self._target_screen_name for s in screens)
+                    if not screen_still_exists:
+                        is_missing = True
+                elif 0 <= self.screen_idx < len(screens):
+                    pass
+                else:
+                    is_missing = True
+
+                if is_missing:
+                    self._disconnect_counter += 1
+                    # Require 30 consecutive ticks (3.0 seconds) of persistent disconnection
+                    if self._disconnect_counter >= 30:
+                        logger.error(f"Target screen disconnected for >3s! Exiting for watchdog restart.")
+                        import sys
+                        sys.exit(1)
+                else:
+                    self._disconnect_counter = 0
 
         # Load external state or process internal physics
         self._check_and_load_state()
@@ -1889,19 +1982,70 @@ class TouchPanelBaseWindow(QMainWindow):
         """
 
 
-def build_touch_panel_app(windowed: bool = False, screen_idx: int = 0) -> Tuple[QApplication, TouchPanelBaseWindow]:
+def build_touch_panel_app(
+    windowed: bool = False, 
+    screen_idx: int = 0, 
+    target_screen_name: Optional[str] = None
+) -> Tuple[QApplication, TouchPanelBaseWindow]:
     if not _PYQT_AVAILABLE:
         raise RuntimeError("PyQt5 is not installed; touchscreen base app cannot be launched")
+
+    # Auto-detect and configure display environment on Linux
+    if sys.platform.startswith("linux"):
+        if "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
+            if os.path.exists("/tmp/.X11-unix/X0"):
+                os.environ["DISPLAY"] = ":0"
+            elif os.path.exists(f"/run/user/{os.getuid()}/wayland-0"):
+                os.environ["WAYLAND_DISPLAY"] = "wayland-0"
+            else:
+                os.environ["DISPLAY"] = ":0"
+        
+        if "XDG_RUNTIME_DIR" not in os.environ:
+            uid = os.getuid() if hasattr(os, "getuid") else 1000
+            user_runtime = f"/run/user/{uid}"
+            if os.path.exists(user_runtime):
+                os.environ["XDG_RUNTIME_DIR"] = user_runtime
+
+        if "XAUTHORITY" not in os.environ:
+            home = os.path.expanduser("~")
+            xauth = os.path.join(home, ".Xauthority")
+            if os.path.exists(xauth):
+                os.environ["XAUTHORITY"] = xauth
 
     # Pastikan aplikasi PyQt5 mensintesis event klik mouse dari event sentuhan (Penting untuk Wayland)
     QApplication.setAttribute(Qt.AA_SynthesizeMouseForUnhandledTouchEvents, True)
     QApplication.setAttribute(Qt.AA_SynthesizeTouchForUnhandledMouseEvents, True)
 
-    app = QApplication.instance() or QApplication(sys.argv)
-    window = TouchPanelBaseWindow(windowed=windowed, screen_idx=screen_idx)
+    app = QApplication.instance()
+    if app is None:
+        max_retries = 10 if sys.platform.startswith("linux") else 1
+        for attempt in range(max_retries):
+            try:
+                app = QApplication(sys.argv)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Display connection attempt {attempt + 1} failed: {e}. Retrying in 1s...")
+                    time.sleep(1.0)
+                else:
+                    raise
+
+    window = TouchPanelBaseWindow(
+        windowed=windowed, 
+        screen_idx=screen_idx, 
+        target_screen_name=target_screen_name
+    )
     return app, window
 
 
-def launch_touch_panel(windowed: bool = False, screen_idx: int = 0) -> int:
-    app, _window = build_touch_panel_app(windowed=windowed, screen_idx=screen_idx)
+def launch_touch_panel(
+    windowed: bool = False, 
+    screen_idx: int = 0, 
+    target_screen_name: Optional[str] = None
+) -> int:
+    app, _window = build_touch_panel_app(
+        windowed=windowed, 
+        screen_idx=screen_idx, 
+        target_screen_name=target_screen_name
+    )
     return app.exec_()

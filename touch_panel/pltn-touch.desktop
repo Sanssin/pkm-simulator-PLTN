@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PLTN Touch Panel
+Comment=HMI Touchscreen Panel for PLTN Simulator on 10.01 inch Display
+Exec=python3 /home/pkm/pkm-simulator-PLTN/smart_launcher.py touch_panel/touch_panel_app.py --launch
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
