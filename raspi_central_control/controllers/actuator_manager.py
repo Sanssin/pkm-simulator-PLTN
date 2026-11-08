@@ -199,20 +199,19 @@ class ActuatorManager:
                     is_reset = False
 
 
-            # Seluruh pipa fisik maket terisi fluida sejak sistem dinyalakan (booting).
-            # Semua segmen LED selalu aktif menyala (is_active = True).
-            # Saat pompa belum dinyalakan atau dimatikan (speed = 0.0),
-            # pola LED menyala statis/freeze tanpa gerakan aliran air.
-            self.led_strip.set_active('primer', True)
-            self.led_strip.set_active('pressurizer', True)
-            self.led_strip.set_active('sekunder_in', True)
-            self.led_strip.set_active('sekunder_out', True)
-            self.led_strip.set_active('tersier_in', True)
-            self.led_strip.set_active('kondenser', True)
-            self.led_strip.set_active('tersier_out', True)
-            
-            # Selain kondisi idle/reset, is_active diset True sehingga lampu tetap menyala 
-            # (namun tidak bergerak jika speed 0)
+            # LED segmen menyala bertahap hanya saat pompa terkait aktif / transisi,
+            # atau saat kondisi darurat LOFA (khusus pipa primer tetap menyala merah)
+            tert_active = (tert_speed > 0.0) or (getattr(state, 'pump_tertiary_status', 0) > 0)
+            sec_active = (sec_speed > 0.0) or (getattr(state, 'pump_secondary_status', 0) > 0)
+            prim_active = (prim_speed > 0.0) or (getattr(state, 'pump_primary_status', 0) > 0) or getattr(state, 'lofa_primary', False)
+
+            self.led_strip.set_active('tersier_in', tert_active)
+            self.led_strip.set_active('kondenser', tert_active)
+            self.led_strip.set_active('tersier_out', tert_active)
+            self.led_strip.set_active('sekunder_in', sec_active)
+            self.led_strip.set_active('sekunder_out', sec_active)
+            self.led_strip.set_active('primer', prim_active)
+            self.led_strip.set_active('pressurizer', prim_active)
             
             # Suhu batas bawah agar visual mulai berubah memerah
             temp_base_prim = 50.0 
