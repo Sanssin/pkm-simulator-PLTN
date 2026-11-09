@@ -54,7 +54,7 @@ Sistem visualisasi aliran fluida maket dikendalikan secara bertingkat oleh modul
 
 ## 2. Tabel Pemetaan Lengkap Segmen LED Strip (WS2812B)
 
-Total LED strip yang dipasang pada maket adalah **444 LED**. Seluruh segmen tersambung secara seri satu kabel data (*daisy-chained*) dari pin **GPIO 18 (Pin Fisik 12)**.
+Total LED strip yang dipasang pada maket adalah **441 LED** (setelah 3 LED rusak di sekunder_out dipotong). Seluruh segmen tersambung secara seri satu kabel data (*daisy-chained*) dari pin **GPIO 18 (Pin Fisik 12)**.
 
 | No | Nama Segmen | Jalur / Komponen Maket | Indeks Awal | Jumlah LED | Rentang Indeks Fisik | Arah Aliran (*Direction*) |
 |:--:|:------------|:-----------------------|:-----------:|:----------:|:--------------------:|:-------------------------:|
@@ -66,9 +66,9 @@ Total LED strip yang dipasang pada maket adalah **444 LED**. Seluruh segmen ters
 | **-** | `pump_inds` | **3 Lampu Indikator Pompa Fisik Terintegrasi**:<br>• Indeks 303: Pompa Tersier<br>• Indeks 304: Pompa Sekunder<br>• Indeks 305: Pompa Primer | 303 | 3 | **LED 303 s/d LED 305** | Terisolasi (Non-flow) |
 | **6** | `primer` | Pipa sirkulasi pendingin reaktor utama (*Reactor Coolant Loop*): Teras $\to$ Steam Generator $\to$ Pompa Primer $\to$ Teras | 306 | 117 | **LED 306 s/d LED 422** | Maju (`+1`) |
 | **7** | `pressurizer` | Bejana penstabil tekanan loop primer (*Pressurizer*) | 423 | 21 | **LED 423 s/d LED 443** | Maju (`+1`) (Mode Bar Level) |
-| **TOTAL** | | **Seluruh Jalur Terpasang Fisik** | **0** | **444 LED** | **LED 0 s/d LED 443** | |
+| **TOTAL** | | **Seluruh Jalur Terpasang Fisik** | **0** | **441 LED** | **LED 0 s/d LED 440** | |
 
-> ⚠️ **Catatan Penting Pengkabelan:** Indeks 303, 304, dan 305 adalah LED indikator status pompa yang tersambung secara fisik dalam satu deret strip antara pipa sekunder dan pipa primer. Driver `led_strip_controller.py` secara otomatis melewati (*skip*) ketiga indeks ini saat menganimasikan aliran pipa agar status lampu pompa tidak tertimpa oleh animasi air.
+> ⚠️ **Catatan Penting Pengkabelan:** Indeks 300, 301, dan 302 adalah LED indikator status pompa yang tersambung secara fisik dalam satu deret strip antara pipa sekunder dan pipa primer. Driver `led_strip_controller.py` secara otomatis melewati (*skip*) ketiga indeks ini saat menganimasikan aliran pipa agar status lampu pompa tidak tertimpa oleh animasi air.
 
 ---
 

@@ -276,7 +276,7 @@ class ActuatorManager:
             self.led_strip.set_heat_ratio('tersier_out', hr_tertiary_display)
             
             # Update Pump Indicators
-            # Urutan fisik: LED 303=Tersier, LED 304=Sekunder, LED 305=Primer
+            # Urutan fisik: LED 300=Tersier, LED 301=Sekunder, LED 302=Primer
             pumps = [
                 (0, getattr(state, 'pump_tertiary_status', 0), getattr(state, 'lofa_tertiary', False)),
                 (1, getattr(state, 'pump_secondary_status', 0), getattr(state, 'lofa_secondary', False)),
