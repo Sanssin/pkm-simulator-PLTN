@@ -464,15 +464,17 @@ class PLTNPanelController:
         if state.simulation_mode not in ('auto', 'cinematic_lofa') and not getattr(state, 'auto_sim_running', False):
             # Uap baru terbentuk dan memutar turbin jika suhu sekunder melampaui ambang batas animasi uap (80C)
             temp_sec = getattr(state, 'temperature_coolant_secondary', 30.0)
-            
-            if temp_sec > STEAM_ANIM_THRESHOLD_C and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
+
+            if state.emergency_active:
+                # SCRAM: Katup uap turbin ditutup penuh; biarkan SCRAMSequence._turbine_spindown
+                # yang menurunkan kecepatan bila sedang berjalan, atau turunkan linear ke 0.
+                if not (hasattr(self, 'scram_sequence') and self.scram_sequence.is_running):
+                    state.turbine_speed = max(state.turbine_speed - ((100.0 / 12.0) * dt), 0.0)
+            elif temp_sec > STEAM_ANIM_THRESHOLD_C and getattr(state, 'pump_secondary_status', 0) == PUMP_ON:
                 # Turbin berputar proporsional dengan panas uap di atas threshold
                 target_speed = ((temp_sec - STEAM_ANIM_THRESHOLD_C) / (250.0 - STEAM_ANIM_THRESHOLD_C)) * 100.0
                 target_speed = min(max(target_speed, 0.0), 100.0)
-                
-                if state.emergency_active:
-                    target_speed *= 0.6  # SCRAM: Katup ditutup, putaran tertahan
-                
+
                 if state.turbine_speed < target_speed:
                     state.turbine_speed = min(state.turbine_speed + (4.0 * dt), target_speed)
                 else:

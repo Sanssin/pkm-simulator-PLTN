@@ -108,6 +108,52 @@ class TouchPanelBaseAppTests(unittest.TestCase):
 
         self.assertEqual(detected, screen_single)
 
+    def test_local_scram_sequential_pump_shutdown(self) -> None:
+        if not _PYQT_AVAILABLE:
+            self.skipTest("PyQt5 not available")
+        win = TouchPanelBaseWindow(windowed=True)
+        win.sim_safety_rod = 100
+        win.sim_shim_rod = 80
+        win.sim_regulating_rod = 60
+        win.sim_pump_primary = 1.0
+        win.target_pump_primary = 1.0
+        win.sim_pump_secondary = 1.0
+        win.target_pump_secondary = 1.0
+        win.sim_pump_tertiary = 1.0
+        win.target_pump_tertiary = 1.0
+
+        win._update_local_simulation("EMERGENCY")
+        self.assertTrue(win.sim_emergency)
+
+        # t < 12.5s: rods drop, pumps stay ON for decay heat cooling
+        for _ in range(50):  # 5.0s
+            win._run_local_simulation_step()
+        self.assertEqual(win.sim_safety_rod, 0)
+        self.assertEqual(win.target_pump_primary, 1.0)
+        self.assertEqual(win.target_pump_secondary, 1.0)
+        self.assertEqual(win.target_pump_tertiary, 1.0)
+
+        # t = 13.0s: Primary shuts down first
+        for _ in range(80):
+            win._run_local_simulation_step()
+        self.assertEqual(win.target_pump_primary, 0.0)
+        self.assertEqual(win.target_pump_secondary, 1.0)
+        self.assertEqual(win.target_pump_tertiary, 1.0)
+
+        # t = 21.0s: Secondary shuts down next
+        for _ in range(80):
+            win._run_local_simulation_step()
+        self.assertEqual(win.target_pump_secondary, 0.0)
+        self.assertEqual(win.target_pump_tertiary, 1.0)
+
+        # t = 35.5s: Tertiary finishes shutting down
+        for _ in range(145):
+            win._run_local_simulation_step()
+        self.assertEqual(win.target_pump_tertiary, 0.0)
+        self.assertEqual(win.sim_pump_primary, 0.0)
+        self.assertEqual(win.sim_pump_secondary, 0.0)
+        self.assertEqual(win.sim_pump_tertiary, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

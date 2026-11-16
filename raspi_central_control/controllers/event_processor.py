@@ -129,7 +129,18 @@ class EventProcessor:
         
         # Update last button time
         self._last_button_time = time.time()
-        
+
+        # Cancel background sequences before acquiring state lock to prevent join() deadlocks
+        if event in (ButtonEvent.EMERGENCY, ButtonEvent.REACTOR_RESET):
+            if self._auto_simulator and self._auto_simulator.is_running:
+                self._auto_simulator.cancel()
+            if self._lofa_sequence and self._lofa_sequence.is_running:
+                self._lofa_sequence.cancel()
+            if self._cinematic_lofa_sequence and self._cinematic_lofa_sequence.is_running:
+                self._cinematic_lofa_sequence.cancel()
+        if event == ButtonEvent.REACTOR_RESET and self._scram_sequence:
+            self._scram_sequence.cancel()
+
         with self._state_manager as state:
             # Pressure events
             if event == ButtonEvent.PRESSURE_UP:
@@ -207,26 +218,20 @@ class EventProcessor:
             
             # Emergency SCRAM
             elif event == ButtonEvent.EMERGENCY:
+                state.auto_sim_running = False
+                state.simulation_mode = 'manual'
                 state.emergency_active = True
                 logger.critical("EMERGENCY SCRAM ACTIVATED!")
-                logger.critical("   Pumps remain ON for decay heat removal")
-                
-                # Execute SCRAM sequence
-                if self._scram_sequence:
+                logger.critical("   Rods dropping to 0%, decay heat removal -> sequential pump shutdown (35s)")
+
+                # Execute SCRAM sequence (guard against duplicate triggers)
+                if self._scram_sequence and not self._scram_sequence.is_running:
                     self._scram_sequence.execute()
                 logger.critical("Emergency sequence initiated")
-            
+
             # Reset
             elif event == ButtonEvent.REACTOR_RESET:
-                # Stop auto simulation if running
-                if self._auto_simulator:
-                    self._auto_simulator.cancel()
-                if self._lofa_sequence:
-                    self._lofa_sequence.cancel()
-                if self._cinematic_lofa_sequence:
-                    self._cinematic_lofa_sequence.cancel()
-                
-                # Reset state
+                # Reset state (background sequences already cancelled above)
                 state.reset()
                 
                 logger.info("=" * 60)

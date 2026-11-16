@@ -269,6 +269,7 @@ class TouchPanelBaseWindow(QMainWindow):
         self.sim_mode = "Manual"
         self.sim_auto_running = False
         self.sim_emergency = False
+        self._local_scram_elapsed = 0.0
         self.sim_alarm = "Tidak Ada"
         self.sim_show_credits = False
         
@@ -1256,11 +1257,9 @@ class TouchPanelBaseWindow(QMainWindow):
             
         elif action == "EMERGENCY":
             self.sim_emergency = True
+            self._local_scram_elapsed = 0.0
             self.sim_mode = "SCRAM"
             self.sim_alarm = "SCRAM DARURAT!"
-            self.target_pump_primary = 0.0
-            self.target_pump_secondary = 0.0
-            self.target_pump_tertiary = 0.0
             
         elif action == "TOGGLE_CREDITS":
             # State is strictly managed by backend, we just send the command.
@@ -1307,20 +1306,29 @@ class TouchPanelBaseWindow(QMainWindow):
                 setattr(self, pump_attr, max(target, current - 0.0143))
 
         if self.sim_emergency:
-            # Drop control rods immediately
+            self._local_scram_elapsed += 0.1
+
+            # Phase 1: Drop all 3 control rods immediately
             self.sim_safety_rod = max(0, self.sim_safety_rod - 15)
             self.sim_shim_rod = max(0, self.sim_shim_rod - 15)
             self.sim_regulating_rod = max(0, self.sim_regulating_rod - 15)
-            
-            # Collapse thermal energy
-            self.sim_thermal_kw = max(0.0, self.sim_thermal_kw * 0.6)
-            self.sim_turbine_speed = max(0.0, self.sim_turbine_speed - 12.0)
-            
-            # Cooldown temperature profiles
-            self.sim_fuel_cladding_temp = max(35.0, self.sim_fuel_cladding_temp - 15.0)
-            self.sim_coolant_temp_primary = max(35.0, self.sim_coolant_temp_primary - 10.0)
-            self.sim_coolant_temp_secondary = max(35.0, self.sim_coolant_temp_secondary - 8.0)
-            self.sim_pressure = max(1.0, self.sim_pressure - 8.0)
+
+            # Turbine spin-down (~12s) and thermal power collapse
+            self.sim_turbine_speed = max(0.0, self.sim_turbine_speed - 0.85)
+            self.sim_thermal_kw = max(0.0, (self.sim_turbine_speed / 100.0) * 300000.0)
+
+            # Phase 2 & 3: Decay heat hold (0-12.5s), then sequential pump shutdown (Primary -> Secondary -> Tertiary, 35s total)
+            if self._local_scram_elapsed >= 12.5:
+                self.target_pump_primary = 0.0
+            if self._local_scram_elapsed >= 20.25:
+                self.target_pump_secondary = 0.0
+            if self._local_scram_elapsed >= 28.0:
+                self.target_pump_tertiary = 0.0
+
+            # Smooth cooldown with residual decay heat floor (45C / 40C / 30C)
+            self.sim_fuel_cladding_temp += (45.0 - self.sim_fuel_cladding_temp) * 0.05
+            self.sim_coolant_temp_primary += (40.0 - self.sim_coolant_temp_primary) * 0.04
+            self.sim_coolant_temp_secondary += (30.0 - self.sim_coolant_temp_secondary) * 0.04
             return
 
         if self.sim_auto_running:
@@ -1663,8 +1671,14 @@ class TouchPanelBaseWindow(QMainWindow):
                             self.sim_pump_secondary == 2 and 
                             self.sim_pump_tertiary == 2)
             
-            self.btn_emergency.setEnabled(reactor_operating)
-            self.btn_lofa_sim.setEnabled(reactor_operating and pumps_all_on)
+            any_pump_or_pressure = (
+                self.sim_pump_primary > 0
+                or self.sim_pump_secondary > 0
+                or self.sim_pump_tertiary > 0
+                or self.sim_pressure > 0
+            )
+            self.btn_emergency.setEnabled((not self.sim_emergency) and (reactor_operating or any_pump_or_pressure))
+            self.btn_lofa_sim.setEnabled((not self.sim_emergency) and reactor_operating and pumps_all_on)
 
         # 2. Update Header Badges
         self.badge_mode.setText(f"Mode: {self.sim_mode.upper()}")

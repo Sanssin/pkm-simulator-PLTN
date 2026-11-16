@@ -5,6 +5,7 @@ Provides a single source of truth for all physical values.
 """
 
 import time
+import math
 import logging
 from typing import Callable, Optional
 from .state_manager import PanelState
@@ -51,7 +52,12 @@ class PhysicsEngine:
         self.trip_timer_clad = 0.0
         self.trip_timer_prim = 0.0
         self.trip_timer_condenser = 0.0
-        
+        self.decay_heat = 0.0
+
+        self.DECAY_HEAT_FRACTION = 0.07
+        self.DECAY_HEAT_BUILDUP_TAU = 5.0
+        self.DECAY_HEAT_DECAY_TAU = 12.0
+
         self.last_update_time = time.monotonic()
         
     def update(self, state: PanelState) -> None:
@@ -126,9 +132,23 @@ class PhysicsEngine:
         # Use control rod directly to define heat target so it doesn't depend on turbine
         effective_rod = (self.shim_rod_actual * 0.8) + (self.regulating_rod_actual * 0.2)
         power_fraction = effective_rod / 100.0
-        
-        # Power input (q_in) to fuel, arbitrary units scaled for simulator
-        q_in = power_fraction * 100.0 
+
+        # Clear residual decay heat when panel is freshly reset to cold standby
+        if (getattr(state, 'just_reset', False) and not state.emergency_active
+                and effective_rod == 0.0 and state.temperature_core <= 50.5):
+            self.decay_heat = 0.0
+
+        # Fission power (93%) + Decay heat inventory (up to 7% rated, decays post-SCRAM)
+        q_fission = power_fraction * ((1.0 - self.DECAY_HEAT_FRACTION) * 100.0)
+        target_decay = power_fraction * (self.DECAY_HEAT_FRACTION * 100.0)
+        if target_decay > self.decay_heat:
+            self.decay_heat += (target_decay - self.decay_heat) * min(1.0, dt / self.DECAY_HEAT_BUILDUP_TAU)
+        else:
+            self.decay_heat *= math.exp(-dt / self.DECAY_HEAT_DECAY_TAU)
+            if self.decay_heat < 0.01:
+                self.decay_heat = 0.0
+
+        q_in = q_fission + self.decay_heat
         
         # Heat transfer coefficients (k)
         # Fuel to Cladding is relatively constant
@@ -308,57 +328,47 @@ class PhysicsEngine:
         else:
             self.trip_timer_condenser = 0.0
 
-        # Primary
-        def check_prim():
-            if self.trip_timer_clad >= TRIP_DELAY_SEC: return f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
-            if self.trip_timer_prim >= TRIP_DELAY_SEC: return f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
-            return None
-        scram_reason = scram_reason or check_lofa(state.pump_primary_status, self.primary_pump_was_on, 'lofa_primary', 'Primary', check_prim)
-        
-        # Secondary
-        def check_sec():
-            if self.trip_timer_clad >= TRIP_DELAY_SEC or self.trip_timer_prim >= TRIP_DELAY_SEC: return "Secondary LOFA: Induced Primary Overheat"
-            return None
-        scram_reason = scram_reason or check_lofa(state.pump_secondary_status, self.secondary_pump_was_on, 'lofa_secondary', 'Secondary', check_sec)
+        # Skip LOFA / auto-SCRAM detection once emergency SCRAM is already active
+        # so planned sequential pump shutdown during SCRAM does not raise false LOFA flags.
+        if not state.emergency_active:
+            # Primary
+            def check_prim():
+                if self.trip_timer_clad >= TRIP_DELAY_SEC: return f"Primary LOFA: Fuel Cladding Overheat ({state.temperature_fuel_cladding:.1f}°C > 900°C)"
+                if self.trip_timer_prim >= TRIP_DELAY_SEC: return f"Primary LOFA: Coolant Overheat ({state.temperature_coolant_primary:.1f}°C > 380°C)"
+                return None
+            scram_reason = scram_reason or check_lofa(state.pump_primary_status, self.primary_pump_was_on, 'lofa_primary', 'Primary', check_prim)
 
-        # Tertiary
-        def check_tert():
-            if self.trip_timer_condenser >= TRIP_DELAY_SEC: return f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
-            return None
-        scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
+            # Secondary
+            def check_sec():
+                if self.trip_timer_clad >= TRIP_DELAY_SEC or self.trip_timer_prim >= TRIP_DELAY_SEC: return "Secondary LOFA: Induced Primary Overheat"
+                return None
+            scram_reason = scram_reason or check_lofa(state.pump_secondary_status, self.secondary_pump_was_on, 'lofa_secondary', 'Secondary', check_sec)
 
-        # General Overheat & Saturation Check
-        # Realistic T_sat approximation: 100 * (P^0.245) yields ~343C at 155 bar, matching real PWR physics
-        t_sat = 100.0 * (max(1.0, state.pressure) ** 0.245)
-        
-        if state.temperature_coolant_primary >= t_sat and not scram_reason:
-            scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
-        
-        if state.temperature_core >= 1800.0 and not scram_reason:
-            scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 1800.0°C"
-            
-        # Overpressure
-        if state.pressure >= 200.0 and not scram_reason:
-            scram_reason = f"Overpressure: Pressure {state.pressure:.1f} bar >= 200.0 bar"
+            # Tertiary
+            def check_tert():
+                if self.trip_timer_condenser >= TRIP_DELAY_SEC: return f"Tertiary LOFA: Prolonged Condenser Overpressure ({state.condenser_pressure:.2f} > 0.5 MPa)"
+                return None
+            scram_reason = scram_reason or check_lofa(state.pump_tertiary_status, self.tertiary_pump_was_on, 'lofa_tertiary', 'Tertiary', check_tert)
 
-        # Execute SCRAM
-        if scram_reason and not state.emergency_active:
-            if getattr(state, 'simulation_mode', '') == 'cinematic_lofa':
-                pass
-            else:
-                logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
-                if self.trigger_scram:
-                    self.trigger_scram()
-                    
-        # Matikan alarm secara otomatis jika kondisi reaktor sudah kembali aman
-        if state.emergency_active:
-            is_safe = (state.temperature_coolant_primary < 330.0 and 
-                       state.temperature_core < 1000.0 and 
-                       state.pressure < 170.0)
-            if is_safe:
-                state.emergency_active = False
-                # Matikan juga flag LOFA agar alarm berhenti meskipun pompa belum dihidupkan ulang
-                state.lofa_primary = False
-                state.lofa_secondary = False
-                state.lofa_tertiary = False
+            # General Overheat & Saturation Check
+            # Realistic T_sat approximation: 100 * (P^0.245) yields ~343C at 155 bar, matching real PWR physics
+            t_sat = 100.0 * (max(1.0, state.pressure) ** 0.245)
+
+            if state.temperature_coolant_primary >= t_sat and not scram_reason:
+                scram_reason = f"Primary Boiling! T_coolant {state.temperature_coolant_primary:.1f}°C >= T_sat {t_sat:.1f}°C at {state.pressure:.1f} bar"
+
+            if state.temperature_core >= 1800.0 and not scram_reason:
+                scram_reason = f"General Overheat: Core Temp {state.temperature_core:.1f}°C >= 1800.0°C"
+
+            # Overpressure
+            if state.pressure >= 200.0 and not scram_reason:
+                scram_reason = f"Overpressure: Pressure {state.pressure:.1f} bar >= 200.0 bar"
+
+            # Execute SCRAM (remains latched until REACTOR_RESET)
+            if scram_reason:
+                if getattr(state, 'simulation_mode', '') != 'cinematic_lofa':
+                    logger.critical(f"Initiating EMERGENCY SCRAM: {scram_reason}")
+                    state.emergency_active = True
+                    if self.trigger_scram:
+                        self.trigger_scram()
 
